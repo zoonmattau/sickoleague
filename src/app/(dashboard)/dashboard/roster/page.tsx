@@ -1,27 +1,68 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getMyClubWithRoster } from "./actions";
+import { RosterSlot } from "./roster-slot";
+import { RosterSpot, Squad } from "@prisma/client";
+import { redirect } from "next/navigation";
 
-export default function RosterPage() {
+export default async function RosterPage() {
+  const club = await getMyClubWithRoster();
+
+  // If no club, show a message or redirect
+  if (!club) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Roster Management</h1>
+          <p className="text-muted-foreground">
+            You don&apos;t have a club assigned yet. Contact the commissioner to get started.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Build a map of roster spot -> roster player
+  const rosterMap = new Map(
+    club.rosterPlayers.map((rp) => [rp.rosterSpot, rp])
+  );
+
+  // Count assigned players
+  const seniorsCount = club.rosterPlayers.filter(
+    (rp) => rp.squad === "SENIORS"
+  ).length;
+  const reservesCount = club.rosterPlayers.filter(
+    (rp) => rp.squad === "RESERVES"
+  ).length;
+  const benchIlCount = club.rosterPlayers.filter(
+    (rp) => ["BENCH1", "BENCH2", "IL1", "IL2"].includes(rp.rosterSpot)
+  ).length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Roster Management</h1>
           <p className="text-muted-foreground">
-            Manage your senior and reserve squads
+            Manage your senior and reserve squads for {club.name}
           </p>
         </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          Rosters Open
-        </Badge>
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" className="text-sm px-3 py-1">
+            {club.contracts.length} Contracted Players
+          </Badge>
+          <Badge variant="outline" className="text-lg px-4 py-2">
+            Rosters Open
+          </Badge>
+        </div>
       </div>
 
       <Tabs defaultValue="seniors" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="seniors">Seniors (11)</TabsTrigger>
-          <TabsTrigger value="reserves">Reserves (8)</TabsTrigger>
-          <TabsTrigger value="bench">Bench & IL (4)</TabsTrigger>
+          <TabsTrigger value="seniors">Seniors ({seniorsCount}/11)</TabsTrigger>
+          <TabsTrigger value="reserves">Reserves ({reservesCount}/8)</TabsTrigger>
+          <TabsTrigger value="bench">Bench & IL ({benchIlCount}/4)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="seniors" className="space-y-4">
@@ -36,8 +77,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2, 3].map((i) => (
-                    <RosterSlot key={i} position="DEF" index={i} />
+                  {(["DEF1", "DEF2", "DEF3"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="DEF"
+                      rosterSpot={spot}
+                      squad="SENIORS"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -53,8 +102,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2, 3, 4].map((i) => (
-                    <RosterSlot key={i} position="MID" index={i} />
+                  {(["MID1", "MID2", "MID3", "MID4"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="MID"
+                      rosterSpot={spot}
+                      squad="SENIORS"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -69,7 +126,14 @@ export default function RosterPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <RosterSlot position="RUC" index={1} />
+                <RosterSlot
+                  position="RUC"
+                  rosterSpot="RUC"
+                  squad="SENIORS"
+                  clubId={club.id}
+                  assignedPlayer={rosterMap.get("RUC")}
+                  availablePlayers={club.contracts}
+                />
               </CardContent>
             </Card>
 
@@ -83,8 +147,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2, 3].map((i) => (
-                    <RosterSlot key={i} position="FWD" index={i} />
+                  {(["FWD1", "FWD2", "FWD3"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="FWD"
+                      rosterSpot={spot}
+                      squad="SENIORS"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -104,8 +176,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2].map((i) => (
-                    <RosterSlot key={i} position="DEF" index={i} squad="reserves" />
+                  {(["RDEF1", "RDEF2"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="DEF"
+                      rosterSpot={spot}
+                      squad="RESERVES"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -121,8 +201,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2, 3].map((i) => (
-                    <RosterSlot key={i} position="MID" index={i} squad="reserves" />
+                  {(["RMID1", "RMID2", "RMID3"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="MID"
+                      rosterSpot={spot}
+                      squad="RESERVES"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -137,7 +225,14 @@ export default function RosterPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <RosterSlot position="RUC" index={1} squad="reserves" />
+                <RosterSlot
+                  position="RUC"
+                  rosterSpot="RRUC"
+                  squad="RESERVES"
+                  clubId={club.id}
+                  assignedPlayer={rosterMap.get("RRUC")}
+                  availablePlayers={club.contracts}
+                />
               </CardContent>
             </Card>
 
@@ -151,8 +246,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2].map((i) => (
-                    <RosterSlot key={i} position="FWD" index={i} squad="reserves" />
+                  {(["RFWD1", "RFWD2"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="FWD"
+                      rosterSpot={spot}
+                      squad="RESERVES"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -174,8 +277,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2].map((i) => (
-                    <RosterSlot key={i} position="BENCH" index={i} />
+                  {(["BENCH1", "BENCH2"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="BENCH"
+                      rosterSpot={spot}
+                      squad="SENIORS"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -193,8 +304,16 @@ export default function RosterPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
-                  {[1, 2].map((i) => (
-                    <RosterSlot key={i} position="IL" index={i} />
+                  {(["IL1", "IL2"] as RosterSpot[]).map((spot) => (
+                    <RosterSlot
+                      key={spot}
+                      position="IL"
+                      rosterSpot={spot}
+                      squad="SENIORS"
+                      clubId={club.id}
+                      assignedPlayer={rosterMap.get(spot)}
+                      availablePlayers={club.contracts}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -202,28 +321,6 @@ export default function RosterPage() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-function RosterSlot({
-  position,
-  index,
-  squad = "seniors",
-}: {
-  position: string;
-  index: number;
-  squad?: "seniors" | "reserves";
-}) {
-  return (
-    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
-      <div className="flex items-center gap-3">
-        <Badge variant="outline">{position}</Badge>
-        <span className="text-muted-foreground">Empty slot</span>
-      </div>
-      <span className="text-sm text-muted-foreground">
-        Click to assign player
-      </span>
     </div>
   );
 }
