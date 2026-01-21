@@ -30,12 +30,17 @@ model Coach {
 }
 
 model Club {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  abbreviation String   @unique @db.VarChar(4)
-  logoUrl      String?  @map("logo_url")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  name                String   @unique                         // Seniors team name
+  abbreviation        String   @unique @db.VarChar(5)
+  reservesName        String?  @map("reserves_name")            // Reserves team name
+  reservesAbbreviation String? @map("reserves_abbreviation") @db.VarChar(5)
+  seniorsLogoUrl      String?  @map("seniors_logo_url")
+  reservesLogoUrl     String?  @map("reserves_logo_url")
+  primaryColor        String?  @map("primary_color")            // Background color (hex)
+  secondaryColor      String?  @map("secondary_color")          // Text color (hex)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   // Relations
   coachId String? @unique @map("coach_id")

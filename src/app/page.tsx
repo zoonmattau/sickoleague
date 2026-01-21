@@ -24,9 +24,13 @@ import {
   Gavel,
   Heart,
   Star,
-  ChevronRight
+  ChevronRight,
+  Vote,
+  Send
 } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { RuleAmendmentForm } from "@/components/rule-amendment-form";
 
 async function getStandings() {
   try {
@@ -55,9 +59,60 @@ async function getSeasonInfo() {
   }
 }
 
+async function getClubsWithCoaches() {
+  try {
+    const clubs = await prisma.club.findMany({
+      include: {
+        coaches: {
+          select: {
+            id: true,
+            discordUsername: true,
+            discordId: true,
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+    return clubs;
+  } catch {
+    return [];
+  }
+}
+
+async function getUser() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+// Fallback clubs data if database is empty
+const fallbackClubs = [
+  { name: 'The Sickos', abbreviation: 'SCK', reservesName: 'Sicko Symptoms', primaryColor: '#1a1a2e', secondaryColor: '#eaeaea' },
+  { name: 'Ball Hoggers', abbreviation: 'BHG', reservesName: 'Piglets', primaryColor: '#ff6b6b', secondaryColor: '#ffffff' },
+  { name: 'Midfield Maulers', abbreviation: 'MFM', reservesName: 'Clearance Crew', primaryColor: '#4ecdc4', secondaryColor: '#1a1a1a' },
+  { name: 'Ruckus Makers', abbreviation: 'RKM', reservesName: 'Tap Specialists', primaryColor: '#45b7d1', secondaryColor: '#ffffff' },
+  { name: 'Forward Press', abbreviation: 'FWP', reservesName: 'Goal Kickers', primaryColor: '#f9ca24', secondaryColor: '#1a1a1a' },
+  { name: 'Back Line Bandits', abbreviation: 'BLB', reservesName: 'Intercept FC', primaryColor: '#6c5ce7', secondaryColor: '#ffffff' },
+  { name: 'Fantasy Flops', abbreviation: 'FLO', reservesName: 'Donut Club', primaryColor: '#fd79a8', secondaryColor: '#1a1a1a' },
+  { name: 'Bench Warmers', abbreviation: 'BWM', reservesName: 'Pine Riders', primaryColor: '#a29bfe', secondaryColor: '#1a1a1a' },
+  { name: 'Contested Marks', abbreviation: 'CTM', reservesName: 'High Flyers', primaryColor: '#00b894', secondaryColor: '#ffffff' },
+  { name: 'Clearance Kings', abbreviation: 'CLK', reservesName: 'Stoppage Princes', primaryColor: '#e17055', secondaryColor: '#ffffff' },
+  { name: 'Inside 50 FC', abbreviation: 'I50', reservesName: 'Arc Attackers', primaryColor: '#0984e3', secondaryColor: '#ffffff' },
+  { name: 'Rebound Rebels', abbreviation: 'RBR', reservesName: 'D50 Defenders', primaryColor: '#636e72', secondaryColor: '#dfe6e9' },
+];
+
 export default async function HomePage() {
   const allStandings = await getStandings();
   const season = await getSeasonInfo();
+  const clubs = await getClubsWithCoaches();
+  const user = await getUser();
+
+  const totalClubs = clubs.length || 12;
+  const vacantClubs = clubs.filter(c => c.coaches.length === 0).length || 12;
 
   const seniorsStandings = allStandings.filter(s => s.competition === "SENIORS");
   const reservesStandings = allStandings.filter(s => s.competition === "RESERVES");
@@ -81,12 +136,25 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">Sign In</Button>
-            </Link>
-            <Link href="/login">
-              <Button size="sm">Join League</Button>
-            </Link>
+            {user ? (
+              <>
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm">Admin</Button>
+                </Link>
+                <span className="text-sm text-muted-foreground self-center">
+                  {user.user_metadata?.full_name || user.email}
+                </span>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" size="sm">Sign In</Button>
+                </Link>
+                <Link href="/login">
+                  <Button size="sm">Join League</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -98,11 +166,10 @@ export default async function HomePage() {
             {season ? `Season ${season.year}` : "New Season Coming"}
           </Badge>
           <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-            Where AFL Fantasy Gets Serious
+            AFL Fantasy. Evolved.
           </h2>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Manage your club across senior and reserve squads, navigate the salary cap,
-            make blockbuster trades, and compete for glory in the most in-depth AFL fantasy league.
+            Salary caps. Real trades. Complete control.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">
@@ -127,10 +194,6 @@ export default async function HomePage() {
               <Home className="h-4 w-4 hidden sm:block" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="rules" className="gap-2">
-              <BookOpen className="h-4 w-4 hidden sm:block" />
-              Rules
-            </TabsTrigger>
             <TabsTrigger value="coaches" className="gap-2">
               <UserPlus className="h-4 w-4 hidden sm:block" />
               Join Us
@@ -139,15 +202,44 @@ export default async function HomePage() {
               <BarChart3 className="h-4 w-4 hidden sm:block" />
               Standings
             </TabsTrigger>
+            <TabsTrigger value="rules" className="gap-2">
+              <BookOpen className="h-4 w-4 hidden sm:block" />
+              Rules
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-8">
+            {/* Coaches Needed Banner */}
+            {vacantClubs > 0 && (
+              <Card className="border-accent bg-accent/10">
+                <CardContent className="pt-6 pb-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-14 w-14 rounded-full bg-accent/20 flex items-center justify-center">
+                        <UserPlus className="h-7 w-7 text-accent" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold">{vacantClubs} Coaches Needed!</div>
+                        <p className="text-muted-foreground">We&apos;re looking for dedicated coaches to join Season {season?.year || 2026}</p>
+                      </div>
+                    </div>
+                    <Link href="https://discord.gg/jQ65xTRcRb" target="_blank">
+                      <Button size="lg" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+                        <Users className="h-5 w-5" />
+                        Apply Now
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="text-center">
                 <CardContent className="pt-6">
-                  <div className="text-3xl font-bold text-primary">8</div>
+                  <div className="text-3xl font-bold text-primary">{totalClubs}</div>
                   <p className="text-sm text-muted-foreground">Clubs</p>
                 </CardContent>
               </Card>
@@ -297,6 +389,7 @@ export default async function HomePage() {
                 <TabsTrigger value="freeagency" className="text-xs sm:text-sm">Free Agency</TabsTrigger>
                 <TabsTrigger value="trading" className="text-xs sm:text-sm">Trading</TabsTrigger>
                 <TabsTrigger value="staff" className="text-xs sm:text-sm">Staff</TabsTrigger>
+                <TabsTrigger value="amendments" className="text-xs sm:text-sm">Amendments</TabsTrigger>
               </TabsList>
 
               {/* Gameplay */}
@@ -305,33 +398,54 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Calendar className="h-5 w-5 text-primary" />
-                      Gameplay & Season Structure
+                      Section 1: Gameplay & Season Structure
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">League Management</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Managed on Discord and this website</li>
-                        <li>Each club has a senior and affiliated reserve team</li>
-                      </ul>
+                      <h4 className="font-semibold">1.1 League Management</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>1.1.1 The League shall be managed via Discord and this website.</p>
+                        <p>1.1.2 Each Club shall consist of a Senior team and an affiliated Reserves team.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Season Structure</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Home and away fixture structure</li>
-                        <li>Seniors and reserves play the same opponent each round</li>
-                        <li>League-wide bye rounds during AFL byes</li>
-                        <li>Scored using AFL Fantasy points</li>
-                      </ul>
+                      <h4 className="font-semibold">1.2 Season Structure</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>1.2.1 The season shall follow a home and away fixture structure.</p>
+                        <p>1.2.2 Seniors and Reserves shall play the same opponent each round.</p>
+                        <p>1.2.3 League-wide bye rounds shall coincide with AFL bye rounds.</p>
+                        <p>1.2.4 All scoring shall be calculated using AFL Fantasy points.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Finals Structure</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Week 1: 1st vs 2nd & 3rd vs 4th</li>
-                        <li>Week 2: Loser of 1v2 vs Winner of 3v4</li>
-                        <li>Week 3: Winner of Week 1&apos;s first game vs Winner of Week 2</li>
-                      </ul>
+                      <h4 className="font-semibold">1.3 Finals Structure</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>1.3.1 Week 1: 1st vs 2nd and 3rd vs 4th.</p>
+                        <p>1.3.2 Week 2: Loser of 1st vs 2nd shall play Winner of 3rd vs 4th.</p>
+                        <p>1.3.3 Week 3 (Grand Final): Winner of Week 1&apos;s first game vs Winner of Week 2.</p>
+                        <p>1.3.4 In the event of a draw in any finals match, the higher-seeded team shall advance.</p>
+                        <p>1.3.5 Players are only eligible for Reserves finals if they have played an equal or greater number of games in Reserves than Seniors during the regular season.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">1.4 Ladder Tie-Breakers</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>1.4.1 When teams are equal on points, ladder position shall be determined by:</p>
+                        <div className="pl-4">
+                          <p>(a) Percentage (Points For ÷ Points Against × 100)</p>
+                          <p>(b) Head-to-head record</p>
+                          <p>(c) Total games won</p>
+                          <p>(d) Coin flip</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">1.5 Club Management</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>1.5.1 If a coach abandons their club mid-season, the club shall be immediately available for a new coach to claim.</p>
+                        <p>1.5.2 Until a replacement is found, the roster shall default to the previous week&apos;s lineup.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -343,57 +457,68 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Shield className="h-5 w-5 text-primary" />
-                      Teams & Rosters
+                      Section 2: Teams & Rosters
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-lg bg-muted/50">
-                        <h4 className="font-semibold mb-2">Seniors (11 players)</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>3 Defenders (DEF)</li>
-                          <li>4 Midfielders (MID)</li>
-                          <li>1 Ruck (RUC)</li>
-                          <li>3 Forwards (FWD)</li>
-                        </ul>
-                      </div>
-                      <div className="p-4 rounded-lg bg-muted/50">
-                        <h4 className="font-semibold mb-2">Reserves (8 players)</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          <li>2 Defenders (DEF)</li>
-                          <li>3 Midfielders (MID)</li>
-                          <li>1 Ruck (RUC)</li>
-                          <li>2 Forwards (FWD)</li>
-                        </ul>
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">2.1 Team Composition</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>2.1.1 Seniors team shall consist of eleven (11) players:</p>
+                        <div className="pl-4">
+                          <p>(a) Three (3) Defenders (DEF)</p>
+                          <p>(b) Four (4) Midfielders (MID)</p>
+                          <p>(c) One (1) Ruck (RUC)</p>
+                          <p>(d) Three (3) Forwards (FWD)</p>
+                        </div>
+                        <p>2.1.2 Reserves team shall consist of eight (8) players:</p>
+                        <div className="pl-4">
+                          <p>(a) Two (2) Defenders (DEF)</p>
+                          <p>(b) Three (3) Midfielders (MID)</p>
+                          <p>(c) One (1) Ruck (RUC)</p>
+                          <p>(d) Two (2) Forwards (FWD)</p>
+                        </div>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">List Requirements</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>2 Injury List spots + 2 Bench spots</li>
-                        <li>Minimum 19 players, maximum 21 active players</li>
-                        <li>Can have 0-2 injured players</li>
-                        <li>Rosters lock at first bounce, open at final siren</li>
-                        <li>Late submissions default to previous round&apos;s lineup</li>
-                      </ul>
+                      <h4 className="font-semibold">2.2 List Requirements</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>2.2.1 Each Club shall maintain two (2) Injury List spots and two (2) Bench spots.</p>
+                        <p>2.2.2 Minimum list size shall be nineteen (19) players; maximum shall be twenty-one (21) active players.</p>
+                        <p>2.2.3 Clubs may have zero (0) to two (2) injured players at any time.</p>
+                        <p>2.2.4 Rosters shall lock at first bounce of the round (typically Thursday) and unlock after the final game of the round.</p>
+                        <p>2.2.5 Late submissions shall default to previous round&apos;s lineup.</p>
+                        <p>2.2.6 Bench player scores shall not count toward match results.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Captaincy</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Nominate captain and vice-captain for each squad pre-season</li>
-                        <li>Can only change captaincy if captain is benched, on IL, traded, released, or moved between squads</li>
-                        <li>Senior and reserve captaincy are independent</li>
-                      </ul>
+                      <h4 className="font-semibold">2.3 Position Eligibility</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>2.3.1 Players with dual-position eligibility (e.g., DEF/MID) may fill either eligible position slot.</p>
+                        <p>2.3.2 If a rostered player does not play in a given round (late omission, injury), they shall score zero (0) points with no replacement.</p>
+                      </div>
                     </div>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>Roster Example:</strong>
-                      <p>You have 21 contracted players. Your lineup could be:</p>
-                      <ul className="list-disc list-inside ml-2 text-muted-foreground">
-                        <li>11 in seniors (3 DEF, 4 MID, 1 RUC, 3 FWD)</li>
-                        <li>8 in reserves (2 DEF, 3 MID, 1 RUC, 2 FWD)</li>
-                        <li>2 on bench (any position)</li>
-                      </ul>
-                      <p className="text-muted-foreground mt-1">If a player is marked &quot;unavailable&quot; on the AFL website, they can go on your IL instead.</p>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">2.4 Captaincy</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>2.4.1 Coaches shall nominate a Captain and Vice-Captain for each squad prior to the season.</p>
+                        <p>2.4.2 Captain or Vice-Captain may only change if they are:</p>
+                        <div className="pl-4">
+                          <p>(a) Benched for one (1) game week where the team is active</p>
+                          <p>(b) Placed on Injury List</p>
+                          <p>(c) Traded</p>
+                          <p>(d) Released</p>
+                          <p>(e) Moved between squads</p>
+                        </div>
+                        <p>2.4.3 Senior and Reserve captaincy/vice-captaincy shall be independent of each other.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">2.5 Squad Movement</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>2.5.1 Players with an existing Senior contract shall retain their contract when moved between squads.</p>
+                        <p>2.5.2 Players without a Senior contract who are promoted to Seniors shall receive a contract valued at one (1) point per game remaining in the regular season.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -405,22 +530,26 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Star className="h-5 w-5 text-primary" />
-                      Scoring
+                      Section 3: Scoring
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                      <li>Points scored using AFL Fantasy system</li>
-                      <li><strong>Captains earn 2x points</strong></li>
-                      <li>If captain doesn&apos;t play, vice-captain scores 2x</li>
-                      <li>No emergency scoring</li>
-                      <li>Bye rounds: Top 9 scoring for seniors, top 7 for reserves</li>
-                    </ul>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>Example:</strong>
-                      <p>Your captain Marcus Bontempelli scores 120 AFL Fantasy points.</p>
-                      <p>With the 2x captain bonus: <strong>240 points</strong> for your team.</p>
-                      <p className="text-muted-foreground">If Bontempelli didn&apos;t play and your VC Lachie Neale scored 95, Neale would score 190 points instead.</p>
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">3.1 Points System</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>3.1.1 All points shall be calculated using the official AFL Fantasy scoring system.</p>
+                        <p>3.1.2 Captains shall earn one and a half times (1.5x) their AFL Fantasy points.</p>
+                        <p>3.1.3 Vice-Captains shall earn one and a quarter times (1.25x) their AFL Fantasy points.</p>
+                        <p>3.1.4 No emergency scoring shall apply.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">3.2 Bye Rounds</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>3.2.1 During bye rounds, Seniors shall score from the top nine (9) scoring players.</p>
+                        <p>3.2.2 During bye rounds, Reserves shall score from the top seven (7) scoring players.</p>
+                        <p>3.2.3 Captain and Vice-Captain multipliers shall apply during bye rounds if those players are among the top scorers.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -432,32 +561,51 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Home className="h-5 w-5 text-orange-500" />
-                      Home Field Advantage
+                      Section 4: Home Field Advantage
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">HFA Calculation</h4>
-                      <p className="text-sm text-muted-foreground">
-                        HFA = (Average of last 3 home margins ÷ 5) + (Average of 4th-10th last home margins ÷ 20)
-                      </p>
-                      <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                        <strong>Example:</strong> Last 10 home margins: 35, 25, -20, -30, -10, 5, -45, 20, 50, -30<br/>
-                        Last 3: (35+25-20) ÷ 5 = 8<br/>
-                        Next 7: (-30-10+5-45+20+50-30) ÷ 20 = -2<br/>
-                        <strong>HFA = 6 points</strong>
+                      <h4 className="font-semibold">4.1 HFA Calculation</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>4.1.1 HFA shall be calculated as follows:</p>
+                        <p className="pl-4 font-mono text-xs">HFA = (Average of last 3 home margins ÷ 5) + (Average of 4th-10th home margins ÷ 20)</p>
+                        <p>4.1.2 All teams shall start with zero (0) HFA.</p>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">HFA Rules</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Teams start with 0 HFA</li>
-                        <li>Seniors capped at ±15, Reserves capped at ±8</li>
-                        <li>Reserves HFA is half of calculated amount</li>
-                        <li><strong>1.5x HFA against rivals</strong> (finals opponents or nominated clubs)</li>
-                        <li>Can sell home games to other clubs for salary cap value</li>
-                        <li>Cannot sell home games to rival teams</li>
-                      </ul>
+                      <h4 className="font-semibold">4.2 HFA Limits</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>4.2.1 Seniors HFA shall be capped at plus or minus fifteen (±15) points.</p>
+                        <p>4.2.2 Reserves HFA shall be capped at plus or minus eight (±8) points.</p>
+                        <p>4.2.3 Reserves HFA shall be calculated at half (50%) of the standard amount.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">4.3 Rivalry System</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>4.3.1 HFA shall be dynamically multiplied based on rivalry intensity when playing against Rival clubs.</p>
+                        <p>4.3.2 The more severe the rivalry, the greater the HFA multiplier shall be.</p>
+                        <p>4.3.3 Rivalry shall be determined by a dynamic tension system between clubs.</p>
+                        <p>4.3.4 Tension shall increase based on:</p>
+                        <div className="pl-4">
+                          <p>(a) Close matches (decided by fewer than 20 points)</p>
+                          <p>(b) Player trades between clubs</p>
+                          <p>(c) Finals matchups</p>
+                          <p>(d) Ladder proximity during the season</p>
+                        </div>
+                        <p>4.3.5 Tension shall naturally decay over time without interaction.</p>
+                        <p>4.3.6 When tension between two clubs exceeds the rivalry threshold, they shall become official Rivals.</p>
+                        <p>4.3.7 Rivalry tension scores shall be publicly visible to all coaches.</p>
+                        <p>4.3.8 There shall be no limit to the number of Rivals a club may have.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">4.4 Home Game Sales</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>4.4.1 Clubs may sell home games to other clubs in exchange for salary cap value.</p>
+                        <p>4.4.2 Clubs shall not sell home games to Rival teams.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -469,50 +617,33 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5 text-green-500" />
-                      Salary Cap
+                      Section 5: Salary Cap
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Cap Rules</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li><strong>750 point salary cap</strong></li>
-                        <li>Must stay under cap during current season</li>
-                        <li>Can go over in future seasons if compliant by draft</li>
-                        <li>Non-compliant clubs have players auto-released to pool</li>
-                        <li>Salary can be traded between clubs</li>
-                      </ul>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">Reserves Ladder Bonuses</h4>
-                      <div className="grid grid-cols-5 gap-2 text-center">
-                        <div className="p-2 rounded bg-yellow-500/10">
-                          <div className="font-bold text-yellow-500">1st</div>
-                          <div className="text-sm">+75</div>
-                        </div>
-                        <div className="p-2 rounded bg-gray-500/10">
-                          <div className="font-bold text-gray-400">2nd</div>
-                          <div className="text-sm">+50</div>
-                        </div>
-                        <div className="p-2 rounded bg-orange-500/10">
-                          <div className="font-bold text-orange-500">3rd</div>
-                          <div className="text-sm">+30</div>
-                        </div>
-                        <div className="p-2 rounded bg-muted">
-                          <div className="font-bold">4th</div>
-                          <div className="text-sm">+20</div>
-                        </div>
-                        <div className="p-2 rounded bg-muted">
-                          <div className="font-bold">5th</div>
-                          <div className="text-sm">+10</div>
-                        </div>
+                      <h4 className="font-semibold">5.1 Cap Rules</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>5.1.1 The base salary cap shall be seven hundred and fifty (750) points.</p>
+                        <p>5.1.2 All contract values must be expressed as whole numbers (no decimals).</p>
+                        <p>5.1.3 Clubs must remain under the salary cap during the current season.</p>
+                        <p>5.1.4 Clubs may exceed the cap in future seasons provided they are compliant by draft day.</p>
+                        <p>5.1.5 Non-compliant clubs shall have players auto-released in alternating order: lowest paid, then highest paid, then second lowest, then second highest, and so on until compliant.</p>
+                        <p>5.1.6 Salary may be traded between clubs.</p>
                       </div>
                     </div>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>Cap Example:</strong>
-                      <p>Your club finished 2nd in reserves last year (+50 bonus).</p>
-                      <p>Your effective cap: 750 + 50 = <strong>800 pts</strong></p>
-                      <p className="text-muted-foreground">This rewards clubs that invest in reserves depth rather than stacking all salary on seniors.</p>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">5.2 Reserves Ladder Bonuses</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>5.2.1 Clubs shall receive salary cap bonuses based on Reserves ladder position:</p>
+                        <div className="pl-4">
+                          <p>(a) First place: +75 points</p>
+                          <p>(b) Second place: +50 points</p>
+                          <p>(c) Third place: +30 points</p>
+                          <p>(d) Fourth place: +20 points</p>
+                          <p>(e) Fifth place: +10 points</p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -524,43 +655,43 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FileText className="h-5 w-5 text-primary" />
-                      Contracts & Extensions
+                      Section 6: Contracts & Extensions
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Contract Basics</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Every senior player must be on a contract</li>
-                        <li>Reserves players without senior games are effectively free</li>
-                        <li>Minimum contract: 1pt/game + 2pt signing bonus</li>
-                        <li>Released players owed remaining contract (spread over years)</li>
-                        <li>Minimum contract release costs 3 pts</li>
-                      </ul>
+                      <h4 className="font-semibold">6.1 Contract Requirements</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>6.1.1 Every Senior player must be under contract.</p>
+                        <p>6.1.2 Reserves players without Senior games are effectively free (0 salary).</p>
+                        <p>6.1.3 Minimum contract value shall be one (1) point per game plus two (2) point signing bonus.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Contract Extensions</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Player must have 5+ AFL games that year</li>
-                        <li>Only in final year of contract</li>
-                        <li>Cost = (Season average ÷ 2), rounded down</li>
-                        <li>Other clubs can counter with 20%+ higher offer</li>
-                        <li>Long-term: +10% year-on-year increase</li>
-                        <li>Max 10-year contracts</li>
-                        <li>7-day bidding period (resets each new offer)</li>
-                      </ul>
+                      <h4 className="font-semibold">6.2 Contract Releases</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>6.2.1 Released players shall be owed their remaining contract value, spread across remaining years.</p>
+                        <p>6.2.2 Minimum contract release cost shall be three (3) points.</p>
+                      </div>
                     </div>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>Extension Example:</strong>
-                      <p>Nick Daicos has a season average of 110 points.</p>
-                      <p>Base extension cost: 110 ÷ 2 = <strong>55 pts/year</strong></p>
-                      <p>For a 3-year deal with 10% escalation:</p>
-                      <ul className="list-disc list-inside ml-2 text-muted-foreground">
-                        <li>Year 1: 55 pts</li>
-                        <li>Year 2: 60.5 pts</li>
-                        <li>Year 3: 66.5 pts</li>
-                      </ul>
-                      <p>Total: <strong>182 pts over 3 years</strong></p>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">6.3 Contract Extensions</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>6.3.1 Players must have played five (5) or more AFL games that year to be eligible.</p>
+                        <p>6.3.2 Extensions may only be offered in the final year of a contract.</p>
+                        <p>6.3.3 Extension cost shall be calculated as: AFL Fantasy Season Average ÷ 2, rounded down to the nearest whole number.</p>
+                        <p>6.3.4 Other clubs may counter-offer with twenty percent (20%) or greater increase.</p>
+                        <p>6.3.5 Multi-year deals shall include ten percent (10%) year-on-year increase.</p>
+                        <p>6.3.6 Maximum contract length shall be ten (10) years.</p>
+                        <p>6.3.7 Bidding period shall be seven (7) days, resetting with each new offer.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">6.4 Player Retirement</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>6.4.1 If an AFL player retires, their Sicko League contract shall be voided with no cap penalty.</p>
+                        <p>6.4.2 The player shall be removed from the club&apos;s roster immediately.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -572,36 +703,37 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Target className="h-5 w-5 text-purple-500" />
-                      Draft & Rule 9
+                      Section 7: Draft & Rule 9
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Annual Draft</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>~14 days before first game</li>
-                        <li>10 rounds</li>
-                        <li>Reverse finishing order of previous seniors</li>
-                        <li>Forfeit remaining picks if no roster spots</li>
-                      </ul>
+                      <h4 className="font-semibold">7.1 Annual Draft</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>7.1.1 The Annual Draft shall occur approximately fourteen (14) days before the first game.</p>
+                        <p>7.1.2 The Draft shall consist of ten (10) rounds.</p>
+                        <p>7.1.3 Draft order shall be in reverse finishing order of the previous Seniors ladder.</p>
+                        <p>7.1.4 Clubs shall forfeit remaining picks if no roster spots are available.</p>
+                        <p>7.1.5 Each coach shall have one (1) minute to make their pick; failure to pick in time shall result in an automatic pass.</p>
+                        <p>7.1.6 Draft picks may be traded up to three (3) years in advance.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Rule 9 Draft (Mid-Season)</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Between Round 13 and 14</li>
-                        <li>Prevents stashing quality players in reserves</li>
-                        <li>Eligible: Majority reserves games, senior contract, not a rookie this year or last</li>
-                        <li>Drafted players must stay on seniors/IL for current + next season</li>
-                        <li>Must have open roster spot to draft</li>
-                        <li>Can pass picks</li>
-                      </ul>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>Rule 9 Example:</strong>
-                      <p>Club A has Sam Walsh on a senior contract but has played him in reserves for 8 of 13 rounds (majority).</p>
-                      <p>Walsh is NOT a rookie (debuted 2019), so he&apos;s eligible for Rule 9.</p>
-                      <p>Club B selects Walsh in the Rule 9 Draft. Walsh must now play seniors or IL for Club B for the rest of this season and all of next season.</p>
-                      <p className="text-muted-foreground">This prevents clubs from &quot;hiding&quot; quality contracted players in reserves.</p>
+                      <h4 className="font-semibold">7.2 Rule 9 Draft (Mid-Season)</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>7.2.1 The Rule 9 Draft shall occur between Round 13 and Round 14.</p>
+                        <p>7.2.2 Purpose: To prevent clubs from stashing quality players in Reserves.</p>
+                        <p>7.2.3 Player eligibility requires:</p>
+                        <div className="pl-4">
+                          <p>(a) Majority of games played in Reserves</p>
+                          <p>(b) Active Senior contract</p>
+                          <p>(c) Not classified as a rookie</p>
+                        </div>
+                        <p>7.2.4 A &quot;rookie&quot; for Rule 9 purposes is defined as a player in their first or second AFL season who has not played the requisite number of Senior games in Sicko League.</p>
+                        <p>7.2.5 Drafted players must remain on Seniors or Injury List for the current and following season.</p>
+                        <p>7.2.6 Clubs must have an open roster spot to draft.</p>
+                        <p>7.2.7 Clubs may pass on their pick.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -613,42 +745,37 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-pink-500" />
-                      Free Agency
+                      Section 8: Free Agency
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">In-Season Free Agency</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Sign any non-contracted player</li>
-                        <li>48-hour counter-offer window</li>
-                        <li>Reserve squad contracts can start at 0 salary</li>
-                      </ul>
+                      <h4 className="font-semibold">8.1 In-Season Free Agency</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>8.1.1 Clubs may sign any non-contracted player during the season.</p>
+                        <p>8.1.2 A forty-eight (48) hour counter-offer window shall apply.</p>
+                        <p>8.1.3 Each new counter-offer shall reset the forty-eight (48) hour window.</p>
+                        <p>8.1.4 Reserves squad contracts may commence at zero (0) salary; Senior contracts require minimum one (1) point.</p>
+                        <p>8.1.5 Released players shall become free agents immediately and may be signed by any club.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">End of Season Free Agency</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Opens day after Grand Final</li>
-                        <li>Closes day before first game</li>
-                        <li>7-day bidding period (5% minimum increase)</li>
-                        <li>Period halves as deadline approaches</li>
-                      </ul>
+                      <h4 className="font-semibold">8.2 End of Season Free Agency</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>8.2.1 The period shall open the day after the Grand Final.</p>
+                        <p>8.2.2 There shall be no deadline for free agency signings.</p>
+                        <p>8.2.3 Initial bidding period shall be seven (7) days with five percent (5%) minimum increase required.</p>
+                        <p>8.2.4 Each new offer shall halve the remaining bidding period (minimum twelve (12) hours).</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Restricted Free Agents (RFAs)</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Top 25% highest paid players</li>
-                        <li>Previous club can match offer + 20%</li>
-                        <li>2 days to accept/reject RFA match</li>
-                        <li>Players offered contracts pushing them into top 25% become RFAs</li>
-                      </ul>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>RFA Example:</strong>
-                      <p>Christian Petracca is an RFA (top 25% salary). His contract expires.</p>
-                      <p>Club B offers 60 pts/year for 3 years.</p>
-                      <p>Club A (his previous club) can match at 60 + 20% = <strong>72 pts/year</strong> to retain him.</p>
-                      <p className="text-muted-foreground">Petracca has 2 days to accept or reject Club A&apos;s match offer. If he rejects, he goes to Club B at 60 pts/year.</p>
+                      <h4 className="font-semibold">8.3 Restricted Free Agents (RFAs)</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>8.3.1 RFAs are defined as players in the top twenty-five percent (25%) of salary.</p>
+                        <p>8.3.2 The previous club may match any offer plus twenty percent (20%).</p>
+                        <p>8.3.3 Players have two (2) days to accept or reject the RFA match offer.</p>
+                        <p>8.3.4 Players receiving offers that push them into the top 25% shall become RFAs.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -660,31 +787,39 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ArrowRightLeft className="h-5 w-5 text-blue-500" />
-                      Trading
+                      Section 9: Trading
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                      <li>Trade contracted players (new team takes contract)</li>
-                      <li>Include salary retention to stay under cap</li>
-                      <li>Trade salary tied to players, coaches, or freely</li>
-                      <li>Trade future draft picks up to 3 years ahead</li>
-                      <li>Any combination of players, coaches, picks, salary</li>
-                    </ul>
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2">
-                      <strong>Trade Example:</strong>
-                      <p className="font-medium">Club A receives:</p>
-                      <ul className="list-disc list-inside ml-2 text-muted-foreground">
-                        <li>Jordan De Goey (45 pts/yr, 2 years left)</li>
-                        <li>2027 2nd round pick</li>
-                      </ul>
-                      <p className="font-medium mt-2">Club B receives:</p>
-                      <ul className="list-disc list-inside ml-2 text-muted-foreground">
-                        <li>Tim Taranto (30 pts/yr)</li>
-                        <li>15 pts salary retention (Club A pays 15 of De Goey&apos;s 45)</li>
-                        <li>2026 1st round pick</li>
-                      </ul>
-                      <p className="text-muted-foreground mt-2">Club B effectively gets De Goey at 30 pts/yr (45 - 15 retention).</p>
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">9.1 Tradeable Assets</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>9.1.1 Contracted players may be traded; the receiving club assumes the contract.</p>
+                        <p>9.1.2 Draft picks may be traded up to three (3) years in advance.</p>
+                        <p>9.1.3 Coaching staff may be traded.</p>
+                        <p>9.1.4 Salary cap space may be traded freely or attached to players/staff.</p>
+                        <p>9.1.5 Any number of clubs may participate in a single trade.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">9.2 Trade Deadline</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>9.2.1 The trade deadline shall be four (4) weeks before the start of Sicko League finals.</p>
+                        <p>9.2.2 No trades may be processed after the deadline until the off-season.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">9.3 Salary Retention</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>9.3.1 Clubs may include salary retention to facilitate trades.</p>
+                        <p>9.3.2 Retained salary shall count against the retaining club&apos;s cap.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">9.4 Trade Combinations</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>9.4.1 Any combination of players, coaches, picks, and salary may be included in trades.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -696,39 +831,101 @@ export default async function HomePage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Briefcase className="h-5 w-5 text-primary" />
-                      Coaching Staff
+                      Section 10: Coaching Staff
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 text-sm">
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Available Staff</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Senior team assistant coach</li>
-                        <li>Reserves team assistant coach</li>
-                        <li>List manager</li>
-                      </ul>
+                      <h4 className="font-semibold">10.1 Available Staff Positions</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>10.1.1 Each club may employ the following staff:</p>
+                        <div className="pl-4">
+                          <p>(a) Senior Team Assistant Coach</p>
+                          <p>(b) Reserves Team Assistant Coach</p>
+                          <p>(c) List Manager</p>
+                        </div>
+                        <p>10.1.2 Assistant Coaches shall be real-life AFL team coaches, linked to their respective AFL teams.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Assistant Coaches</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Add/subtract their real AFL team&apos;s margin ÷ 10 to your score.<br/>
-                        <em>Example: If your assistant&apos;s AFL team wins by 20, you get +2 points.</em>
-                      </p>
+                      <h4 className="font-semibold">10.2 Assistant Coach Bonus</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>10.2.1 The Assistant Coach bonus shall be calculated as: their linked AFL Team&apos;s Margin ÷ 10.</p>
+                        <p>10.2.2 The bonus is added to (or subtracted from) the club&apos;s score each round.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">List Manager</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Contract discount = (19 - ladder position) ÷ 3<br/>
-                        <em>Example: If manager&apos;s AFL team is 6th, discount = (19-6) ÷ 3 = 4.33%</em>
-                      </p>
+                      <h4 className="font-semibold">10.3 List Manager Discount</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>10.3.1 The List Manager discount shall be calculated as: (19 - AFL Ladder Position) ÷ 3, rounded to the nearest whole number.</p>
+                        <p>10.3.2 The discount applies as a percentage reduction on contract signings.</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">Staff Contracts</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Come out of salary cap</li>
-                        <li>Can be traded</li>
-                        <li>Free agent bidding like players</li>
-                      </ul>
+                      <h4 className="font-semibold">10.4 Staff Contract Rules</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>10.4.1 Staff salaries shall be determined by market-based negotiation, similar to player contracts.</p>
+                        <p>10.4.2 Staff salaries shall count against the salary cap.</p>
+                        <p>10.4.3 Staff may be traded between clubs.</p>
+                        <p>10.4.4 Staff free agency shall follow the same bidding rules as players.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Amendments */}
+              <TabsContent value="amendments">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Vote className="h-5 w-5 text-primary" />
+                      Section 11: Rule Amendments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">11.1 Amendment Process</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>11.1.1 Any coach may submit a proposed rule change for consideration.</p>
+                        <p>11.1.2 Proposed amendments shall be reviewed for inclusion in the following season.</p>
+                        <p>11.1.3 All coaches shall vote on proposed amendments before each new season.</p>
+                        <p>11.1.4 A proposed amendment shall pass with a majority vote of fifty percent plus one (50%+1) of all coaches.</p>
+                        <p>11.1.5 Passed amendments shall take effect at the start of the following season.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">11.2 Emergency Amendments</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>11.2.1 In cases of urgent rule clarification, the League Commissioner may implement temporary rulings.</p>
+                        <p>11.2.2 Temporary rulings shall be subject to formal vote at the end of the season.</p>
+                      </div>
+                    </div>
+
+                    {/* Rule Change Submission Form */}
+                    <div className="mt-8 pt-6 border-t">
+                      <h4 className="font-semibold mb-4 flex items-center gap-2">
+                        <Send className="h-4 w-4" />
+                        Submit a Rule Change Proposal
+                      </h4>
+                      {user ? (
+                        <RuleAmendmentForm
+                          userEmail={user.email}
+                          userName={user.user_metadata?.full_name || user.user_metadata?.name}
+                        />
+                      ) : (
+                        <div className="text-center py-8 space-y-4">
+                          <p className="text-muted-foreground">
+                            You must be signed in to submit a rule change proposal.
+                          </p>
+                          <Link href="/login">
+                            <Button className="gap-2">
+                              <Users className="h-4 w-4" />
+                              Sign In with Discord
+                            </Button>
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -738,14 +935,109 @@ export default async function HomePage() {
 
           {/* Looking to Coach Tab */}
           <TabsContent value="coaches" className="space-y-6">
-            <Card className="border-primary/50">
-              <CardHeader className="text-center">
-                <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <UserPlus className="h-8 w-8 text-primary" />
+            {/* Vacancies Banner */}
+            {vacantClubs > 0 && (
+              <Card className="border-accent bg-accent/10">
+                <CardContent className="pt-6 pb-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-14 w-14 rounded-full bg-accent/20 flex items-center justify-center">
+                        <UserPlus className="h-7 w-7 text-accent" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold">{vacantClubs} of {totalClubs} Spots Available!</div>
+                        <p className="text-muted-foreground">Claim your club for Season {season?.year || 2026}</p>
+                      </div>
+                    </div>
+                    <Link href="https://discord.gg/jQ65xTRcRb" target="_blank">
+                      <Button size="lg" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+                        <Users className="h-5 w-5" />
+                        Sign Up Now
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Teams & Coaches List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Clubs & Coaches
+                </CardTitle>
+                <CardDescription>
+                  Current club roster - vacant spots are waiting for you!
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                  Team names, colors, and logos shown below are placeholders.
+                  When you claim a club, you can <strong className="text-foreground">fully customize your team&apos;s branding</strong> - choose your own seniors name,
+                  reserves name, colors, and upload custom logos!
                 </div>
-                <CardTitle className="text-2xl">Want to Join Sicko League?</CardTitle>
-                <CardDescription className="text-base">
-                  We&apos;re always looking for committed coaches who love AFL fantasy
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(clubs.length > 0 ? clubs : fallbackClubs.map((c, i) => ({ ...c, id: String(i), coaches: [] }))).map((club) => {
+                    const hasCoach = 'coaches' in club && club.coaches.length > 0;
+
+                    return (
+                      <div
+                        key={club.id || club.name}
+                        className={`rounded-lg border p-4 transition-all ${
+                          hasCoach
+                            ? "bg-muted/30"
+                            : "bg-card hover:border-accent hover:shadow-sm"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="font-semibold">{club.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Reserves: {club.reservesName || 'TBD'}
+                            </div>
+                          </div>
+                          <div
+                            className="w-8 h-8 rounded-md border flex-shrink-0"
+                            style={{ backgroundColor: club.primaryColor || '#6b7280' }}
+                            title="Team color (customizable)"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">Coach:</span>
+                          {hasCoach ? (
+                            <Badge variant="secondary" className="text-xs">
+                              @{club.coaches[0].discordUsername || "Coach"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs border-accent text-accent">
+                              Vacant
+                            </Badge>
+                          )}
+                        </div>
+
+                        {!hasCoach && (
+                          <Link href="https://discord.gg/jQ65xTRcRb" target="_blank" className="block mt-3">
+                            <Button size="sm" variant="outline" className="w-full text-xs gap-1">
+                              <UserPlus className="h-3 w-3" />
+                              Claim This Club
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Info Cards */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Want to Join Sicko League?</CardTitle>
+                <CardDescription>
+                  We&apos;re looking for committed coaches who love AFL fantasy
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -800,16 +1092,16 @@ export default async function HomePage() {
                   </ul>
                 </div>
 
-                <div className="bg-muted/30 rounded-lg p-6 text-center">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-                  <h4 className="font-semibold mb-2">Current Availability</h4>
+                <div className="bg-primary/10 rounded-lg p-6 text-center">
+                  <Trophy className="h-8 w-8 mx-auto mb-3 text-primary" />
+                  <h4 className="font-semibold mb-2">Ready to Coach?</h4>
                   <p className="text-muted-foreground mb-4">
-                    Check Discord for current openings or to join the waitlist
+                    Join our Discord and introduce yourself to claim your club!
                   </p>
                   <Link href="https://discord.gg/jQ65xTRcRb" target="_blank">
-                    <Button className="gap-2">
-                      <Users className="h-4 w-4" />
-                      Join Our Discord
+                    <Button size="lg" className="gap-2">
+                      <Users className="h-5 w-5" />
+                      Join Discord & Sign Up
                     </Button>
                   </Link>
                 </div>
@@ -850,7 +1142,17 @@ export default async function HomePage() {
                                   {index + 1}
                                 </span>
                               </td>
-                              <td className="py-2 pr-2 font-medium">{standing.club.name}</td>
+                              <td className="py-2 pr-2">
+                                <span
+                                  className="px-2 py-1 rounded text-xs font-semibold"
+                                  style={{
+                                    backgroundColor: standing.club.primaryColor || '#666',
+                                    color: standing.club.secondaryColor || '#fff'
+                                  }}
+                                >
+                                  {standing.club.name}
+                                </span>
+                              </td>
                               <td className="py-2 pr-2 text-center text-muted-foreground">{standing.played}</td>
                               <td className="py-2 pr-2 text-center text-green-500">{standing.wins}</td>
                               <td className="py-2 pr-2 text-center text-red-500">{standing.losses}</td>
@@ -901,8 +1203,15 @@ export default async function HomePage() {
                                 </span>
                               </td>
                               <td className="py-2 pr-2">
-                                <span className="font-medium">{standing.club.name}</span>
-                                <span className="text-muted-foreground text-xs ml-1">Res.</span>
+                                <span
+                                  className="px-2 py-1 rounded text-xs font-semibold"
+                                  style={{
+                                    backgroundColor: standing.club.primaryColor || '#666',
+                                    color: standing.club.secondaryColor || '#fff'
+                                  }}
+                                >
+                                  {standing.club.reservesName || standing.club.name}
+                                </span>
                               </td>
                               <td className="py-2 pr-2 text-center text-muted-foreground">{standing.played}</td>
                               <td className="py-2 pr-2 text-center text-green-500">{standing.wins}</td>

@@ -303,16 +303,104 @@ const aflPlayersByTeam: Record<string, Array<{ firstName: string; lastName: stri
   ],
 }
 
-// Sicko League fantasy clubs
+// Sicko League fantasy clubs with seniors and reserves branding
 const fantasyClubs = [
-  { name: 'The Sickos', abbreviation: 'SCK' },
-  { name: 'Ball Hoggers', abbreviation: 'BHG' },
-  { name: 'Midfield Maulers', abbreviation: 'MFM' },
-  { name: 'Ruckus Makers', abbreviation: 'RKM' },
-  { name: 'Forward Press', abbreviation: 'FWP' },
-  { name: 'Back Line Bandits', abbreviation: 'BLB' },
-  { name: 'Fantasy Flops', abbreviation: 'FLO' },
-  { name: 'Bench Warmers', abbreviation: 'BWM' },
+  {
+    name: 'The Sickos',
+    abbreviation: 'SCK',
+    reservesName: 'Sicko Symptoms',
+    reservesAbbreviation: 'SYM',
+    primaryColor: '#1a1a2e',
+    secondaryColor: '#eaeaea'
+  },
+  {
+    name: 'Ball Hoggers',
+    abbreviation: 'BHG',
+    reservesName: 'Piglets',
+    reservesAbbreviation: 'PIG',
+    primaryColor: '#ff6b6b',
+    secondaryColor: '#ffffff'
+  },
+  {
+    name: 'Midfield Maulers',
+    abbreviation: 'MFM',
+    reservesName: 'Clearance Crew',
+    reservesAbbreviation: 'CRC',
+    primaryColor: '#4ecdc4',
+    secondaryColor: '#1a1a1a'
+  },
+  {
+    name: 'Ruckus Makers',
+    abbreviation: 'RKM',
+    reservesName: 'Tap Specialists',
+    reservesAbbreviation: 'TAP',
+    primaryColor: '#45b7d1',
+    secondaryColor: '#ffffff'
+  },
+  {
+    name: 'Forward Press',
+    abbreviation: 'FWP',
+    reservesName: 'Goal Kickers',
+    reservesAbbreviation: 'GLK',
+    primaryColor: '#f9ca24',
+    secondaryColor: '#1a1a1a'
+  },
+  {
+    name: 'Back Line Bandits',
+    abbreviation: 'BLB',
+    reservesName: 'Intercept FC',
+    reservesAbbreviation: 'IFC',
+    primaryColor: '#6c5ce7',
+    secondaryColor: '#ffffff'
+  },
+  {
+    name: 'Fantasy Flops',
+    abbreviation: 'FLO',
+    reservesName: 'Donut Club',
+    reservesAbbreviation: 'DNT',
+    primaryColor: '#fd79a8',
+    secondaryColor: '#1a1a1a'
+  },
+  {
+    name: 'Bench Warmers',
+    abbreviation: 'BWM',
+    reservesName: 'Pine Riders',
+    reservesAbbreviation: 'PNR',
+    primaryColor: '#a29bfe',
+    secondaryColor: '#1a1a1a'
+  },
+  {
+    name: 'Contested Marks',
+    abbreviation: 'CTM',
+    reservesName: 'High Flyers',
+    reservesAbbreviation: 'HFL',
+    primaryColor: '#00b894',
+    secondaryColor: '#ffffff'
+  },
+  {
+    name: 'Clearance Kings',
+    abbreviation: 'CLK',
+    reservesName: 'Stoppage Princes',
+    reservesAbbreviation: 'STP',
+    primaryColor: '#e17055',
+    secondaryColor: '#ffffff'
+  },
+  {
+    name: 'Inside 50 FC',
+    abbreviation: 'I50',
+    reservesName: 'Arc Attackers',
+    reservesAbbreviation: 'ARC',
+    primaryColor: '#0984e3',
+    secondaryColor: '#ffffff'
+  },
+  {
+    name: 'Rebound Rebels',
+    abbreviation: 'RBR',
+    reservesName: 'D50 Defenders',
+    reservesAbbreviation: 'D50',
+    primaryColor: '#636e72',
+    secondaryColor: '#dfe6e9'
+  },
 ]
 
 async function main() {
@@ -415,17 +503,21 @@ async function main() {
       data: {
         name: club.name,
         abbreviation: club.abbreviation,
+        reservesName: club.reservesName,
+        reservesAbbreviation: club.reservesAbbreviation,
+        primaryColor: club.primaryColor,
+        secondaryColor: club.secondaryColor,
       },
     })
     createdClubs.push(created.id)
   }
   console.log(`   ✓ Created ${fantasyClubs.length} fantasy clubs`)
 
-  // Seed 2025 Season
-  console.log('📅 Creating 2025 season...')
+  // Seed 2026 Season
+  console.log('📅 Creating 2026 season...')
   const season = await prisma.season.create({
     data: {
-      year: 2025,
+      year: 2026,
       salaryCap: 750,
       status: SeasonStatus.UPCOMING,
       byeRounds: [12, 13, 14],
@@ -433,7 +525,7 @@ async function main() {
       reservesBonusPool: { '1': 75, '2': 50, '3': 30, '4': 20, '5': 10 },
     },
   })
-  console.log(`   ✓ Created 2025 season`)
+  console.log(`   ✓ Created 2026 season`)
 
   // Seed Rounds
   console.log('📆 Creating rounds...')
@@ -538,7 +630,7 @@ async function main() {
   console.log(`   • ${playerCount} AFL players`)
   console.log(`   • ${staffCount} staff members`)
   console.log(`   • ${fantasyClubs.length} fantasy clubs`)
-  console.log(`   • 1 season (2025)`)
+  console.log(`   • 1 season (2026)`)
   console.log(`   • 27 rounds`)
   console.log(`   • ${pickNumber - 1 + createdClubs.length} draft picks`)
 }
