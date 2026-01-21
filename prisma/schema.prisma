@@ -1,0 +1,704 @@
+// Sicko League Database Schema
+// AFL Fantasy League Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// CORE ENTITIES
+// ============================================================================
+
+model Coach {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  displayName   String   @map("display_name")
+  discordId     String?  @unique @map("discord_id")
+  avatarUrl     String?  @map("avatar_url")
+  isCommissioner Boolean @default(false) @map("is_commissioner")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  club Club?
+
+  @@map("coaches")
+}
+
+model Club {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  abbreviation String   @unique @db.VarChar(4)
+  logoUrl      String?  @map("logo_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  coachId String? @unique @map("coach_id")
+  coach   Coach?  @relation(fields: [coachId], references: [id])
+
+  // Captain references (stored as roster player IDs)
+  seniorCaptainId   String? @map("senior_captain_id")
+  seniorVcId        String? @map("senior_vc_id")
+  reservesCaptainId String? @map("reserves_captain_id")
+  reservesVcId      String? @map("reserves_vc_id")
+
+  // Related records
+  contracts         Contract[]
+  rosterPlayers     RosterPlayer[]
+  staffContracts    StaffContract[]
+  homeMatches       Match[]           @relation("HomeClub")
+  awayMatches       Match[]           @relation("AwayClub")
+  homeGameResults   HomeGameResult[]
+  standings         Standing[]
+  seasonResults     SeasonResult[]
+  rivalsA           Rival[]           @relation("RivalClubA")
+  rivalsB           Rival[]           @relation("RivalClubB")
+  ownedDraftPicks   DraftPick[]       @relation("CurrentOwner")
+  originalDraftPicks DraftPick[]      @relation("OriginalOwner")
+  tradesProposed    Trade[]           @relation("TradeProposer")
+  tradesReceived    Trade[]           @relation("TradeReceiver")
+  tradeAssetsSent   TradeAsset[]      @relation("AssetFrom")
+  tradeAssetsReceived TradeAsset[]    @relation("AssetTo")
+  contractOffers    ContractOffer[]   @relation("OfferingClub")
+  rfaPreviousClub   ContractOffer[]   @relation("RfaPreviousClub")
+  rfaList           RfaPlayer[]
+  venuesPurchased   Match[]           @relation("VenueBuyer")
+
+  @@map("clubs")
+}
+
+model Rival {
+  id        String     @id @default(uuid())
+  reason    RivalReason
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  clubAId   String @map("club_a_id")
+  clubA     Club   @relation("RivalClubA", fields: [clubAId], references: [id])
+  clubBId   String @map("club_b_id")
+  clubB     Club   @relation("RivalClubB", fields: [clubBId], references: [id])
+  seasonId  String @map("season_id")
+  season    Season @relation(fields: [seasonId], references: [id])
+
+  @@unique([clubAId, clubBId, seasonId])
+  @@map("rivals")
+}
+
+enum RivalReason {
+  FINALS_OPPONENT
+  NOMINATED
+}
+
+// ============================================================================
+// AFL DATA (External Reference)
+// ============================================================================
+
+model AflTeam {
+  id               String   @id @default(uuid())
+  name             String   @unique
+  abbreviation     String   @unique @db.VarChar(4)
+  currentLadderPos Int?     @map("current_ladder_pos")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  players AflPlayer[]
+  staff   Staff[]
+
+  @@map("afl_teams")
+}
+
+model AflPlayer {
+  id            String       @id @default(uuid())
+  aflFantasyId  String?      @unique @map("afl_fantasy_id")
+  firstName     String       @map("first_name")
+  lastName      String       @map("last_name")
+  positions     Position[]
+  isAvailable   Boolean      @default(true) @map("is_available")
+  status        PlayerStatus @default(ACTIVE)
+  photoUrl      String?      @map("photo_url")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  aflTeamId        String?           @map("afl_team_id")
+  aflTeam          AflTeam?          @relation(fields: [aflTeamId], references: [id])
+  contracts        Contract[]
+  contractOffers   ContractOffer[]
+  draftSelections  DraftPick[]
+  draftEligibility DraftEligibility[]
+  matchScores      MatchPlayerScore[]
+
+  @@index([lastName, firstName])
+  @@map("afl_players")
+}
+
+enum Position {
+  DEF
+  MID
+  RUC
+  FWD
+}
+
+enum PlayerStatus {
+  ACTIVE
+  RETIRED
+  DELISTED
+}
+
+// ============================================================================
+// CONTRACTS & ROSTERS
+// ============================================================================
+
+model Contract {
+  id             String         @id @default(uuid())
+  startSeason    Int            @map("start_season")
+  endSeason      Int            @map("end_season")
+  totalValue     Decimal        @map("total_value") @db.Decimal(10, 2)
+  yearBreakdown  Json           @map("year_breakdown") // [{season: 2025, value: 48}, ...]
+  isMinimum      Boolean        @default(false) @map("is_minimum")
+  contractType   ContractType   @map("contract_type")
+  status         ContractStatus @default(ACTIVE)
+  releasedDebt   Decimal?       @map("released_debt") @db.Decimal(10, 2)
+  releasedDebtYears Int?        @map("released_debt_years")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  clubId      String    @map("club_id")
+  club        Club      @relation(fields: [clubId], references: [id])
+  aflPlayerId String    @map("afl_player_id")
+  aflPlayer   AflPlayer @relation(fields: [aflPlayerId], references: [id])
+
+  rosterPlayers RosterPlayer[]
+  tradeAssets   TradeAsset[]
+
+  @@map("contracts")
+}
+
+enum ContractType {
+  DRAFT
+  FREE_AGENT
+  EXTENSION
+  RULE9
+  MINIMUM
+}
+
+enum ContractStatus {
+  ACTIVE
+  RELEASED
+  EXPIRED
+  TRADED
+}
+
+model RosterPlayer {
+  id         String     @id @default(uuid())
+  squad      Squad
+  rosterSpot RosterSpot @map("roster_spot")
+  lockedAt   DateTime?  @map("locked_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  clubId     String   @map("club_id")
+  club       Club     @relation(fields: [clubId], references: [id])
+  contractId String   @map("contract_id")
+  contract   Contract @relation(fields: [contractId], references: [id])
+  roundId    String?  @map("round_id")
+  round      Round?   @relation(fields: [roundId], references: [id])
+
+  matchScores   MatchPlayerScore[]
+  rosterHistory RosterHistory[]
+
+  @@unique([clubId, contractId, roundId])
+  @@map("roster_players")
+}
+
+enum Squad {
+  SENIORS
+  RESERVES
+}
+
+enum RosterSpot {
+  // Seniors
+  DEF1
+  DEF2
+  DEF3
+  MID1
+  MID2
+  MID3
+  MID4
+  RUC
+  FWD1
+  FWD2
+  FWD3
+  // Reserves
+  RDEF1
+  RDEF2
+  RMID1
+  RMID2
+  RMID3
+  RRUC
+  RFWD1
+  RFWD2
+  // Shared
+  BENCH1
+  BENCH2
+  IL1
+  IL2
+}
+
+model RosterHistory {
+  id            String     @id @default(uuid())
+  previousSquad Squad?     @map("previous_squad")
+  previousSpot  RosterSpot? @map("previous_spot")
+  newSquad      Squad      @map("new_squad")
+  newSpot       RosterSpot @map("new_spot")
+  changedAt     DateTime   @default(now()) @map("changed_at")
+
+  // Relations
+  rosterPlayerId String       @map("roster_player_id")
+  rosterPlayer   RosterPlayer @relation(fields: [rosterPlayerId], references: [id])
+  roundId        String       @map("round_id")
+  round          Round        @relation(fields: [roundId], references: [id])
+
+  @@map("roster_history")
+}
+
+// ============================================================================
+// COACHING STAFF
+// ============================================================================
+
+model Staff {
+  id          String    @id @default(uuid())
+  name        String
+  role        StaffRole
+  isAvailable Boolean   @default(true) @map("is_available")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  aflTeamId      String?         @map("afl_team_id")
+  aflTeam        AflTeam?        @relation(fields: [aflTeamId], references: [id])
+  staffContracts StaffContract[]
+
+  @@map("staff")
+}
+
+enum StaffRole {
+  ASSISTANT_COACH
+  LIST_MANAGER
+}
+
+model StaffContract {
+  id            String              @id @default(uuid())
+  staffRole     ClubStaffRole       @map("staff_role")
+  startSeason   Int                 @map("start_season")
+  endSeason     Int                 @map("end_season")
+  totalValue    Decimal             @map("total_value") @db.Decimal(10, 2)
+  yearBreakdown Json                @map("year_breakdown")
+  status        ContractStatus      @default(ACTIVE)
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  clubId  String @map("club_id")
+  club    Club   @relation(fields: [clubId], references: [id])
+  staffId String @map("staff_id")
+  staff   Staff  @relation(fields: [staffId], references: [id])
+
+  tradeAssets TradeAsset[]
+
+  @@map("staff_contracts")
+}
+
+enum ClubStaffRole {
+  SENIOR_ASSISTANT
+  RESERVES_ASSISTANT
+  LIST_MANAGER
+}
+
+// ============================================================================
+// SEASONS & MATCHES
+// ============================================================================
+
+model Season {
+  id              String       @id @default(uuid())
+  year            Int          @unique
+  salaryCap       Decimal      @default(750) @map("salary_cap") @db.Decimal(10, 2)
+  status          SeasonStatus @default(UPCOMING)
+  draftDate       DateTime?    @map("draft_date")
+  byeRounds       Int[]        @map("bye_rounds")
+  finalsStartRound Int?        @map("finals_start_round")
+  reservesBonusPool Json       @default("{\"1\": 75, \"2\": 50, \"3\": 30, \"4\": 20, \"5\": 10}") @map("reserves_bonus_pool")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  rounds        Round[]
+  standings     Standing[]
+  seasonResults SeasonResult[]
+  rivals        Rival[]
+  draftPicks    DraftPick[]
+  rfaPlayers    RfaPlayer[]
+
+  @@map("seasons")
+}
+
+enum SeasonStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+}
+
+model Round {
+  id              String      @id @default(uuid())
+  roundNumber     Int         @map("round_number")
+  roundType       RoundType   @map("round_type")
+  lockoutTime     DateTime?   @map("lockout_time")
+  unlockTime      DateTime?   @map("unlock_time")
+  status          RoundStatus @default(UPCOMING)
+  isRule9Draft    Boolean     @default(false) @map("is_rule9_draft")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  seasonId String @map("season_id")
+  season   Season @relation(fields: [seasonId], references: [id])
+
+  matches         Match[]
+  rosterPlayers   RosterPlayer[]
+  rosterHistory   RosterHistory[]
+  draftEligibility DraftEligibility[]
+
+  @@unique([seasonId, roundNumber])
+  @@map("rounds")
+}
+
+enum RoundType {
+  REGULAR
+  BYE
+  FINALS_WK1
+  FINALS_WK2
+  FINALS_WK3
+}
+
+enum RoundStatus {
+  UPCOMING
+  LOCKED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Match {
+  id             String      @id @default(uuid())
+  matchType      MatchType   @map("match_type")
+  homeHfa        Decimal?    @map("home_hfa") @db.Decimal(5, 2)
+  isRivalMatch   Boolean     @default(false) @map("is_rival_match")
+  venueSalePrice Decimal?    @map("venue_sale_price") @db.Decimal(10, 2)
+  homeScore      Decimal?    @map("home_score") @db.Decimal(10, 2)
+  awayScore      Decimal?    @map("away_score") @db.Decimal(10, 2)
+  homeStaffBonus Decimal?    @map("home_staff_bonus") @db.Decimal(5, 2)
+  awayStaffBonus Decimal?    @map("away_staff_bonus") @db.Decimal(5, 2)
+  status         MatchStatus @default(SCHEDULED)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  roundId      String @map("round_id")
+  round        Round  @relation(fields: [roundId], references: [id])
+  homeClubId   String @map("home_club_id")
+  homeClub     Club   @relation("HomeClub", fields: [homeClubId], references: [id])
+  awayClubId   String @map("away_club_id")
+  awayClub     Club   @relation("AwayClub", fields: [awayClubId], references: [id])
+  venueSoldTo  String? @map("venue_sold_to")
+  venueBuyer   Club?   @relation("VenueBuyer", fields: [venueSoldTo], references: [id])
+
+  playerScores    MatchPlayerScore[]
+  homeGameResults HomeGameResult[]
+
+  @@unique([roundId, homeClubId, awayClubId, matchType])
+  @@map("matches")
+}
+
+enum MatchType {
+  SENIORS
+  RESERVES
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model MatchPlayerScore {
+  id              String   @id @default(uuid())
+  aflFantasyScore Int?     @map("afl_fantasy_score")
+  isCaptain       Boolean  @default(false) @map("is_captain")
+  isViceCaptain   Boolean  @default(false) @map("is_vice_captain")
+  finalScore      Decimal? @map("final_score") @db.Decimal(10, 2)
+  played          Boolean  @default(false)
+  positionPlayed  Position? @map("position_played")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  matchId        String       @map("match_id")
+  match          Match        @relation(fields: [matchId], references: [id])
+  rosterPlayerId String       @map("roster_player_id")
+  rosterPlayer   RosterPlayer @relation(fields: [rosterPlayerId], references: [id])
+  aflPlayerId    String       @map("afl_player_id")
+  aflPlayer      AflPlayer    @relation(fields: [aflPlayerId], references: [id])
+
+  @@unique([matchId, rosterPlayerId])
+  @@map("match_player_scores")
+}
+
+// ============================================================================
+// HOME FIELD ADVANTAGE
+// ============================================================================
+
+model HomeGameResult {
+  id         String    @id @default(uuid())
+  matchType  MatchType @map("match_type")
+  margin     Int
+  gameNumber Int       @map("game_number")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  clubId  String @map("club_id")
+  club    Club   @relation(fields: [clubId], references: [id])
+  matchId String @map("match_id")
+  match   Match  @relation(fields: [matchId], references: [id])
+
+  @@unique([clubId, matchId, matchType])
+  @@map("home_game_results")
+}
+
+// ============================================================================
+// DRAFTS
+// ============================================================================
+
+model DraftPick {
+  id               String    @id @default(uuid())
+  draftType        DraftType @map("draft_type")
+  round            Int
+  pickNumber       Int       @map("pick_number")
+  used             Boolean   @default(false)
+  passed           Boolean   @default(false)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  seasonId         String    @map("season_id")
+  season           Season    @relation(fields: [seasonId], references: [id])
+  originalClubId   String    @map("original_club_id")
+  originalClub     Club      @relation("OriginalOwner", fields: [originalClubId], references: [id])
+  currentClubId    String    @map("current_club_id")
+  currentClub      Club      @relation("CurrentOwner", fields: [currentClubId], references: [id])
+  playerSelectedId String?   @map("player_selected_id")
+  playerSelected   AflPlayer? @relation(fields: [playerSelectedId], references: [id])
+
+  tradeAssets TradeAsset[]
+
+  @@unique([seasonId, draftType, pickNumber])
+  @@map("draft_picks")
+}
+
+enum DraftType {
+  ANNUAL
+  RULE9
+}
+
+model DraftEligibility {
+  id               String  @id @default(uuid())
+  isEligible       Boolean @map("is_eligible")
+  reasonIneligible String? @map("reason_ineligible")
+  seniorGames      Int     @default(0) @map("senior_games")
+  reserveGames     Int     @default(0) @map("reserve_games")
+  isRookie         Boolean @default(false) @map("is_rookie")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  aflPlayerId String    @map("afl_player_id")
+  aflPlayer   AflPlayer @relation(fields: [aflPlayerId], references: [id])
+  roundId     String    @map("round_id")
+  round       Round     @relation(fields: [roundId], references: [id])
+
+  @@unique([aflPlayerId, roundId])
+  @@map("draft_eligibility")
+}
+
+// ============================================================================
+// FREE AGENCY & CONTRACT OFFERS
+// ============================================================================
+
+model ContractOffer {
+  id             String            @id @default(uuid())
+  offerType      ContractOfferType @map("offer_type")
+  totalValue     Decimal           @map("total_value") @db.Decimal(10, 2)
+  years          Int
+  yearBreakdown  Json              @map("year_breakdown")
+  offerExpires   DateTime          @map("offer_expires")
+  status         OfferStatus       @default(PENDING)
+  isRfaEligible  Boolean           @default(false) @map("is_rfa_eligible")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  aflPlayerId      String    @map("afl_player_id")
+  aflPlayer        AflPlayer @relation(fields: [aflPlayerId], references: [id])
+  offeringClubId   String    @map("offering_club_id")
+  offeringClub     Club      @relation("OfferingClub", fields: [offeringClubId], references: [id])
+  previousClubId   String?   @map("previous_club_id")
+  previousClub     Club?     @relation("RfaPreviousClub", fields: [previousClubId], references: [id])
+
+  @@map("contract_offers")
+}
+
+enum ContractOfferType {
+  EXTENSION
+  FREE_AGENT
+  END_OF_SEASON
+  RESERVE_SQUAD
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  OUTBID
+  EXPIRED
+  MATCHED
+}
+
+model RfaPlayer {
+  id             String   @id @default(uuid())
+  previousSalary Decimal  @map("previous_salary") @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  aflPlayerId    String @map("afl_player_id")
+  seasonId       String @map("season_id")
+  season         Season @relation(fields: [seasonId], references: [id])
+  previousClubId String @map("previous_club_id")
+  previousClub   Club   @relation(fields: [previousClubId], references: [id])
+
+  @@unique([aflPlayerId, seasonId])
+  @@map("rfa_players")
+}
+
+// ============================================================================
+// TRADING
+// ============================================================================
+
+model Trade {
+  id               String      @id @default(uuid())
+  status           TradeStatus @default(PROPOSED)
+  commissionerNote String?     @map("commissioner_note")
+  proposedAt       DateTime    @default(now()) @map("proposed_at")
+  completedAt      DateTime?   @map("completed_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  proposedById String @map("proposed_by")
+  proposedBy   Club   @relation("TradeProposer", fields: [proposedById], references: [id])
+  proposedToId String @map("proposed_to")
+  proposedTo   Club   @relation("TradeReceiver", fields: [proposedToId], references: [id])
+
+  assets TradeAsset[]
+
+  @@map("trades")
+}
+
+enum TradeStatus {
+  PROPOSED
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+model TradeAsset {
+  id              String         @id @default(uuid())
+  assetType       TradeAssetType @map("asset_type")
+  salaryAmount    Decimal?       @map("salary_amount") @db.Decimal(10, 2)
+  salaryRetention Decimal?       @map("salary_retention") @db.Decimal(10, 2)
+  salaryYears     Int?           @map("salary_years")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  tradeId         String         @map("trade_id")
+  trade           Trade          @relation(fields: [tradeId], references: [id])
+  fromClubId      String         @map("from_club_id")
+  fromClub        Club           @relation("AssetFrom", fields: [fromClubId], references: [id])
+  toClubId        String         @map("to_club_id")
+  toClub          Club           @relation("AssetTo", fields: [toClubId], references: [id])
+  contractId      String?        @map("contract_id")
+  contract        Contract?      @relation(fields: [contractId], references: [id])
+  staffContractId String?        @map("staff_contract_id")
+  staffContract   StaffContract? @relation(fields: [staffContractId], references: [id])
+  draftPickId     String?        @map("draft_pick_id")
+  draftPick       DraftPick?     @relation(fields: [draftPickId], references: [id])
+
+  @@map("trade_assets")
+}
+
+enum TradeAssetType {
+  PLAYER
+  STAFF
+  DRAFT_PICK
+  SALARY
+}
+
+// ============================================================================
+// STANDINGS & RESULTS
+// ============================================================================
+
+model Standing {
+  id             String    @id @default(uuid())
+  competition    MatchType
+  played         Int       @default(0)
+  wins           Int       @default(0)
+  losses         Int       @default(0)
+  draws          Int       @default(0)
+  pointsFor      Decimal   @default(0) @map("points_for") @db.Decimal(10, 2)
+  pointsAgainst  Decimal   @default(0) @map("points_against") @db.Decimal(10, 2)
+  percentage     Decimal   @default(100) @db.Decimal(7, 2)
+  ladderPosition Int?      @map("ladder_position")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  seasonId String @map("season_id")
+  season   Season @relation(fields: [seasonId], references: [id])
+  clubId   String @map("club_id")
+  club     Club   @relation(fields: [clubId], references: [id])
+
+  @@unique([seasonId, clubId, competition])
+  @@map("standings")
+}
+
+model SeasonResult {
+  id            String    @id @default(uuid())
+  competition   MatchType
+  finalPosition Int       @map("final_position")
+  madeFinals    Boolean   @default(false) @map("made_finals")
+  isPremier     Boolean   @default(false) @map("is_premier")
+  salaryBonus   Decimal   @default(0) @map("salary_bonus") @db.Decimal(10, 2)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  seasonId String @map("season_id")
+  season   Season @relation(fields: [seasonId], references: [id])
+  clubId   String @map("club_id")
+  club     Club   @relation(fields: [clubId], references: [id])
+
+  @@unique([seasonId, clubId, competition])
+  @@map("season_results")
+}
