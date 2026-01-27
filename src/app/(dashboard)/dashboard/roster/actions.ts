@@ -168,6 +168,7 @@ export async function assignPlayerToRoster(
   });
 
   revalidatePath("/dashboard/roster");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -178,7 +179,424 @@ export async function removePlayerFromRoster(rosterPlayerId: string) {
   });
 
   revalidatePath("/dashboard/roster");
+  revalidatePath("/dashboard");
   return { success: true };
+}
+
+// Toggle trade block status for a contract
+export async function toggleTradeBlock(contractId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const coach = await prisma.coach.findFirst({
+    where: {
+      OR: [
+        { discordId: user.id },
+        { email: user.email ?? "" },
+      ],
+    },
+    include: { club: true },
+  });
+
+  if (!coach?.club) return { error: "No club found" };
+
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, clubId: coach.club.id, status: "ACTIVE" },
+  });
+
+  if (!contract) return { error: "Contract not found or doesn't belong to your club" };
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: { tradeBlock: !contract.tradeBlock },
+  });
+
+  revalidatePath("/dashboard/roster");
+  revalidatePath("/dashboard");
+  return { success: true, tradeBlock: !contract.tradeBlock };
+}
+
+// Release a contract — removes roster assignments and marks as RELEASED
+export async function releaseContract(contractId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const coach = await prisma.coach.findFirst({
+    where: {
+      OR: [
+        { discordId: user.id },
+        { email: user.email ?? "" },
+      ],
+    },
+    include: { club: true },
+  });
+
+  if (!coach?.club) return { error: "No club found" };
+
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, clubId: coach.club.id, status: "ACTIVE" },
+  });
+
+  if (!contract) return { error: "Contract not found or doesn't belong to your club" };
+
+  // Compute released debt from remaining seasons in year breakdown
+  const currentYear = new Date().getFullYear();
+  const breakdown = contract.yearBreakdown as { season: number; value: number }[];
+  const remainingSeasons = breakdown.filter((y) => y.season >= currentYear);
+  const releasedDebt = remainingSeasons.reduce((sum, y) => sum + y.value, 0);
+  const releasedDebtYears = remainingSeasons.length;
+
+  // Remove all roster assignments
+  await prisma.rosterPlayer.deleteMany({
+    where: { contractId },
+  });
+
+  // Mark contract as released
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      status: "RELEASED",
+      releasedDebt,
+      releasedDebtYears,
+    },
+  });
+
+  revalidatePath("/dashboard/roster");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// Get roster history for a contract's roster players
+export async function getPlayerRosterHistory(contractId: string) {
+  const rosterPlayers = await prisma.rosterPlayer.findMany({
+    where: { contractId },
+    select: { id: true },
+  });
+
+  const rosterPlayerIds = rosterPlayers.map((rp) => rp.id);
+
+  const history = await prisma.rosterHistory.findMany({
+    where: {
+      rosterPlayerId: { in: rosterPlayerIds },
+    },
+    include: {
+      round: {
+        include: {
+          season: true,
+        },
+      },
+    },
+    orderBy: { changedAt: "desc" },
+  });
+
+  return history.map((h) => ({
+    id: h.id,
+    previousSquad: h.previousSquad,
+    previousSpot: h.previousSpot,
+    newSquad: h.newSquad,
+    newSpot: h.newSpot,
+    changedAt: h.changedAt.toISOString(),
+    roundNumber: h.round.roundNumber,
+    seasonYear: h.round.season.year,
+  }));
+}
+
+// Get average fantasy scores per contract for a club's roster players
+export async function getClubPlayerStats(clubId: string) {
+  const scores = await prisma.matchPlayerScore.findMany({
+    where: {
+      rosterPlayer: {
+        clubId,
+      },
+      played: true,
+      aflFantasyScore: { not: null },
+    },
+    select: {
+      rosterPlayer: {
+        select: { contractId: true },
+      },
+      aflFantasyScore: true,
+      match: {
+        select: {
+          round: {
+            select: {
+              roundNumber: true,
+              season: { select: { year: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Sort by season year then round number
+  scores.sort((a, b) => {
+    const yearDiff = a.match.round.season.year - b.match.round.season.year;
+    if (yearDiff !== 0) return yearDiff;
+    return a.match.round.roundNumber - b.match.round.roundNumber;
+  });
+
+  // Aggregate by contractId — track ordered scores for last-5 calculation
+  const scoresMap = new Map<string, number[]>();
+  for (const s of scores) {
+    const cid = s.rosterPlayer.contractId;
+    const arr = scoresMap.get(cid) ?? [];
+    arr.push(s.aflFantasyScore!);
+    scoresMap.set(cid, arr);
+  }
+
+  return Array.from(scoresMap.entries()).map(([contractId, allScores]) => {
+    const total = allScores.reduce((sum, v) => sum + v, 0);
+    const last5 = allScores.slice(-5);
+    const last5Total = last5.reduce((sum, v) => sum + v, 0);
+    return {
+      contractId,
+      avgScore: allScores.length > 0 ? Math.round((total / allScores.length) * 10) / 10 : null,
+      last5Avg: last5.length > 0 ? Math.round((last5Total / last5.length) * 10) / 10 : null,
+      gamesPlayed: allScores.length,
+    };
+  });
+}
+
+// Get per-round fantasy scores for a player's contract (for charts)
+export async function getPlayerScoreHistory(contractId: string) {
+  const scores = await prisma.matchPlayerScore.findMany({
+    where: {
+      rosterPlayer: { contractId },
+      played: true,
+      aflFantasyScore: { not: null },
+    },
+    include: {
+      match: {
+        include: {
+          round: {
+            include: { season: true },
+          },
+        },
+      },
+    },
+    orderBy: {
+      match: {
+        round: { roundNumber: "asc" },
+      },
+    },
+  });
+
+  return scores.map((s) => ({
+    roundNumber: s.match.round.roundNumber,
+    seasonYear: s.match.round.season.year,
+    score: s.aflFantasyScore!,
+    matchType: s.match.matchType,
+  }));
+}
+
+// Get season-level averages for a player across all their contracts
+export async function getPlayerSeasonAverages(aflPlayerId: string) {
+  const scores = await prisma.matchPlayerScore.findMany({
+    where: {
+      aflPlayerId,
+      played: true,
+      aflFantasyScore: { not: null },
+    },
+    include: {
+      match: {
+        include: {
+          round: {
+            include: { season: true },
+          },
+        },
+      },
+    },
+  });
+
+  // Group by season year
+  const seasonMap = new Map<number, { total: number; count: number }>();
+  for (const s of scores) {
+    const year = s.match.round.season.year;
+    const existing = seasonMap.get(year) ?? { total: 0, count: 0 };
+    existing.total += s.aflFantasyScore!;
+    existing.count += 1;
+    seasonMap.set(year, existing);
+  }
+
+  return Array.from(seasonMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([year, data]) => ({
+      season: year,
+      avgScore: Math.round((data.total / data.count) * 10) / 10,
+      gamesPlayed: data.count,
+    }));
+}
+
+// Get contract value history for a player across all their contracts, broken down by year
+export async function getPlayerContractHistory(aflPlayerId: string) {
+  const contracts = await prisma.contract.findMany({
+    where: { aflPlayerId },
+    orderBy: { startSeason: "asc" },
+    include: {
+      club: {
+        select: {
+          name: true,
+          abbreviation: true,
+          primaryColor: true,
+          secondaryColor: true,
+        },
+      },
+    },
+  });
+
+  const years: {
+    season: number;
+    value: number;
+    clubName: string;
+    clubAbbr: string;
+    clubColor: string | null;
+    contractType: string;
+  }[] = [];
+
+  for (const c of contracts) {
+    const breakdown = c.yearBreakdown as { season: number; value: number }[];
+    for (const yr of breakdown) {
+      years.push({
+        season: yr.season,
+        value: yr.value,
+        clubName: c.club.name,
+        clubAbbr: c.club.abbreviation,
+        clubColor: c.club.primaryColor,
+        contractType: c.contractType,
+      });
+    }
+  }
+
+  years.sort((a, b) => a.season - b.season);
+  return years;
+}
+
+// Get week-by-week match results for a club (scores, margins, opponent)
+export async function getClubMatchHistory(clubId: string) {
+  const matches = await prisma.match.findMany({
+    where: {
+      OR: [{ homeClubId: clubId }, { awayClubId: clubId }],
+      status: "COMPLETED",
+    },
+    include: {
+      round: { include: { season: true } },
+      homeClub: { select: { name: true, abbreviation: true } },
+      awayClub: { select: { name: true, abbreviation: true } },
+    },
+    orderBy: { round: { roundNumber: "asc" } },
+  });
+
+  return matches.map((m) => {
+    const isHome = m.homeClubId === clubId;
+    const myScore = isHome ? Number(m.homeScore ?? 0) : Number(m.awayScore ?? 0);
+    const oppScore = isHome ? Number(m.awayScore ?? 0) : Number(m.homeScore ?? 0);
+    const opponent = isHome ? m.awayClub : m.homeClub;
+
+    return {
+      roundNumber: m.round.roundNumber,
+      seasonYear: m.round.season.year,
+      matchType: m.matchType,
+      myScore,
+      oppScore,
+      margin: myScore - oppScore,
+      opponentName: opponent.name,
+      opponentAbbr: opponent.abbreviation,
+      isHome,
+    };
+  });
+}
+
+// Get week-by-week HFA for a club
+export async function getClubHfaHistory(clubId: string) {
+  const results = await prisma.homeGameResult.findMany({
+    where: { clubId },
+    include: {
+      match: {
+        include: {
+          round: { include: { season: true } },
+        },
+      },
+    },
+    orderBy: { gameNumber: "asc" },
+  });
+
+  return results.map((r) => ({
+    gameNumber: r.gameNumber,
+    matchType: r.matchType,
+    margin: r.margin,
+    roundNumber: r.match.round.roundNumber,
+    seasonYear: r.match.round.season.year,
+  }));
+}
+
+// Get week-by-week ladder position for a club (computed from match results)
+export async function getClubLadderHistory(clubId: string) {
+  // Get all completed matches involving this club, ordered by round
+  const matches = await prisma.match.findMany({
+    where: {
+      OR: [{ homeClubId: clubId }, { awayClubId: clubId }],
+      status: "COMPLETED",
+    },
+    include: {
+      round: { include: { season: true } },
+    },
+    orderBy: { round: { roundNumber: "asc" } },
+  });
+
+  // For each match type (SENIORS/RESERVES), compute cumulative W/L and estimate position
+  // We'll also pull the standing record if available
+  const standings = await prisma.standing.findMany({
+    where: { clubId },
+    include: { season: true },
+  });
+
+  const standingMap = new Map(
+    standings.map((s) => [`${s.season.year}-${s.competition}`, s])
+  );
+
+  // Group matches by type and compute running record
+  const result: {
+    roundNumber: number;
+    seasonYear: number;
+    matchType: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    ladderPosition: number | null;
+  }[] = [];
+
+  for (const matchType of ["SENIORS", "RESERVES"] as const) {
+    const typeMatches = matches.filter((m) => m.matchType === matchType);
+    let wins = 0, losses = 0, draws = 0;
+
+    for (const m of typeMatches) {
+      const isHome = m.homeClubId === clubId;
+      const myScore = isHome ? Number(m.homeScore ?? 0) : Number(m.awayScore ?? 0);
+      const oppScore = isHome ? Number(m.awayScore ?? 0) : Number(m.homeScore ?? 0);
+
+      if (myScore > oppScore) wins++;
+      else if (myScore < oppScore) losses++;
+      else draws++;
+
+      // Try to get ladder position from standings
+      const standing = standingMap.get(`${m.round.season.year}-${matchType}`);
+
+      result.push({
+        roundNumber: m.round.roundNumber,
+        seasonYear: m.round.season.year,
+        matchType,
+        wins,
+        losses,
+        draws,
+        ladderPosition: standing?.ladderPosition ?? null,
+      });
+    }
+  }
+
+  return result;
 }
 
 // Helper: Get valid positions for a roster spot

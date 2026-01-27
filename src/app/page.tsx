@@ -1111,34 +1111,34 @@ export default async function HomePage() {
 
           {/* Standings Tab */}
           <TabsContent value="standings" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid lg:grid-cols-2 gap-6 items-start">
               {/* Seniors Ladder */}
-              <Card>
+              <Card className="flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-primary" />
                     {season ? `${season.year} Seniors` : "Seniors Ladder"}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 px-0">
                   {seniorsStandings.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left">
-                            <th className="pb-2 pr-2 font-medium text-muted-foreground">#</th>
+                            <th className="pb-2 pr-2 pl-6 font-medium text-muted-foreground">#</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground">Club</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground text-center">P</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground text-center">W</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground text-center">L</th>
-                            <th className="pb-2 font-medium text-muted-foreground text-right">%</th>
+                            <th className="pb-2 pr-6 font-medium text-muted-foreground text-right">%</th>
                           </tr>
                         </thead>
                         <tbody>
                           {seniorsStandings.map((standing, index) => (
-                            <tr key={standing.id} className="border-b last:border-0">
-                              <td className="py-2 pr-2">
-                                <span className={`font-semibold ${index < 4 ? 'text-primary' : ''}`}>
+                            <tr key={standing.id} className={`border-b last:border-0 ${index < 4 ? 'bg-green-500/10' : ''}`}>
+                              <td className="py-2 pr-2 pl-6">
+                                <span className="font-semibold">
                                   {index + 1}
                                 </span>
                               </td>
@@ -1156,14 +1156,20 @@ export default async function HomePage() {
                               <td className="py-2 pr-2 text-center text-muted-foreground">{standing.played}</td>
                               <td className="py-2 pr-2 text-center text-green-500">{standing.wins}</td>
                               <td className="py-2 pr-2 text-center text-red-500">{standing.losses}</td>
-                              <td className="py-2 text-right">{Number(standing.percentage).toFixed(1)}</td>
+                              <td className="py-2 pr-6 text-right">{Number(standing.percentage).toFixed(1)}</td>
+                            </tr>
+                          ))}
+                          {/* Pad to match reserves row count */}
+                          {Array.from({ length: Math.max(0, reservesStandings.length - seniorsStandings.length) }).map((_, i) => (
+                            <tr key={`pad-s-${i}`} className="border-b last:border-0">
+                              <td className="py-2 pl-6" colSpan={6}>&nbsp;</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-8 px-6 text-muted-foreground">
                       <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-50" />
                       <p>Season hasn&apos;t started yet</p>
                     </div>
@@ -1172,33 +1178,32 @@ export default async function HomePage() {
               </Card>
 
               {/* Reserves Ladder */}
-              <Card>
+              <Card className="flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-muted-foreground" />
                     {season ? `${season.year} Reserves` : "Reserves Ladder"}
                   </CardTitle>
-                  <CardDescription>Affiliated with senior clubs above</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 px-0">
                   {reservesStandings.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left">
-                            <th className="pb-2 pr-2 font-medium text-muted-foreground">#</th>
+                            <th className="pb-2 pr-2 pl-6 font-medium text-muted-foreground">#</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground">Club</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground text-center">P</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground text-center">W</th>
                             <th className="pb-2 pr-2 font-medium text-muted-foreground text-center">L</th>
-                            <th className="pb-2 font-medium text-muted-foreground text-right">%</th>
+                            <th className="pb-2 pr-6 font-medium text-muted-foreground text-right">%</th>
                           </tr>
                         </thead>
                         <tbody>
                           {reservesStandings.map((standing, index) => (
-                            <tr key={standing.id} className="border-b last:border-0">
-                              <td className="py-2 pr-2">
-                                <span className={`font-semibold ${index < 5 ? 'text-green-500' : ''}`}>
+                            <tr key={standing.id} className={`border-b last:border-0 ${index < 4 ? 'bg-green-500/10' : ''}`}>
+                              <td className="py-2 pr-2 pl-6">
+                                <span className="font-semibold">
                                   {index + 1}
                                 </span>
                               </td>
@@ -1216,22 +1221,23 @@ export default async function HomePage() {
                               <td className="py-2 pr-2 text-center text-muted-foreground">{standing.played}</td>
                               <td className="py-2 pr-2 text-center text-green-500">{standing.wins}</td>
                               <td className="py-2 pr-2 text-center text-red-500">{standing.losses}</td>
-                              <td className="py-2 text-right">{Number(standing.percentage).toFixed(1)}</td>
+                              <td className="py-2 pr-6 text-right">{Number(standing.percentage).toFixed(1)}</td>
+                            </tr>
+                          ))}
+                          {/* Pad to match seniors row count */}
+                          {Array.from({ length: Math.max(0, seniorsStandings.length - reservesStandings.length) }).map((_, i) => (
+                            <tr key={`pad-r-${i}`} className="border-b last:border-0">
+                              <td className="py-2 pl-6" colSpan={6}>&nbsp;</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-8 px-6 text-muted-foreground">
                       <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-50" />
                       <p>Season hasn&apos;t started yet</p>
                     </div>
-                  )}
-                  {reservesStandings.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-3">
-                      Top 5 earn salary cap bonuses (75/50/30/20/10)
-                    </p>
                   )}
                 </CardContent>
               </Card>

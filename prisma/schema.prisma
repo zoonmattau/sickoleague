@@ -170,6 +170,7 @@ model Contract {
   status         ContractStatus @default(ACTIVE)
   releasedDebt   Decimal?       @map("released_debt") @db.Decimal(10, 2)
   releasedDebtYears Int?        @map("released_debt_years")
+  tradeBlock     Boolean        @default(false) @map("trade_block")
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
