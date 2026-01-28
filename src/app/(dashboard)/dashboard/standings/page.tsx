@@ -14,15 +14,19 @@ async function getStandings() {
     include: {
       club: true,
     },
-    orderBy: [
-      { ladderPosition: "asc" },
-      { percentage: "desc" },
-    ],
   });
 
+  // Sort by points (4*wins + 2*draws) desc, then percentage desc
+  const sortByPointsThenPct = (a: typeof standings[0], b: typeof standings[0]) => {
+    const pointsA = a.wins * 4 + a.draws * 2;
+    const pointsB = b.wins * 4 + b.draws * 2;
+    if (pointsB !== pointsA) return pointsB - pointsA;
+    return Number(b.percentage) - Number(a.percentage);
+  };
+
   return {
-    seniors: standings.filter((s) => s.competition === "SENIORS"),
-    reserves: standings.filter((s) => s.competition === "RESERVES"),
+    seniors: standings.filter((s) => s.competition === "SENIORS").sort(sortByPointsThenPct),
+    reserves: standings.filter((s) => s.competition === "RESERVES").sort(sortByPointsThenPct),
   };
 }
 

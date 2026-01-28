@@ -483,8 +483,8 @@ export async function getClubMatchHistory(clubId: string) {
     },
     include: {
       round: { include: { season: true } },
-      homeClub: { select: { name: true, abbreviation: true } },
-      awayClub: { select: { name: true, abbreviation: true } },
+      homeClub: { select: { name: true, abbreviation: true, primaryColor: true, secondaryColor: true } },
+      awayClub: { select: { name: true, abbreviation: true, primaryColor: true, secondaryColor: true } },
     },
     orderBy: { round: { roundNumber: "asc" } },
   });
@@ -504,6 +504,8 @@ export async function getClubMatchHistory(clubId: string) {
       margin: myScore - oppScore,
       opponentName: opponent.name,
       opponentAbbr: opponent.abbreviation,
+      opponentPrimaryColor: opponent.primaryColor,
+      opponentSecondaryColor: opponent.secondaryColor,
       isHome,
     };
   });
@@ -530,6 +532,47 @@ export async function getClubHfaHistory(clubId: string) {
     roundNumber: r.match.round.roundNumber,
     seasonYear: r.match.round.season.year,
   }));
+}
+
+// Get HFA summary for dashboard cards (current value and change)
+export async function getClubHfaSummary(clubId: string) {
+  const results = await prisma.homeGameResult.findMany({
+    where: { clubId },
+    orderBy: { gameNumber: "asc" },
+  });
+
+  // HFA calculation: negative margins count as half (to not punish bad teams too harshly)
+  const calcHfaValue = (margin: number) => margin < 0 ? margin / 2 : margin;
+
+  const calcHfa = (data: typeof results) => {
+    if (data.length === 0) return { current: 0, previous: 0, change: 0, gamesPlayed: 0 };
+
+    // Current HFA: average of last 10 (or all if less than 10)
+    const last10 = data.slice(-10);
+    const current = last10.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / last10.length;
+
+    // Previous HFA: average of games before the last one (last 10 of those)
+    let previous = 0;
+    if (data.length > 1) {
+      const beforeLast = data.slice(0, -1).slice(-10);
+      previous = beforeLast.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / beforeLast.length;
+    }
+
+    return {
+      current: Math.round(current * 10) / 10,
+      previous: Math.round(previous * 10) / 10,
+      change: Math.round((current - previous) * 10) / 10,
+      gamesPlayed: data.length,
+    };
+  };
+
+  const seniorsData = results.filter((r) => r.matchType === "SENIORS");
+  const reservesData = results.filter((r) => r.matchType === "RESERVES");
+
+  return {
+    seniors: calcHfa(seniorsData),
+    reserves: calcHfa(reservesData),
+  };
 }
 
 // Get week-by-week ladder position for a club (computed from match results)
@@ -597,6 +640,298 @@ export async function getClubLadderHistory(clubId: string) {
   }
 
   return result;
+}
+
+// Get dynamic ladder position history - calculates position at end of each round
+export async function getClubLadderPositionHistory(clubId: string) {
+  // Get all completed matches with their clubs
+  const matches = await prisma.match.findMany({
+    where: { status: "COMPLETED" },
+    include: {
+      round: { include: { season: true } },
+    },
+    orderBy: [
+      { round: { season: { year: "asc" } } },
+      { round: { roundNumber: "asc" } },
+    ],
+  });
+
+  if (matches.length === 0) return [];
+
+  // Group matches by matchType and track cumulative records per club per round
+  const result: {
+    roundNumber: number;
+    seasonYear: number;
+    matchType: string;
+    position: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    record: string;
+  }[] = [];
+
+  for (const matchType of ["SENIORS", "RESERVES"] as const) {
+    const typeMatches = matches.filter((m) => m.matchType === matchType);
+    if (typeMatches.length === 0) continue;
+
+    // Get unique rounds in order
+    const roundsSet = new Map<string, { roundNumber: number; seasonYear: number }>();
+    for (const m of typeMatches) {
+      const key = `${m.round.season.year}-${m.round.roundNumber}`;
+      if (!roundsSet.has(key)) {
+        roundsSet.set(key, { roundNumber: m.round.roundNumber, seasonYear: m.round.season.year });
+      }
+    }
+    const rounds = Array.from(roundsSet.values());
+
+    // Track cumulative W/L/D per club
+    const clubRecords = new Map<string, { wins: number; losses: number; draws: number; pointsFor: number; pointsAgainst: number }>();
+
+    for (const round of rounds) {
+      // Process all matches for this round
+      const roundMatches = typeMatches.filter(
+        (m) => m.round.roundNumber === round.roundNumber && m.round.season.year === round.seasonYear
+      );
+
+      for (const m of roundMatches) {
+        const homeScore = Number(m.homeScore ?? 0);
+        const awayScore = Number(m.awayScore ?? 0);
+
+        // Update home club
+        const homeRec = clubRecords.get(m.homeClubId) ?? { wins: 0, losses: 0, draws: 0, pointsFor: 0, pointsAgainst: 0 };
+        homeRec.pointsFor += homeScore;
+        homeRec.pointsAgainst += awayScore;
+        if (homeScore > awayScore) homeRec.wins++;
+        else if (homeScore < awayScore) homeRec.losses++;
+        else homeRec.draws++;
+        clubRecords.set(m.homeClubId, homeRec);
+
+        // Update away club
+        const awayRec = clubRecords.get(m.awayClubId) ?? { wins: 0, losses: 0, draws: 0, pointsFor: 0, pointsAgainst: 0 };
+        awayRec.pointsFor += awayScore;
+        awayRec.pointsAgainst += homeScore;
+        if (awayScore > homeScore) awayRec.wins++;
+        else if (awayScore < homeScore) awayRec.losses++;
+        else awayRec.draws++;
+        clubRecords.set(m.awayClubId, awayRec);
+      }
+
+      // Calculate ladder position for our club at this round
+      if (!clubRecords.has(clubId)) continue;
+
+      // Rank all clubs by points (4*W + 2*D) then percentage
+      const ranked = Array.from(clubRecords.entries())
+        .map(([cid, rec]) => {
+          const points = rec.wins * 4 + rec.draws * 2;
+          const percentage = rec.pointsAgainst > 0 ? (rec.pointsFor / rec.pointsAgainst) * 100 : 100;
+          return { clubId: cid, points, percentage, ...rec };
+        })
+        .sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.percentage - a.percentage;
+        });
+
+      const position = ranked.findIndex((r) => r.clubId === clubId) + 1;
+      const ourRecord = clubRecords.get(clubId)!;
+
+      result.push({
+        roundNumber: round.roundNumber,
+        seasonYear: round.seasonYear,
+        matchType,
+        position,
+        wins: ourRecord.wins,
+        losses: ourRecord.losses,
+        draws: ourRecord.draws,
+        record: `${ourRecord.wins}-${ourRecord.losses}${ourRecord.draws > 0 ? `-${ourRecord.draws}` : ""}`,
+      });
+    }
+  }
+
+  return result;
+}
+
+// Get ladder position history for ALL clubs (for league-wide graph)
+export async function getAllClubsLadderHistory() {
+  const matches = await prisma.match.findMany({
+    where: { status: "COMPLETED" },
+    include: {
+      round: { include: { season: true } },
+      homeClub: { select: { id: true, name: true, abbreviation: true, primaryColor: true, secondaryColor: true } },
+      awayClub: { select: { id: true, name: true, abbreviation: true, primaryColor: true, secondaryColor: true } },
+    },
+    orderBy: [
+      { round: { season: { year: "asc" } } },
+      { round: { roundNumber: "asc" } },
+    ],
+  });
+
+  if (matches.length === 0) return { clubs: [], data: [] };
+
+  // Collect all clubs
+  const clubsMap = new Map<string, { id: string; name: string; abbreviation: string; primaryColor: string | null; secondaryColor: string | null }>();
+  for (const m of matches) {
+    if (!clubsMap.has(m.homeClub.id)) clubsMap.set(m.homeClub.id, m.homeClub);
+    if (!clubsMap.has(m.awayClub.id)) clubsMap.set(m.awayClub.id, m.awayClub);
+  }
+  const clubs = Array.from(clubsMap.values());
+
+  const result: {
+    roundNumber: number;
+    seasonYear: number;
+    matchType: string;
+    positions: { clubId: string; position: number; record: string }[];
+  }[] = [];
+
+  for (const matchType of ["SENIORS", "RESERVES"] as const) {
+    const typeMatches = matches.filter((m) => m.matchType === matchType);
+    if (typeMatches.length === 0) continue;
+
+    const roundsSet = new Map<string, { roundNumber: number; seasonYear: number }>();
+    for (const m of typeMatches) {
+      const key = `${m.round.season.year}-${m.round.roundNumber}`;
+      if (!roundsSet.has(key)) {
+        roundsSet.set(key, { roundNumber: m.round.roundNumber, seasonYear: m.round.season.year });
+      }
+    }
+    const rounds = Array.from(roundsSet.values());
+
+    const clubRecords = new Map<string, { wins: number; losses: number; draws: number; pointsFor: number; pointsAgainst: number }>();
+
+    for (const round of rounds) {
+      const roundMatches = typeMatches.filter(
+        (m) => m.round.roundNumber === round.roundNumber && m.round.season.year === round.seasonYear
+      );
+
+      for (const m of roundMatches) {
+        const homeScore = Number(m.homeScore ?? 0);
+        const awayScore = Number(m.awayScore ?? 0);
+
+        const homeRec = clubRecords.get(m.homeClubId) ?? { wins: 0, losses: 0, draws: 0, pointsFor: 0, pointsAgainst: 0 };
+        homeRec.pointsFor += homeScore;
+        homeRec.pointsAgainst += awayScore;
+        if (homeScore > awayScore) homeRec.wins++;
+        else if (homeScore < awayScore) homeRec.losses++;
+        else homeRec.draws++;
+        clubRecords.set(m.homeClubId, homeRec);
+
+        const awayRec = clubRecords.get(m.awayClubId) ?? { wins: 0, losses: 0, draws: 0, pointsFor: 0, pointsAgainst: 0 };
+        awayRec.pointsFor += awayScore;
+        awayRec.pointsAgainst += homeScore;
+        if (awayScore > homeScore) awayRec.wins++;
+        else if (awayScore < homeScore) awayRec.losses++;
+        else awayRec.draws++;
+        clubRecords.set(m.awayClubId, awayRec);
+      }
+
+      // Rank all clubs
+      const ranked = Array.from(clubRecords.entries())
+        .map(([cid, rec]) => {
+          const points = rec.wins * 4 + rec.draws * 2;
+          const percentage = rec.pointsAgainst > 0 ? (rec.pointsFor / rec.pointsAgainst) * 100 : 100;
+          return { clubId: cid, points, percentage, ...rec };
+        })
+        .sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.percentage - a.percentage;
+        });
+
+      const positions = ranked.map((r, idx) => ({
+        clubId: r.clubId,
+        position: idx + 1,
+        record: `${r.wins}-${r.losses}${r.draws > 0 ? `-${r.draws}` : ""}`,
+      }));
+
+      result.push({
+        roundNumber: round.roundNumber,
+        seasonYear: round.seasonYear,
+        matchType,
+        positions,
+      });
+    }
+  }
+
+  return { clubs, data: result };
+}
+
+// Get HFA history for ALL clubs by round (for league-wide graph)
+export async function getAllClubsHfaHistory() {
+  const results = await prisma.homeGameResult.findMany({
+    include: {
+      club: { select: { id: true, name: true, abbreviation: true, primaryColor: true, secondaryColor: true } },
+      match: { include: { round: { include: { season: true } } } },
+    },
+    orderBy: [
+      { match: { round: { season: { year: "asc" } } } },
+      { match: { round: { roundNumber: "asc" } } },
+    ],
+  });
+
+  if (results.length === 0) return { clubs: [], data: [] };
+
+  // Collect all clubs
+  const clubsMap = new Map<string, { id: string; name: string; abbreviation: string; primaryColor: string | null; secondaryColor: string | null }>();
+  for (const r of results) {
+    if (!clubsMap.has(r.club.id)) clubsMap.set(r.club.id, r.club);
+  }
+  const clubs = Array.from(clubsMap.values());
+
+  const output: {
+    roundNumber: number;
+    seasonYear: number;
+    matchType: string;
+    hfaValues: { clubId: string; hfa: number; gamesPlayed: number }[];
+  }[] = [];
+
+  for (const matchType of ["SENIORS", "RESERVES"] as const) {
+    const typeResults = results.filter((r) => r.matchType === matchType);
+    if (typeResults.length === 0) continue;
+
+    // Group by round
+    const roundsSet = new Map<string, { roundNumber: number; seasonYear: number }>();
+    for (const r of typeResults) {
+      const key = `${r.match.round.season.year}-${r.match.round.roundNumber}`;
+      if (!roundsSet.has(key)) {
+        roundsSet.set(key, { roundNumber: r.match.round.roundNumber, seasonYear: r.match.round.season.year });
+      }
+    }
+    const rounds = Array.from(roundsSet.values());
+
+    // Track cumulative margins per club
+    const clubMargins = new Map<string, number[]>();
+
+    for (const round of rounds) {
+      const roundResults = typeResults.filter(
+        (r) => r.match.round.roundNumber === round.roundNumber && r.match.round.season.year === round.seasonYear
+      );
+
+      for (const r of roundResults) {
+        const margins = clubMargins.get(r.clubId) ?? [];
+        margins.push(r.margin);
+        clubMargins.set(r.clubId, margins);
+      }
+
+      // Calculate HFA for each club at this round (negative margins count as half)
+      const calcHfaValue = (margin: number) => margin < 0 ? margin / 2 : margin;
+      const hfaValues = Array.from(clubMargins.entries()).map(([clubId, margins]) => {
+        const last10 = margins.slice(-10);
+        const hfa = last10.reduce((s, m) => s + calcHfaValue(m), 0) / last10.length;
+        return {
+          clubId,
+          hfa: Math.round(hfa * 10) / 10,
+          gamesPlayed: margins.length,
+        };
+      });
+
+      output.push({
+        roundNumber: round.roundNumber,
+        seasonYear: round.seasonYear,
+        matchType,
+        hfaValues,
+      });
+    }
+  }
+
+  return { clubs, data: output };
 }
 
 // Helper: Get valid positions for a roster spot

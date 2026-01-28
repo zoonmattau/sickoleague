@@ -63,10 +63,10 @@ async function getClubsWithCoaches() {
   try {
     const clubs = await prisma.club.findMany({
       include: {
-        coaches: {
+        coach: {
           select: {
             id: true,
-            discordUsername: true,
+            displayName: true,
             discordId: true,
           },
         },
@@ -112,7 +112,7 @@ export default async function HomePage() {
   const user = await getUser();
 
   const totalClubs = clubs.length || 12;
-  const vacantClubs = clubs.filter(c => c.coaches.length === 0).length || 12;
+  const vacantClubs = clubs.filter(c => !c.coach).length || 12;
 
   const seniorsStandings = allStandings.filter(s => s.competition === "SENIORS");
   const reservesStandings = allStandings.filter(s => s.competition === "RESERVES");
@@ -978,8 +978,8 @@ export default async function HomePage() {
                   reserves name, colors, and upload custom logos!
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(clubs.length > 0 ? clubs : fallbackClubs.map((c, i) => ({ ...c, id: String(i), coaches: [] }))).map((club) => {
-                    const hasCoach = 'coaches' in club && club.coaches.length > 0;
+                  {(clubs.length > 0 ? clubs : fallbackClubs.map((c, i) => ({ ...c, id: String(i), coach: null }))).map((club) => {
+                    const hasCoach = 'coach' in club && club.coach !== null;
 
                     return (
                       <div
@@ -1006,9 +1006,9 @@ export default async function HomePage() {
 
                         <div className="flex items-center justify-between pt-2 border-t">
                           <span className="text-xs text-muted-foreground">Coach:</span>
-                          {hasCoach ? (
+                          {hasCoach && club.coach ? (
                             <Badge variant="secondary" className="text-xs">
-                              @{club.coaches[0].discordUsername || "Coach"}
+                              @{club.coach.displayName || "Coach"}
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="text-xs border-accent text-accent">

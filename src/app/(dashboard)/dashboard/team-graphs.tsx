@@ -17,7 +17,7 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
-import { getClubMatchHistory, getClubHfaHistory, getClubLadderHistory } from "./roster/actions";
+import { getClubMatchHistory, getClubHfaHistory, getClubLadderPositionHistory } from "./roster/actions";
 
 type MatchEntry = {
   roundNumber: number;
@@ -28,6 +28,8 @@ type MatchEntry = {
   margin: number;
   opponentName: string;
   opponentAbbr: string;
+  opponentPrimaryColor: string | null;
+  opponentSecondaryColor: string | null;
   isHome: boolean;
 };
 
@@ -43,10 +45,11 @@ type LadderEntry = {
   roundNumber: number;
   seasonYear: number;
   matchType: string;
+  position: number;
   wins: number;
   losses: number;
   draws: number;
-  ladderPosition: number | null;
+  record: string;
 };
 
 type Screen = "position" | "scores" | "hfa";
@@ -61,9 +64,11 @@ type TeamGraphsProps = {
   clubId: string;
   clubName: string;
   reservesName: string;
+  primaryColor: string | null;
+  secondaryColor: string | null;
 };
 
-export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) {
+export function TeamGraphs({ clubId, clubName, reservesName, primaryColor, secondaryColor }: TeamGraphsProps) {
   const [matches, setMatches] = useState<MatchEntry[]>([]);
   const [hfa, setHfa] = useState<HfaEntry[]>([]);
   const [ladder, setLadder] = useState<LadderEntry[]>([]);
@@ -75,7 +80,7 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
     Promise.all([
       getClubMatchHistory(clubId),
       getClubHfaHistory(clubId),
-      getClubLadderHistory(clubId),
+      getClubLadderPositionHistory(clubId),
     ]).then(([m, h, l]) => {
       setMatches(m);
       setHfa(h);
@@ -113,28 +118,26 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
         return <p className="text-xs text-muted-foreground py-6 text-center">No matches played yet</p>;
       }
 
-      // Show W-L record per round as a line chart. Y-axis = wins, X-axis = round.
-      // If ladder position available, show that (inverted so 1st is top)
-      const hasPosition = ladderData.some((l) => l.ladderPosition !== null);
+      const teamColor = primaryColor || "#3b82f6";
+      const teamSecondary = secondaryColor || "#ffffff";
 
       const chartData = ladderData.map((l) => ({
         round: `R${l.roundNumber}`,
-        wins: l.wins,
-        record: `${l.wins}-${l.losses}${l.draws > 0 ? `-${l.draws}` : ""}`,
-        position: l.ladderPosition,
+        position: l.position,
+        record: l.record,
       }));
 
       return (
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="round" tick={{ fontSize: 10 }} />
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="round" tick={{ fontSize: 10 }} stroke="#6b7280" />
               <YAxis
                 tick={{ fontSize: 10 }}
-                reversed={hasPosition}
-                domain={hasPosition ? [1, "auto"] : [0, "auto"]}
-                label={hasPosition ? { value: "Pos", angle: -90, position: "insideLeft", style: { fontSize: 10 } } : undefined}
+                reversed
+                domain={[1, 12]}
+                stroke="#6b7280"
               />
               <Tooltip
                 content={({ active, payload }) => {
@@ -143,29 +146,21 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
                   return (
                     <div className="bg-popover border rounded-md p-2 text-xs shadow-md">
                       <div className="font-medium">{d.round}</div>
+                      <div>Position: {d.position}</div>
                       <div>Record: {d.record}</div>
-                      {d.position && <div>Position: {d.position}</div>}
                     </div>
                   );
                 }}
               />
-              {hasPosition ? (
-                <Line
-                  type="monotone"
-                  dataKey="position"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              ) : (
-                <Line
-                  type="monotone"
-                  dataKey="wins"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              )}
+              <Line
+                type="linear"
+                dataKey="position"
+                stroke={teamColor}
+                strokeWidth={3}
+                dot={{ r: 5, fill: teamColor, stroke: teamSecondary, strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: teamColor }}
+                connectNulls
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -182,7 +177,13 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
         margin: m.margin,
         myScore: m.myScore,
         oppScore: m.oppScore,
-        opponent: m.opponentAbbr,
+        opponent: m.opponentName,
+        opponentAbbr: m.opponentAbbr,
+        opponentPrimaryColor: m.opponentPrimaryColor,
+        opponentSecondaryColor: m.opponentSecondaryColor,
+        isHome: m.isHome,
+        isWin: m.margin > 0,
+        isDraw: m.margin === 0,
       }));
 
       return (
@@ -190,19 +191,31 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="round" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="opponentAbbr" tick={{ fontSize: 9 }} interval={0} />
               <YAxis tick={{ fontSize: 10 }} />
               <ReferenceLine y={0} className="stroke-muted-foreground" />
               <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;
+                  const absMargin = Math.abs(d.margin);
                   return (
                     <div className="bg-popover border rounded-md p-2 text-xs shadow-md">
-                      <div className="font-medium">{d.round} vs {d.opponent}</div>
-                      <div>You: {d.myScore} — Opp: {d.oppScore}</div>
-                      <div className={d.margin >= 0 ? "text-green-600" : "text-red-600"}>
-                        {d.margin >= 0 ? "+" : ""}{d.margin}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{d.isHome ? "Home" : "Away"} v</span>
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                          style={{
+                            backgroundColor: d.opponentPrimaryColor || "#6b7280",
+                            color: d.opponentSecondaryColor || "#ffffff",
+                          }}
+                        >
+                          {d.opponent}
+                        </span>
+                      </div>
+                      <div className="mt-1">{d.myScore} v {d.oppScore}</div>
+                      <div className={d.isWin ? "text-green-600 font-semibold" : d.isDraw ? "text-yellow-600" : "text-red-600 font-semibold"}>
+                        {d.isWin ? `Won by ${absMargin}` : d.isDraw ? "Draw" : `Lost by ${absMargin}`}
                       </div>
                     </div>
                   );
@@ -212,7 +225,7 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
                 {chartData.map((entry, index) => (
                   <Cell
                     key={index}
-                    fill={entry.margin >= 0 ? "hsl(var(--chart-2))" : "hsl(var(--destructive))"}
+                    fill={entry.isWin ? "#22c55e" : entry.isDraw ? "#eab308" : "#ef4444"}
                   />
                 ))}
               </Bar>
@@ -227,35 +240,60 @@ export function TeamGraphs({ clubId, clubName, reservesName }: TeamGraphsProps) 
         return <p className="text-xs text-muted-foreground py-6 text-center">No home games played yet</p>;
       }
 
-      // Compute running HFA: sum of last 10 margins
-      const running = hfaData.map((_, i) => {
-        const window = hfaData.slice(Math.max(0, i - 9), i + 1);
-        const avg = window.reduce((s, h) => s + h.margin, 0) / window.length;
+      // HFA calculation: negative margins count as half (to not punish bad teams too harshly)
+      const calcHfaValue = (margin: number) => margin < 0 ? margin / 2 : margin;
+
+      // Group by round and compute running HFA at end of each round
+      const roundsMap = new Map<number, number[]>();
+      for (const h of hfaData) {
+        const margins = roundsMap.get(h.roundNumber) ?? [];
+        margins.push(h.margin);
+        roundsMap.set(h.roundNumber, margins);
+      }
+
+      // Build cumulative data by round
+      const rounds = Array.from(roundsMap.keys()).sort((a, b) => a - b);
+      let allMargins: number[] = [];
+      const chartData = rounds.map((roundNum) => {
+        allMargins = [...allMargins, ...roundsMap.get(roundNum)!];
+        const last10 = allMargins.slice(-10);
+        const hfa = last10.reduce((s, m) => s + calcHfaValue(m), 0) / last10.length;
         return {
-          game: `G${hfaData[i].gameNumber}`,
-          hfa: Math.round(avg * 100) / 100,
-          roundNumber: hfaData[i].roundNumber,
+          round: `R${roundNum}`,
+          hfa: Math.round(hfa * 10) / 10,
+          gamesPlayed: allMargins.length,
         };
       });
 
       return (
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={running}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="game" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <ReferenceLine y={0} className="stroke-muted-foreground" />
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="round" tick={{ fontSize: 10 }} stroke="#6b7280" />
+              <YAxis tick={{ fontSize: 10 }} stroke="#6b7280" />
+              <ReferenceLine y={0} stroke="#9ca3af" />
               <Tooltip
-                formatter={(v) => [`${v}`, "HFA"]}
-                contentStyle={{ fontSize: 12 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div className="bg-popover border rounded-md p-2 text-xs shadow-md">
+                      <div className="font-medium">{d.round}</div>
+                      <div>HFA: {d.hfa >= 0 ? "+" : ""}{d.hfa}</div>
+                      <div className="text-muted-foreground">{d.gamesPlayed} home game{d.gamesPlayed !== 1 ? "s" : ""}</div>
+                    </div>
+                  );
+                }}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="hfa"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                dot={{ r: 2 }}
+                stroke={primaryColor || "#3b82f6"}
+                strokeWidth={3}
+                dot={{ r: 5, fill: primaryColor || "#3b82f6", stroke: secondaryColor || "#ffffff", strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: primaryColor || "#3b82f6" }}
+                connectNulls
               />
             </LineChart>
           </ResponsiveContainer>

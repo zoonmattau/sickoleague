@@ -20,6 +20,7 @@ const navItems = [
   { href: "/dashboard/roster", label: "Roster" },
   { href: "/dashboard/matches", label: "Matches" },
   { href: "/dashboard/standings", label: "Standings" },
+  { href: "/dashboard/clubs", label: "Clubs" },
   { href: "/dashboard/players", label: "Players" },
   { href: "/dashboard/trades", label: "Trades" },
   { href: "/dashboard/draft", label: "Draft" },
