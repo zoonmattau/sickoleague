@@ -138,8 +138,77 @@ export function ClubsView({ clubs, season, myClubId }: ClubsViewProps) {
 
   const selectedClubData = clubs.find((c) => c.id === selectedClub);
 
+  // Build rivalry matrix
+  const rivalryPairs: { clubA: Club; clubB: Club; reason: string; seasonYear: number }[] = [];
+  const seenPairs = new Set<string>();
+
+  for (const club of clubs) {
+    for (const rival of club.rivals) {
+      const pairKey = [club.id, rival.club.id].sort().join("-");
+      if (!seenPairs.has(pairKey)) {
+        seenPairs.add(pairKey);
+        const clubB = clubs.find((c) => c.id === rival.club.id);
+        if (clubB) {
+          rivalryPairs.push({
+            clubA: club,
+            clubB,
+            reason: rival.reason,
+            seasonYear: rival.seasonYear,
+          });
+        }
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Rivalry Matrix */}
+      {rivalryPairs.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Swords className="h-5 w-5 text-orange-500" />
+              Rivalries
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {rivalryPairs.map((pair, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-orange-500/5 border-orange-500/20"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="px-2 py-1 rounded text-xs font-semibold"
+                      style={{
+                        backgroundColor: pair.clubA.primaryColor || "#6b7280",
+                        color: pair.clubA.secondaryColor || "#ffffff",
+                      }}
+                    >
+                      {pair.clubA.abbreviation}
+                    </span>
+                    <span className="text-muted-foreground font-bold">vs</span>
+                    <span
+                      className="px-2 py-1 rounded text-xs font-semibold"
+                      style={{
+                        backgroundColor: pair.clubB.primaryColor || "#6b7280",
+                        color: pair.clubB.secondaryColor || "#ffffff",
+                      }}
+                    >
+                      {pair.clubB.abbreviation}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                    {pair.reason === "FINALS_OPPONENT" ? "Finals" : "Nominated"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Salary Cap Matrix */}
       <Card>
         <CardHeader className="pb-3">
