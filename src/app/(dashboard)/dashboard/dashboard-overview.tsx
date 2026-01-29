@@ -6,7 +6,7 @@ import { RosterDetailDialog } from "./dialogs/roster-detail-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Users } from "lucide-react";
+import { Trophy, Users, DollarSign, UserCheck, TrendingUp, Calendar } from "lucide-react";
 import type { SerializedContract, SerializedRosterPlayer } from "./types";
 
 type RecordSummary = {
@@ -85,19 +85,13 @@ export function DashboardOverview({
   const emptySeniorsSpots = SENIORS_SPOTS.filter(s => !filledSpots.has(s));
   const emptyReservesSpots = RESERVES_SPOTS.filter(s => !filledSpots.has(s));
 
-  // Format spot name for display (DEF1 -> DEF 1, RDEF1 -> DEF 1)
+  // Format spot name for display
   const formatSpot = (spot: string) => {
-    const clean = spot.replace(/^R/, ""); // Remove R prefix for reserves
+    const clean = spot.replace(/^R/, "");
     const match = clean.match(/^([A-Z]+)(\d+)$/);
     if (match) return `${match[1]}${match[2]}`;
     return clean;
   };
-
-  // Calculate roster needs
-  const minRoster = 19;
-  const maxRoster = 21;
-  const spotsNeeded = Math.max(0, minRoster - totalContracts);
-  const spotsAvailable = maxRoster - totalContracts;
 
   const getFormColor = (result: "W" | "L" | "D") => {
     if (result === "W") return "bg-green-500";
@@ -105,148 +99,164 @@ export function DashboardOverview({
     return "bg-yellow-500";
   };
 
-  const getLadderBadgeColor = (pos: number, total: number) => {
-    if (pos === 0) return "bg-muted text-muted-foreground";
-    if (pos <= 4) return "bg-green-500/20 text-green-600 dark:text-green-400";
-    if (pos <= total / 2) return "bg-blue-500/20 text-blue-600 dark:text-blue-400";
-    return "bg-orange-500/20 text-orange-600 dark:text-orange-400";
+  const getOrdinal = (n: number) => {
+    if (n === 1) return "1st";
+    if (n === 2) return "2nd";
+    if (n === 3) return "3rd";
+    return `${n}th`;
   };
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {/* Salary Cap Card */}
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setSalaryDialogOpen(true)}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-muted-foreground">Salary Cap</span>
-              <Badge variant="outline" className="text-xs">$750k</Badge>
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
+          onClick={() => setSalaryDialogOpen(true)}
+        >
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+          <CardContent className="pt-4 pb-4 pl-5">
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <span className="stat-label">Salary Cap</span>
             </div>
-            <div className="text-2xl font-bold mb-2">
-              ${(salaryUsed * 1000).toLocaleString()}
+            <div className="stat-number text-3xl mb-3">
+              ${Math.round(salaryUsed)}K
             </div>
             <Progress
               value={salaryPercent}
-              className={`h-2 mb-2 ${salaryPercent > 95 ? '[&>div]:bg-red-500' : salaryPercent > 85 ? '[&>div]:bg-yellow-500' : ''}`}
+              className={`h-2 mb-3 ${salaryPercent > 95 ? '[&>div]:bg-red-500' : salaryPercent > 85 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-primary'}`}
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>${(salaryRemaining * 1000).toLocaleString()} left</span>
-              <span>{salaryPercent.toFixed(0)}% used</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">${Math.round(salaryRemaining)}K remaining</span>
+              <Badge variant={salaryPercent > 95 ? "destructive" : "secondary"} className="text-[10px]">
+                {salaryPercent.toFixed(0)}%
+              </Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* Roster Size Card */}
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setRosterDialogOpen(true)}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-muted-foreground">Lineup</span>
-              <Badge variant="outline" className="text-xs">{totalContracts} players</Badge>
+        {/* Roster/Lineup Card */}
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
+          onClick={() => setRosterDialogOpen(true)}
+        >
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
+          <CardContent className="pt-4 pb-4 pl-5">
+            <div className="flex items-center gap-2 mb-3">
+              <UserCheck className="h-4 w-4 text-accent" />
+              <span className="stat-label">Lineup Status</span>
             </div>
-            {/* Seniors lineup */}
-            <div className="space-y-1.5 mb-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="h-3 w-3 text-amber-500" />
-                <span className="text-xs font-medium">Seniors</span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {SENIORS_SPOTS.length - emptySeniorsSpots.length}/{SENIORS_SPOTS.length}
-                </span>
-              </div>
-              {emptySeniorsSpots.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {emptySeniorsSpots.map(spot => (
-                    <span key={spot} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-medium">
-                      {formatSpot(spot)}
-                    </span>
-                  ))}
+            <div className="space-y-3">
+              {/* Seniors */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-semibold">Seniors</span>
                 </div>
-              ) : (
-                <span className="text-[10px] text-green-600 dark:text-green-400">Full</span>
+                <div className="flex items-center gap-2">
+                  <span className="stat-number-sm">{SENIORS_SPOTS.length - emptySeniorsSpots.length}</span>
+                  <span className="text-muted-foreground">/11</span>
+                </div>
+              </div>
+              {emptySeniorsSpots.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {emptySeniorsSpots.slice(0, 4).map(spot => (
+                    <Badge key={spot} variant="destructive" className="text-[9px] px-1.5 py-0">
+                      {formatSpot(spot)}
+                    </Badge>
+                  ))}
+                  {emptySeniorsSpots.length > 4 && (
+                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0">
+                      +{emptySeniorsSpots.length - 4}
+                    </Badge>
+                  )}
+                </div>
               )}
-            </div>
-            {/* Reserves lineup */}
-            <div className="space-y-1.5 pt-2 border-t">
-              <div className="flex items-center gap-2">
-                <Users className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-medium">Reserves</span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {RESERVES_SPOTS.length - emptyReservesSpots.length}/{RESERVES_SPOTS.length}
-                </span>
-              </div>
-              {emptyReservesSpots.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {emptyReservesSpots.map(spot => (
-                    <span key={spot} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-medium">
-                      {formatSpot(spot)}
-                    </span>
-                  ))}
+              {/* Reserves */}
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">Reserves</span>
                 </div>
-              ) : (
-                <span className="text-[10px] text-green-600 dark:text-green-400">Full</span>
+                <div className="flex items-center gap-2">
+                  <span className="stat-number-sm">{RESERVES_SPOTS.length - emptyReservesSpots.length}</span>
+                  <span className="text-muted-foreground">/8</span>
+                </div>
+              </div>
+              {emptyReservesSpots.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {emptyReservesSpots.slice(0, 4).map(spot => (
+                    <Badge key={spot} variant="destructive" className="text-[9px] px-1.5 py-0">
+                      {formatSpot(spot)}
+                    </Badge>
+                  ))}
+                  {emptyReservesSpots.length > 4 && (
+                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0">
+                      +{emptyReservesSpots.length - 4}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
 
         {/* Season Record Card */}
-        <Card className="cursor-default">
-          <CardContent className="pt-4 pb-3">
-            <div className="text-sm font-medium text-muted-foreground mb-3">Season Record</div>
+        <Card className="relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500" />
+          <CardContent className="pt-4 pb-4 pl-5">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <span className="stat-label">Season Record</span>
+            </div>
             <div className="space-y-3">
               {/* Seniors */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
                   <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-medium truncate flex-1">{clubName}</span>
-                  {record && record.seniors.ladderPosition > 0 && (
-                    <Badge className={`text-[10px] px-1.5 py-0 ${getLadderBadgeColor(record.seniors.ladderPosition, record.totalTeams)}`}>
-                      {record.seniors.ladderPosition}{record.seniors.ladderPosition === 1 ? "st" : record.seniors.ladderPosition === 2 ? "nd" : record.seniors.ladderPosition === 3 ? "rd" : "th"}
-                    </Badge>
-                  )}
+                  <span className="text-xs font-bold uppercase tracking-wide">{clubName}</span>
                 </div>
                 {record && record.seniors.played > 0 ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl font-bold">{record.seniors.wins * 4 + record.seniors.draws * 2}</span>
-                    <span className="text-xs text-muted-foreground">pts</span>
-                    <div className="flex items-center gap-1 text-xs ml-auto">
-                      <span className="text-green-600 dark:text-green-400 font-medium">{record.seniors.wins}W</span>
-                      <span className="text-red-500 font-medium">{record.seniors.losses}L</span>
-                      {record.seniors.draws > 0 && (
-                        <span className="text-yellow-500 font-medium">{record.seniors.draws}D</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="stat-number">{record.seniors.wins * 4 + record.seniors.draws * 2}</span>
+                    <span className="text-xs text-muted-foreground">PTS</span>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-green-500">{record.seniors.wins}W</span>
+                      <span className="text-sm font-bold text-red-500">{record.seniors.losses}L</span>
+                      {record.seniors.ladderPosition > 0 && (
+                        <Badge className="bg-primary/20 text-primary text-[10px] ml-1">
+                          {getOrdinal(record.seniors.ladderPosition)}
+                        </Badge>
                       )}
-                      <span className="text-muted-foreground">({record.seniors.percentage.toFixed(0)}%)</span>
                     </div>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">No games yet</span>
+                  <span className="text-sm text-muted-foreground">No games</span>
                 )}
               </div>
               {/* Reserves */}
-              <div className="space-y-1 pt-2 border-t">
-                <div className="flex items-center gap-2">
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-2 mb-1">
                   <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium truncate flex-1">{reservesName}</span>
-                  {record && record.reserves.ladderPosition > 0 && (
-                    <Badge className={`text-[10px] px-1.5 py-0 ${getLadderBadgeColor(record.reserves.ladderPosition, record.totalTeams)}`}>
-                      {record.reserves.ladderPosition}{record.reserves.ladderPosition === 1 ? "st" : record.reserves.ladderPosition === 2 ? "nd" : record.reserves.ladderPosition === 3 ? "rd" : "th"}
-                    </Badge>
-                  )}
+                  <span className="text-xs font-bold uppercase tracking-wide">{reservesName}</span>
                 </div>
                 {record && record.reserves.played > 0 ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl font-bold">{record.reserves.wins * 4 + record.reserves.draws * 2}</span>
-                    <span className="text-xs text-muted-foreground">pts</span>
-                    <div className="flex items-center gap-1 text-xs ml-auto">
-                      <span className="text-green-600 dark:text-green-400 font-medium">{record.reserves.wins}W</span>
-                      <span className="text-red-500 font-medium">{record.reserves.losses}L</span>
-                      {record.reserves.draws > 0 && (
-                        <span className="text-yellow-500 font-medium">{record.reserves.draws}D</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="stat-number">{record.reserves.wins * 4 + record.reserves.draws * 2}</span>
+                    <span className="text-xs text-muted-foreground">PTS</span>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-green-500">{record.reserves.wins}W</span>
+                      <span className="text-sm font-bold text-red-500">{record.reserves.losses}L</span>
+                      {record.reserves.ladderPosition > 0 && (
+                        <Badge className="bg-primary/20 text-primary text-[10px] ml-1">
+                          {getOrdinal(record.reserves.ladderPosition)}
+                        </Badge>
                       )}
-                      <span className="text-muted-foreground">({record.reserves.percentage.toFixed(0)}%)</span>
                     </div>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">No games yet</span>
+                  <span className="text-sm text-muted-foreground">No games</span>
                 )}
               </div>
             </div>
@@ -254,57 +264,55 @@ export function DashboardOverview({
         </Card>
 
         {/* Captains Card */}
-        <Card className="cursor-default">
-          <CardContent className="pt-4 pb-3">
-            <div className="text-sm font-medium text-muted-foreground mb-3">Captains</div>
+        <Card className="relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+          <CardContent className="pt-4 pb-4 pl-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              <span className="stat-label">Leadership</span>
+            </div>
             <div className="space-y-3">
               {/* Seniors */}
-              <div className="space-y-1.5">
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Trophy className="h-3 w-3 text-amber-500" />
-                  Seniors
-                </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Seniors</div>
                 <div className="flex flex-wrap gap-1.5">
                   {captains.seniorCaptain ? (
-                    <div className="flex items-center gap-1 bg-amber-500/10 rounded px-1.5 py-0.5">
-                      <span className="w-4 h-4 rounded bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">C</span>
-                      <span className="text-xs font-medium">{captains.seniorCaptain.name}</span>
+                    <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 rounded px-2 py-1">
+                      <span className="w-5 h-5 rounded bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">C</span>
+                      <span className="text-xs font-semibold">{captains.seniorCaptain.name}</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-red-500">No captain</span>
+                    <Badge variant="destructive" className="text-[10px]">Need Captain</Badge>
                   )}
                   {captains.seniorVc ? (
-                    <div className="flex items-center gap-1 bg-amber-400/10 rounded px-1.5 py-0.5">
-                      <span className="w-4 h-4 rounded bg-amber-400 text-white text-[9px] font-bold flex items-center justify-center">V</span>
+                    <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 rounded px-2 py-1">
+                      <span className="w-5 h-5 rounded bg-amber-400 text-white text-[10px] font-black flex items-center justify-center">V</span>
                       <span className="text-xs">{captains.seniorVc.name}</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No VC</span>
+                    <Badge variant="secondary" className="text-[10px]">Need VC</Badge>
                   )}
                 </div>
               </div>
               {/* Reserves */}
-              <div className="space-y-1.5 pt-2 border-t">
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  Reserves
-                </div>
+              <div className="pt-2 border-t">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Reserves</div>
                 <div className="flex flex-wrap gap-1.5">
                   {captains.reservesCaptain ? (
-                    <div className="flex items-center gap-1 bg-amber-500/10 rounded px-1.5 py-0.5">
-                      <span className="w-4 h-4 rounded bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">C</span>
-                      <span className="text-xs font-medium">{captains.reservesCaptain.name}</span>
+                    <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 rounded px-2 py-1">
+                      <span className="w-5 h-5 rounded bg-amber-500 text-white text-[10px] font-black flex items-center justify-center">C</span>
+                      <span className="text-xs font-semibold">{captains.reservesCaptain.name}</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-red-500">No captain</span>
+                    <Badge variant="destructive" className="text-[10px]">Need Captain</Badge>
                   )}
                   {captains.reservesVc ? (
-                    <div className="flex items-center gap-1 bg-amber-400/10 rounded px-1.5 py-0.5">
-                      <span className="w-4 h-4 rounded bg-amber-400 text-white text-[9px] font-bold flex items-center justify-center">V</span>
+                    <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 rounded px-2 py-1">
+                      <span className="w-5 h-5 rounded bg-amber-400 text-white text-[10px] font-black flex items-center justify-center">V</span>
                       <span className="text-xs">{captains.reservesVc.name}</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No VC</span>
+                    <Badge variant="secondary" className="text-[10px]">Need VC</Badge>
                   )}
                 </div>
               </div>
@@ -313,29 +321,29 @@ export function DashboardOverview({
         </Card>
 
         {/* Form Card */}
-        <Card className="cursor-default">
-          <CardContent className="pt-4 pb-3">
-            <div className="text-sm font-medium text-muted-foreground mb-3">Form</div>
+        <Card className="relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+          <CardContent className="pt-4 pb-4 pl-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="h-4 w-4 text-blue-500" />
+              <span className="stat-label">Recent Form</span>
+            </div>
             <div className="space-y-3">
               {/* Seniors form */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Trophy className="h-3 w-3 text-amber-500" />
-                    Seniors
-                  </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Seniors</span>
                   {form?.seniors.streak && form.seniors.streak > 1 && (
                     <Badge
-                      variant="outline"
-                      className={`text-[10px] px-1.5 py-0 ${
+                      className={`text-[9px] px-1.5 py-0 ${
                         form.seniors.streakType === "W"
-                          ? "border-green-500 text-green-600 dark:text-green-400"
+                          ? "bg-green-500"
                           : form.seniors.streakType === "L"
-                          ? "border-red-500 text-red-500"
-                          : ""
+                          ? "bg-red-500"
+                          : "bg-yellow-500"
                       }`}
                     >
-                      {form.seniors.streak}{form.seniors.streakType} streak
+                      {form.seniors.streak}{form.seniors.streakType} STREAK
                     </Badge>
                   )}
                 </div>
@@ -344,7 +352,7 @@ export function DashboardOverview({
                     form.seniors.last5.map((r, i) => (
                       <div
                         key={i}
-                        className={`w-6 h-6 rounded ${getFormColor(r)} flex items-center justify-center text-[10px] font-bold text-white shadow-sm`}
+                        className={`w-7 h-7 rounded ${getFormColor(r)} flex items-center justify-center text-[11px] font-black text-white shadow-sm`}
                       >
                         {r}
                       </div>
@@ -355,24 +363,20 @@ export function DashboardOverview({
                 </div>
               </div>
               {/* Reserves form */}
-              <div className="space-y-1.5 pt-2 border-t">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    Reserves
-                  </div>
+              <div className="pt-2 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Reserves</span>
                   {form?.reserves.streak && form.reserves.streak > 1 && (
                     <Badge
-                      variant="outline"
-                      className={`text-[10px] px-1.5 py-0 ${
+                      className={`text-[9px] px-1.5 py-0 ${
                         form.reserves.streakType === "W"
-                          ? "border-green-500 text-green-600 dark:text-green-400"
+                          ? "bg-green-500"
                           : form.reserves.streakType === "L"
-                          ? "border-red-500 text-red-500"
-                          : ""
+                          ? "bg-red-500"
+                          : "bg-yellow-500"
                       }`}
                     >
-                      {form.reserves.streak}{form.reserves.streakType} streak
+                      {form.reserves.streak}{form.reserves.streakType} STREAK
                     </Badge>
                   )}
                 </div>
@@ -381,7 +385,7 @@ export function DashboardOverview({
                     form.reserves.last5.map((r, i) => (
                       <div
                         key={i}
-                        className={`w-6 h-6 rounded ${getFormColor(r)} flex items-center justify-center text-[10px] font-bold text-white shadow-sm`}
+                        className={`w-7 h-7 rounded ${getFormColor(r)} flex items-center justify-center text-[11px] font-black text-white shadow-sm`}
                       >
                         {r}
                       </div>
@@ -391,14 +395,14 @@ export function DashboardOverview({
                   )}
                 </div>
               </div>
-              {/* Next match */}
+              {/* Next match teaser */}
               {upcomingMatch && (
                 <div className="flex items-center gap-2 pt-2 border-t">
-                  <span className="text-xs text-muted-foreground">Next:</span>
-                  <span className="text-xs font-medium">R{upcomingMatch.roundNumber}</span>
-                  <span className="text-xs text-muted-foreground">{upcomingMatch.isHome ? "vs" : "@"}</span>
+                  <span className="ticker-text text-muted-foreground">NEXT:</span>
+                  <span className="ticker-text">R{upcomingMatch.roundNumber}</span>
+                  <span className="ticker-text text-muted-foreground">{upcomingMatch.isHome ? "VS" : "@"}</span>
                   <span
-                    className="px-2 py-0.5 rounded text-xs font-bold"
+                    className="px-2 py-0.5 rounded text-[10px] font-black"
                     style={{
                       backgroundColor: upcomingMatch.opponent.primaryColor || "#6b7280",
                       color: upcomingMatch.opponent.secondaryColor || "#ffffff",

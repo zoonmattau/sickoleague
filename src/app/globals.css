@@ -46,73 +46,75 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* Light mode - Sports broadcast style */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.98 0.005 145);
-  --foreground: oklch(0.2 0.02 145);
+  --radius: 0.5rem;
+  --background: oklch(0.97 0.005 250);
+  --foreground: oklch(0.15 0.02 250);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 145);
+  --card-foreground: oklch(0.15 0.02 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 145);
-  --primary: oklch(0.45 0.15 145);
-  --primary-foreground: oklch(0.98 0.01 85);
-  --secondary: oklch(0.95 0.02 145);
-  --secondary-foreground: oklch(0.3 0.05 145);
-  --muted: oklch(0.95 0.01 145);
-  --muted-foreground: oklch(0.5 0.03 145);
-  --accent: oklch(0.78 0.15 85);
-  --accent-foreground: oklch(0.25 0.05 85);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.03 145);
-  --input: oklch(0.92 0.02 145);
-  --ring: oklch(0.45 0.15 145);
-  --chart-1: oklch(0.45 0.15 145);
-  --chart-2: oklch(0.78 0.15 85);
-  --chart-3: oklch(0.55 0.12 145);
-  --chart-4: oklch(0.65 0.12 85);
-  --chart-5: oklch(0.35 0.1 145);
-  --sidebar: oklch(0.25 0.06 145);
-  --sidebar-foreground: oklch(0.95 0.01 145);
-  --sidebar-primary: oklch(0.78 0.15 85);
-  --sidebar-primary-foreground: oklch(0.2 0.05 85);
-  --sidebar-accent: oklch(0.35 0.08 145);
-  --sidebar-accent-foreground: oklch(0.95 0.01 145);
-  --sidebar-border: oklch(0.35 0.06 145);
-  --sidebar-ring: oklch(0.78 0.15 85);
+  --popover-foreground: oklch(0.15 0.02 250);
+  --primary: oklch(0.5 0.2 250);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.94 0.01 250);
+  --secondary-foreground: oklch(0.25 0.03 250);
+  --muted: oklch(0.94 0.01 250);
+  --muted-foreground: oklch(0.45 0.02 250);
+  --accent: oklch(0.65 0.2 145);
+  --accent-foreground: oklch(0.15 0.03 145);
+  --destructive: oklch(0.55 0.25 25);
+  --border: oklch(0.9 0.01 250);
+  --input: oklch(0.94 0.01 250);
+  --ring: oklch(0.5 0.2 250);
+  --chart-1: oklch(0.5 0.2 250);
+  --chart-2: oklch(0.65 0.2 145);
+  --chart-3: oklch(0.6 0.18 30);
+  --chart-4: oklch(0.7 0.15 85);
+  --chart-5: oklch(0.55 0.2 300);
+  --sidebar: oklch(0.12 0.03 250);
+  --sidebar-foreground: oklch(0.95 0.01 250);
+  --sidebar-primary: oklch(0.65 0.2 145);
+  --sidebar-primary-foreground: oklch(0.1 0.02 145);
+  --sidebar-accent: oklch(0.22 0.04 250);
+  --sidebar-accent-foreground: oklch(0.95 0.01 250);
+  --sidebar-border: oklch(0.25 0.03 250);
+  --sidebar-ring: oklch(0.65 0.2 145);
 }
 
+/* Dark mode - Premium sports broadcast */
 .dark {
-  --background: oklch(0.15 0.03 145);
-  --foreground: oklch(0.95 0.01 145);
-  --card: oklch(0.2 0.04 145);
-  --card-foreground: oklch(0.95 0.01 145);
-  --popover: oklch(0.2 0.04 145);
-  --popover-foreground: oklch(0.95 0.01 145);
-  --primary: oklch(0.55 0.15 145);
-  --primary-foreground: oklch(0.98 0.01 85);
-  --secondary: oklch(0.25 0.04 145);
-  --secondary-foreground: oklch(0.95 0.01 145);
-  --muted: oklch(0.25 0.03 145);
-  --muted-foreground: oklch(0.65 0.03 145);
-  --accent: oklch(0.72 0.14 85);
-  --accent-foreground: oklch(0.15 0.03 85);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(0.3 0.04 145);
-  --input: oklch(0.28 0.04 145);
-  --ring: oklch(0.55 0.15 145);
-  --chart-1: oklch(0.55 0.15 145);
-  --chart-2: oklch(0.72 0.14 85);
-  --chart-3: oklch(0.45 0.1 145);
-  --chart-4: oklch(0.6 0.1 85);
-  --chart-5: oklch(0.65 0.12 145);
-  --sidebar: oklch(0.18 0.04 145);
-  --sidebar-foreground: oklch(0.95 0.01 145);
-  --sidebar-primary: oklch(0.72 0.14 85);
-  --sidebar-primary-foreground: oklch(0.15 0.03 85);
-  --sidebar-accent: oklch(0.28 0.05 145);
-  --sidebar-accent-foreground: oklch(0.95 0.01 145);
-  --sidebar-border: oklch(0.3 0.04 145);
-  --sidebar-ring: oklch(0.72 0.14 85);
+  --background: oklch(0.1 0.02 250);
+  --foreground: oklch(0.95 0.01 250);
+  --card: oklch(0.15 0.02 250);
+  --card-foreground: oklch(0.95 0.01 250);
+  --popover: oklch(0.15 0.02 250);
+  --popover-foreground: oklch(0.95 0.01 250);
+  --primary: oklch(0.6 0.2 250);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.2 0.02 250);
+  --secondary-foreground: oklch(0.9 0.01 250);
+  --muted: oklch(0.2 0.02 250);
+  --muted-foreground: oklch(0.6 0.02 250);
+  --accent: oklch(0.7 0.2 145);
+  --accent-foreground: oklch(0.1 0.02 145);
+  --destructive: oklch(0.6 0.22 25);
+  --border: oklch(0.25 0.02 250);
+  --input: oklch(0.2 0.02 250);
+  --ring: oklch(0.6 0.2 250);
+  --chart-1: oklch(0.6 0.2 250);
+  --chart-2: oklch(0.7 0.2 145);
+  --chart-3: oklch(0.65 0.18 30);
+  --chart-4: oklch(0.75 0.15 85);
+  --chart-5: oklch(0.6 0.2 300);
+  --sidebar: oklch(0.08 0.02 250);
+  --sidebar-foreground: oklch(0.95 0.01 250);
+  --sidebar-primary: oklch(0.7 0.2 145);
+  --sidebar-primary-foreground: oklch(0.1 0.02 145);
+  --sidebar-accent: oklch(0.18 0.03 250);
+  --sidebar-accent-foreground: oklch(0.95 0.01 250);
+  --sidebar-border: oklch(0.2 0.02 250);
+  --sidebar-ring: oklch(0.7 0.2 145);
 }
 
 @layer base {
@@ -120,6 +122,87 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
+}
+
+/* Sports broadcast utility classes */
+@layer utilities {
+  /* Stat number styling - big bold numbers like ESPN */
+  .stat-number {
+    @apply text-4xl font-black tracking-tight tabular-nums;
+  }
+
+  .stat-number-sm {
+    @apply text-2xl font-bold tracking-tight tabular-nums;
+  }
+
+  .stat-number-lg {
+    @apply text-5xl font-black tracking-tighter tabular-nums;
+  }
+
+  /* Broadcast-style labels */
+  .stat-label {
+    @apply text-[10px] font-bold uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* Team color bar accent */
+  .team-accent-bar {
+    @apply absolute left-0 top-0 bottom-0 w-1 rounded-l;
+  }
+
+  /* Score display styling */
+  .score-display {
+    @apply font-black tabular-nums;
+  }
+
+  /* Ticker-style text */
+  .ticker-text {
+    @apply text-xs font-semibold uppercase tracking-wide;
+  }
+
+  /* Card with left accent bar */
+  .card-accented {
+    @apply relative overflow-hidden pl-4;
+  }
+
+  /* Gradient text for highlights */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
+  /* Live indicator pulse */
+  .live-pulse {
+    @apply relative;
+  }
+
+  .live-pulse::before {
+    content: '';
+    @apply absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-red-500 animate-pulse;
+  }
+}
+
+/* Custom animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }
