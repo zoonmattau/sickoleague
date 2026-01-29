@@ -73,8 +73,8 @@ export function TeamGraphs({ clubId, clubName, reservesName, primaryColor, secon
   const [hfa, setHfa] = useState<HfaEntry[]>([]);
   const [ladder, setLadder] = useState<LadderEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [seniorsScreen, setSeniorsScreen] = useState<Screen>("position");
-  const [reservesScreen, setReservesScreen] = useState<Screen>("position");
+  const [seniorsScreen, setSeniorsScreen] = useState<Screen>("scores");
+  const [reservesScreen, setReservesScreen] = useState<Screen>("scores");
 
   useEffect(() => {
     Promise.all([
