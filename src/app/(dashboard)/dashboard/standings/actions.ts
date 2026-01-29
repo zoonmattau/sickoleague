@@ -11,12 +11,29 @@ export async function getClubRecord(clubId: string) {
 
   if (!currentSeason) return null;
 
+  // Get this club's standings
   const standings = await prisma.standing.findMany({
     where: { clubId, seasonId: currentSeason.id },
   });
 
+  // Get all standings to calculate ladder position
+  const allStandings = await prisma.standing.findMany({
+    where: { seasonId: currentSeason.id },
+    orderBy: [
+      { points: "desc" },
+      { percentage: "desc" },
+    ],
+  });
+
   const seniors = standings.find(s => s.competition === "SENIORS");
   const reserves = standings.find(s => s.competition === "RESERVES");
+
+  // Calculate ladder positions
+  const seniorsLadder = allStandings.filter(s => s.competition === "SENIORS");
+  const reservesLadder = allStandings.filter(s => s.competition === "RESERVES");
+  const seniorsPosition = seniors ? seniorsLadder.findIndex(s => s.clubId === clubId) + 1 : 0;
+  const reservesPosition = reserves ? reservesLadder.findIndex(s => s.clubId === clubId) + 1 : 0;
+  const totalTeams = seniorsLadder.length || 12;
 
   return {
     seniors: seniors ? {
@@ -25,14 +42,21 @@ export async function getClubRecord(clubId: string) {
       draws: seniors.draws,
       played: seniors.played,
       percentage: Number(seniors.percentage),
-    } : { wins: 0, losses: 0, draws: 0, played: 0, percentage: 0 },
+      pointsFor: Number(seniors.pointsFor),
+      pointsAgainst: Number(seniors.pointsAgainst),
+      ladderPosition: seniorsPosition,
+    } : { wins: 0, losses: 0, draws: 0, played: 0, percentage: 0, pointsFor: 0, pointsAgainst: 0, ladderPosition: 0 },
     reserves: reserves ? {
       wins: reserves.wins,
       losses: reserves.losses,
       draws: reserves.draws,
       played: reserves.played,
       percentage: Number(reserves.percentage),
-    } : { wins: 0, losses: 0, draws: 0, played: 0, percentage: 0 },
+      pointsFor: Number(reserves.pointsFor),
+      pointsAgainst: Number(reserves.pointsAgainst),
+      ladderPosition: reservesPosition,
+    } : { wins: 0, losses: 0, draws: 0, played: 0, percentage: 0, pointsFor: 0, pointsAgainst: 0, ladderPosition: 0 },
+    totalTeams,
   };
 }
 

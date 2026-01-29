@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RosterSpot } from "@prisma/client";
-import { CircleCheck, Circle, AlertTriangle } from "lucide-react";
+import { CircleCheck, Circle, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type {
   SerializedRosterPlayer,
   SerializedContract,
@@ -15,8 +15,6 @@ const SENIORS_SPOTS: RosterSpot[] = [
 const RESERVES_SPOTS: RosterSpot[] = [
   "RDEF1", "RDEF2", "RMID1", "RMID2", "RMID3", "RRUC", "RFWD1", "RFWD2",
 ];
-const BENCH_SPOTS: RosterSpot[] = ["BENCH1", "BENCH2"];
-const IL_SPOTS: RosterSpot[] = ["IL1", "IL2"];
 const ACTIVE_SPOTS = [...SENIORS_SPOTS, ...RESERVES_SPOTS];
 
 type ChecklistItem = {
@@ -43,23 +41,26 @@ export function WeekendChecklist({
 
   const items: ChecklistItem[] = [];
 
-  // 1. Captaincy checks
+  // 1. Captaincy checks - use realCaptaincy for actual DB state
   const hasSeniorCaptain = !!realCaptaincy.seniorCaptainId;
   const hasSeniorVc = !!realCaptaincy.seniorVcId;
   const hasReservesCaptain = !!realCaptaincy.reservesCaptainId;
   const hasReservesVc = !!realCaptaincy.reservesVcId;
 
-  if (!hasSeniorCaptain) {
-    items.push({ label: "Select a Seniors Captain", done: false });
+  // Only show captain items if they're missing
+  if (!hasSeniorCaptain || !hasSeniorVc) {
+    items.push({
+      label: "Seniors leadership",
+      done: hasSeniorCaptain && hasSeniorVc,
+      detail: !hasSeniorCaptain && !hasSeniorVc ? "Need C & VC" : !hasSeniorCaptain ? "Need Captain" : "Need Vice-Captain",
+    });
   }
-  if (!hasSeniorVc) {
-    items.push({ label: "Select a Seniors Vice-Captain", done: false });
-  }
-  if (!hasReservesCaptain) {
-    items.push({ label: "Select a Reserves Captain", done: false });
-  }
-  if (!hasReservesVc) {
-    items.push({ label: "Select a Reserves Vice-Captain", done: false });
+  if (!hasReservesCaptain || !hasReservesVc) {
+    items.push({
+      label: "Reserves leadership",
+      done: hasReservesCaptain && hasReservesVc,
+      detail: !hasReservesCaptain && !hasReservesVc ? "Need C & VC" : !hasReservesCaptain ? "Need Captain" : "Need Vice-Captain",
+    });
   }
 
   // 2. Empty lineup spot checks
@@ -68,74 +69,85 @@ export function WeekendChecklist({
 
   if (emptySeniorsSpots.length > 0) {
     items.push({
-      label: "Fill empty Seniors lineup spots",
+      label: "Seniors lineup",
       done: false,
-      detail: `${emptySeniorsSpots.length} spot${emptySeniorsSpots.length > 1 ? "s" : ""} unfilled`,
+      detail: `${emptySeniorsSpots.length} empty`,
     });
   }
   if (emptyReservesSpots.length > 0) {
     items.push({
-      label: "Fill empty Reserves lineup spots",
+      label: "Reserves lineup",
       done: false,
-      detail: `${emptyReservesSpots.length} spot${emptyReservesSpots.length > 1 ? "s" : ""} unfilled`,
+      detail: `${emptyReservesSpots.length} empty`,
     });
   }
 
-  // 3. Unavailable players in active spots (should be on bench/IL)
+  // 3. Unavailable players in active spots
   const unavailableInActive = rosterPlayers.filter((rp) => {
     const inActiveSpot = ACTIVE_SPOTS.includes(rp.rosterSpot);
     return inActiveSpot && !rp.contract.aflPlayer.isAvailable;
   });
 
   if (unavailableInActive.length > 0) {
-    for (const rp of unavailableInActive) {
-      const p = rp.contract.aflPlayer;
-      items.push({
-        label: `Move ${p.firstName} ${p.lastName} to Bench or IL`,
-        done: false,
-        warning: true,
-        detail: "Player marked unavailable",
-      });
-    }
+    items.push({
+      label: "Unavailable players",
+      done: false,
+      warning: true,
+      detail: `${unavailableInActive.length} in lineup`,
+    });
   }
 
-  // If nothing to do, don't render
-  if (items.length === 0) return null;
+  // If nothing to do, show all done message
+  if (items.length === 0) {
+    return (
+      <Card className="border-green-500/30 bg-green-500/5">
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <div>
+              <div className="text-sm font-medium">Ready for the weekend</div>
+              <div className="text-xs text-muted-foreground">All lineups set</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const doneCount = items.filter((i) => i.done).length;
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          Weekend Checklist
-          <span className="text-xs font-normal text-muted-foreground">
-            {items.filter((i) => i.done).length}/{items.length} done
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          To Do
+          <span className="text-xs font-normal px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            {items.length - doneCount}
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-1.5">
+      <CardContent className="py-0 px-4 pb-3">
+        <div className="space-y-1">
           {items.map((item, i) => (
             <div
               key={i}
-              className="flex items-start gap-2 text-sm py-1"
+              className="flex items-center gap-2 text-sm py-1"
             >
               {item.done ? (
-                <CircleCheck className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                <CircleCheck className="h-4 w-4 text-green-500 shrink-0" />
               ) : item.warning ? (
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
               ) : (
-                <Circle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
-              <div className="min-w-0">
-                <span className={item.done ? "line-through text-muted-foreground" : ""}>
-                  {item.label}
+              <span className={item.done ? "line-through text-muted-foreground" : ""}>
+                {item.label}
+              </span>
+              {item.detail && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {item.detail}
                 </span>
-                {item.detail && (
-                  <span className="text-xs text-muted-foreground ml-1.5">
-                    — {item.detail}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           ))}
         </div>

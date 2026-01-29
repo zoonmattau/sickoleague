@@ -207,6 +207,8 @@ export default async function DashboardPage() {
       {club ? (
         <DashboardOverview
           clubId={club.id}
+          clubName={club.name}
+          reservesName={club.reservesName ?? club.name + " Reserves"}
           contracts={serializedContracts}
           rosterPlayers={serializedRosterPlayers}
           salaryUsed={salaryUsed}
