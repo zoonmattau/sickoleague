@@ -123,8 +123,8 @@ export default async function HomePage({
   const clubs = await getClubsWithCoaches();
   const user = await getUser();
 
-  const totalClubs = clubs.length || 12;
-  const vacantClubs = clubs.filter(c => !c.coach).length || 12;
+  const totalClubs = clubs.length > 0 ? clubs.length : 12;
+  const vacantClubs = clubs.length > 0 ? clubs.filter(c => !c.coach).length : 12;
 
   const seniorsStandings = allStandings.filter(s => s.competition === "SENIORS");
   const reservesStandings = allStandings.filter(s => s.competition === "RESERVES");
