@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,18 @@ const fallbackClubs = [
   { name: 'Rebound Rebels', abbreviation: 'RBR', reservesName: 'D50 Defenders', primaryColor: '#636e72', secondaryColor: '#dfe6e9' },
 ];
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+
+  // If OAuth code arrives at root, redirect to auth callback
+  if (params.code) {
+    redirect(`/auth/callback?code=${params.code}`);
+  }
+
   const allStandings = await getStandings();
   const season = await getSeasonInfo();
   const clubs = await getClubsWithCoaches();

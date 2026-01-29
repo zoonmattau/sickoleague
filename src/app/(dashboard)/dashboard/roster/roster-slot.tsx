@@ -13,7 +13,8 @@ import {
 import { RosterSpot, Squad, Position } from "@prisma/client";
 import { useState } from "react";
 import { assignPlayerToRoster, removePlayerFromRoster } from "./actions";
-import { X } from "lucide-react";
+import { X, Crown, Star } from "lucide-react";
+import { getPositionColorClasses } from "@/lib/position-colors";
 
 type ContractedPlayer = {
   id: string;
@@ -32,6 +33,8 @@ type ContractedPlayer = {
 type RosterPlayerData = {
   id: string;
   rosterSpot: RosterSpot;
+  isCaptain?: boolean;
+  isViceCaptain?: boolean;
   contract: {
     id: string;
     aflPlayer: {
@@ -45,6 +48,12 @@ type RosterPlayerData = {
   };
 };
 
+type PlayerStats = {
+  avgScore: number | null;
+  last5Avg: number | null;
+  gamesPlayed: number;
+};
+
 type RosterSlotProps = {
   position: string;
   rosterSpot: RosterSpot;
@@ -52,6 +61,8 @@ type RosterSlotProps = {
   clubId: string;
   assignedPlayer?: RosterPlayerData;
   availablePlayers: ContractedPlayer[];
+  playerStats?: Map<string, PlayerStats>;
+  onPlayerClick?: (contractId: string) => void;
 };
 
 export function RosterSlot({
@@ -61,6 +72,8 @@ export function RosterSlot({
   clubId,
   assignedPlayer,
   availablePlayers,
+  playerStats,
+  onPlayerClick,
 }: RosterSlotProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -92,27 +105,63 @@ export function RosterSlot({
     setLoading(false);
   };
 
+  // Get position color classes
+  const positionColors = getPositionColorClasses(position);
+
   if (assignedPlayer) {
     const player = assignedPlayer.contract.aflPlayer;
+    const stats = playerStats?.get(assignedPlayer.contract.id);
+
     return (
       <div className="flex items-center justify-between p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
         <div className="flex items-center gap-3">
-          <Badge variant="outline">{position}</Badge>
-          <div>
-            <span className="font-medium">
-              {player.firstName} {player.lastName}
-            </span>
-            <span className="text-muted-foreground ml-2 text-sm">
+          <span className={`text-xs px-2 py-0.5 rounded font-medium ${positionColors}`}>
+            {position}
+          </span>
+          <div className="flex items-center gap-1">
+            {assignedPlayer.isCaptain && (
+              <Crown className="h-3.5 w-3.5 text-amber-500" />
+            )}
+            {assignedPlayer.isViceCaptain && (
+              <Star className="h-3.5 w-3.5 text-amber-500" />
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayerClick?.(assignedPlayer.contract.id);
+              }}
+              className="font-medium hover:text-primary hover:underline transition-colors"
+            >
+              {player.firstName.charAt(0)}. {player.lastName}
+            </button>
+            <span className="text-muted-foreground text-sm">
               {player.aflTeam?.abbreviation}
             </span>
           </div>
           <div className="flex gap-1">
             {player.positions.map((pos) => (
-              <Badge key={pos} variant="secondary" className="text-xs">
+              <span
+                key={pos}
+                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getPositionColorClasses(pos)}`}
+              >
                 {pos}
-              </Badge>
+              </span>
             ))}
           </div>
+          {/* Stats */}
+          {stats && (
+            <div className="flex gap-3 text-xs text-muted-foreground ml-2">
+              <span>
+                Avg: <span className="font-medium text-foreground">{stats.avgScore?.toFixed(1) ?? "-"}</span>
+              </span>
+              <span>
+                L5: <span className="font-medium text-foreground">{stats.last5Avg?.toFixed(1) ?? "-"}</span>
+              </span>
+              <span>
+                GP: <span className="font-medium text-foreground">{stats.gamesPlayed}</span>
+              </span>
+            </div>
+          )}
         </div>
         <Button
           variant="ghost"
@@ -131,7 +180,9 @@ export function RosterSlot({
       <DialogTrigger asChild>
         <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
           <div className="flex items-center gap-3">
-            <Badge variant="outline">{position}</Badge>
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${positionColors}`}>
+              {position}
+            </span>
             <span className="text-muted-foreground">Empty slot</span>
           </div>
           <span className="text-sm text-muted-foreground">
@@ -152,30 +203,41 @@ export function RosterSlot({
               No eligible players available for this position
             </p>
           ) : (
-            eligiblePlayers.map((contract) => (
-              <button
-                key={contract.id}
-                onClick={() => handleAssign(contract.id)}
-                disabled={loading}
-                className="w-full flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors text-left"
-              >
-                <div>
-                  <span className="font-medium">
-                    {contract.aflPlayer.firstName} {contract.aflPlayer.lastName}
-                  </span>
-                  <span className="text-muted-foreground ml-2 text-sm">
-                    {contract.aflPlayer.aflTeam?.abbreviation}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  {contract.aflPlayer.positions.map((pos) => (
-                    <Badge key={pos} variant="secondary" className="text-xs">
-                      {pos}
-                    </Badge>
-                  ))}
-                </div>
-              </button>
-            ))
+            eligiblePlayers.map((contract) => {
+              const stats = playerStats?.get(contract.id);
+              return (
+                <button
+                  key={contract.id}
+                  onClick={() => handleAssign(contract.id)}
+                  disabled={loading}
+                  className="w-full flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors text-left"
+                >
+                  <div>
+                    <span className="font-medium">
+                      {contract.aflPlayer.firstName.charAt(0)}. {contract.aflPlayer.lastName}
+                    </span>
+                    <span className="text-muted-foreground ml-2 text-sm">
+                      {contract.aflPlayer.aflTeam?.abbreviation}
+                    </span>
+                    {stats && (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        Avg: {stats.avgScore?.toFixed(1) ?? "-"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    {contract.aflPlayer.positions.map((pos) => (
+                      <span
+                        key={pos}
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getPositionColorClasses(pos)}`}
+                      >
+                        {pos}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </DialogContent>

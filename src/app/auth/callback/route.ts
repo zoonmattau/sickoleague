@@ -8,14 +8,17 @@ export async function GET(request: NextRequest) {
   const errorParam = searchParams.get("error_description") || searchParams.get("error");
   const next = searchParams.get("next") ?? "/dashboard";
 
+  console.log("[Auth Callback] Starting with code:", code ? "present" : "missing");
+
   if (errorParam) {
+    console.log("[Auth Callback] Error param:", errorParam);
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorParam)}`);
   }
 
   if (code) {
     try {
       const redirectUrl = `${origin}${next}`;
-      const response = NextResponse.redirect(redirectUrl);
+      let response = NextResponse.redirect(redirectUrl);
 
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,22 +30,34 @@ export async function GET(request: NextRequest) {
             },
             setAll(cookiesToSet) {
               cookiesToSet.forEach(({ name, value, options }) => {
-                request.cookies.set(name, value);
-                response.cookies.set(name, value, options);
+                console.log("[Auth Callback] Setting cookie:", name);
+                response.cookies.set(name, value, {
+                  ...options,
+                  // Ensure cookies work in production
+                  secure: process.env.NODE_ENV === "production",
+                  sameSite: "lax",
+                  path: "/",
+                });
               });
             },
           },
         }
       );
 
+      console.log("[Auth Callback] Exchanging code for session...");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
       if (error) {
+        console.log("[Auth Callback] Exchange error:", error.message);
         return NextResponse.redirect(
           `${origin}/login?error=${encodeURIComponent(error.message || "unknown")}`
         );
       }
 
-      // Force session persistence by calling setSession, which triggers setAll
+      console.log("[Auth Callback] Session obtained, user:", data.user?.email);
+
+      // The exchangeCodeForSession should have triggered setAll
+      // but let's also explicitly set the session to be sure
       if (data.session) {
         await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -50,12 +65,15 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      console.log("[Auth Callback] Redirecting to:", redirectUrl);
       return response;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "unexpected_exception";
+      console.log("[Auth Callback] Exception:", msg);
       return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(msg)}`);
     }
   }
 
+  console.log("[Auth Callback] No code provided");
   return NextResponse.redirect(`${origin}/login?error=no_code`);
 }
