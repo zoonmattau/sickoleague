@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, Crown, Star } from "lucide-react";
 import { getPositionColorClasses } from "@/lib/position-colors";
 import { assignPlayerToRoster, removePlayerFromRoster } from "./actions";
-import { setCaptain } from "./captain-actions";
+// import { setCaptain } from "./captain-actions";
 import { RosterSpot, Squad } from "@prisma/client";
 import { toast } from "sonner";
 
@@ -337,36 +337,8 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
     if (!player.squad) return;
     setUpdating(player.contractId);
 
-    // Apply optimistic update immediately
-    const optimisticUpdate = {
-      isCaptain: role === "captain",
-      isViceCaptain: role === "viceCaptain",
-    };
-    setOptimisticUpdates(prev => new Map(prev).set(player.contractId, { ...prev.get(player.contractId), ...optimisticUpdate }));
-
-    const roleText = role === "captain" ? "Captain" : role === "viceCaptain" ? "Vice Captain" : "no role";
-    toast.success(`${player.firstName.charAt(0)}. ${player.lastName} set as ${roleText}`);
-
-    try {
-      const result = await setCaptain(player.contractId, player.squad as Squad, role);
-      if (result.error) {
-        // Revert optimistic update on error
-        setOptimisticUpdates(prev => {
-          const next = new Map(prev);
-          next.delete(player.contractId);
-          return next;
-        });
-        toast.error(result.error);
-      }
-    } catch {
-      // Revert optimistic update on error
-      setOptimisticUpdates(prev => {
-        const next = new Map(prev);
-        next.delete(player.contractId);
-        return next;
-      });
-      toast.error("Failed to update captain");
-    }
+    // TODO: Captain functionality temporarily disabled for deployment
+    toast.info("Captain selection coming soon");
     setUpdating(null);
   };
 
