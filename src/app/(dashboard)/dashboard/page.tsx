@@ -134,7 +134,7 @@ export default async function DashboardPage() {
     playerStats = await getClubPlayerStats(club.id);
   }
 
-  // Find captains and vice-captains by matching IDs from club
+  // Find captains and vice-captains from roster player boolean flags
   type CaptainInfo = { name: string; contractId: string } | null;
   let seniorCaptain: CaptainInfo = null;
   let seniorVc: CaptainInfo = null;
@@ -142,20 +142,20 @@ export default async function DashboardPage() {
   let reservesVc: CaptainInfo = null;
 
   if (club) {
-    // Captain IDs are roster player IDs stored on the club
+    // Captain flags are boolean fields on RosterPlayer
     for (const rp of club.rosterPlayers) {
       const playerName = `${rp.contract.aflPlayer.firstName.charAt(0)}. ${rp.contract.aflPlayer.lastName}`;
 
-      if (club.seniorCaptainId === rp.id) {
+      if (rp.squad === "SENIORS" && rp.isCaptain) {
         seniorCaptain = { name: playerName, contractId: rp.contract.id };
       }
-      if (club.seniorVcId === rp.id) {
+      if (rp.squad === "SENIORS" && rp.isViceCaptain) {
         seniorVc = { name: playerName, contractId: rp.contract.id };
       }
-      if (club.reservesCaptainId === rp.id) {
+      if (rp.squad === "RESERVES" && rp.isCaptain) {
         reservesCaptain = { name: playerName, contractId: rp.contract.id };
       }
-      if (club.reservesVcId === rp.id) {
+      if (rp.squad === "RESERVES" && rp.isViceCaptain) {
         reservesVc = { name: playerName, contractId: rp.contract.id };
       }
     }
@@ -178,19 +178,31 @@ export default async function DashboardPage() {
     : [null, null, null];
 
   if (club) {
-    // Track the real DB values for the checklist
+    // Find captains from roster player boolean flags
+    let seniorCaptainRpId: string | null = null;
+    let seniorVcRpId: string | null = null;
+    let reservesCaptainRpId: string | null = null;
+    let reservesVcRpId: string | null = null;
+
+    for (const rp of club.rosterPlayers) {
+      if (rp.squad === "SENIORS" && rp.isCaptain) seniorCaptainRpId = rp.id;
+      if (rp.squad === "SENIORS" && rp.isViceCaptain) seniorVcRpId = rp.id;
+      if (rp.squad === "RESERVES" && rp.isCaptain) reservesCaptainRpId = rp.id;
+      if (rp.squad === "RESERVES" && rp.isViceCaptain) reservesVcRpId = rp.id;
+    }
+
     realCaptaincy = {
-      seniorCaptainId: club.seniorCaptainId,
-      seniorVcId: club.seniorVcId,
-      reservesCaptainId: club.reservesCaptainId,
-      reservesVcId: club.reservesVcId,
+      seniorCaptainId: seniorCaptainRpId,
+      seniorVcId: seniorVcRpId,
+      reservesCaptainId: reservesCaptainRpId,
+      reservesVcId: reservesVcRpId,
     };
 
     captaincy = {
-      seniorCaptainId: club.seniorCaptainId,
-      seniorVcId: club.seniorVcId,
-      reservesCaptainId: club.reservesCaptainId,
-      reservesVcId: club.reservesVcId,
+      seniorCaptainId: seniorCaptainRpId,
+      seniorVcId: seniorVcRpId,
+      reservesCaptainId: reservesCaptainRpId,
+      reservesVcId: reservesVcRpId,
     };
   }
 

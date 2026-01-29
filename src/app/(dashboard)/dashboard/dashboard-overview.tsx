@@ -74,14 +74,24 @@ export function DashboardOverview({
   const totalContracts = contracts.length;
   const salaryPercent = Math.min(100, (salaryUsed / salaryCap) * 100);
 
-  // Calculate position counts
-  const positionCounts = { DEF: 0, MID: 0, RUC: 0, FWD: 0 };
-  for (const contract of contracts) {
-    const primaryPos = contract.aflPlayer.positions[0];
-    if (primaryPos && positionCounts[primaryPos as keyof typeof positionCounts] !== undefined) {
-      positionCounts[primaryPos as keyof typeof positionCounts]++;
-    }
-  }
+  // Define lineup spots
+  const SENIORS_SPOTS = ["DEF1", "DEF2", "DEF3", "MID1", "MID2", "MID3", "MID4", "RUC", "FWD1", "FWD2", "FWD3"];
+  const RESERVES_SPOTS = ["RDEF1", "RDEF2", "RMID1", "RMID2", "RMID3", "RRUC", "RFWD1", "RFWD2"];
+
+  // Build a set of filled spots (as strings for comparison)
+  const filledSpots = new Set(rosterPlayers.map(rp => String(rp.rosterSpot)));
+
+  // Find empty spots
+  const emptySeniorsSpots = SENIORS_SPOTS.filter(s => !filledSpots.has(s));
+  const emptyReservesSpots = RESERVES_SPOTS.filter(s => !filledSpots.has(s));
+
+  // Format spot name for display (DEF1 -> DEF 1, RDEF1 -> DEF 1)
+  const formatSpot = (spot: string) => {
+    const clean = spot.replace(/^R/, ""); // Remove R prefix for reserves
+    const match = clean.match(/^([A-Z]+)(\d+)$/);
+    if (match) return `${match[1]}${match[2]}`;
+    return clean;
+  };
 
   // Calculate roster needs
   const minRoster = 19;
@@ -130,33 +140,50 @@ export function DashboardOverview({
         <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setRosterDialogOpen(true)}>
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-muted-foreground">Roster</span>
-              <Badge variant="outline" className="text-xs">19-21</Badge>
+              <span className="text-sm font-medium text-muted-foreground">Lineup</span>
+              <Badge variant="outline" className="text-xs">{totalContracts} players</Badge>
             </div>
-            <div className="text-2xl font-bold mb-2">
-              {totalContracts}
-              <span className="text-lg text-muted-foreground font-normal">/21</span>
-            </div>
-            {/* Position breakdown mini-bars */}
-            <div className="flex gap-1 mb-2">
-              <div className="flex-1 h-1.5 rounded bg-blue-500" style={{ flex: positionCounts.DEF }} title={`DEF: ${positionCounts.DEF}`} />
-              <div className="flex-1 h-1.5 rounded bg-green-500" style={{ flex: positionCounts.MID }} title={`MID: ${positionCounts.MID}`} />
-              <div className="flex-1 h-1.5 rounded bg-purple-500" style={{ flex: positionCounts.RUC }} title={`RUC: ${positionCounts.RUC}`} />
-              <div className="flex-1 h-1.5 rounded bg-red-500" style={{ flex: positionCounts.FWD }} title={`FWD: ${positionCounts.FWD}`} />
-            </div>
-            <div className="space-y-1">
-              {spotsNeeded > 0 ? (
-                <div className="text-xs text-red-500 font-medium">
-                  Need {spotsNeeded} more player{spotsNeeded > 1 ? "s" : ""}
+            {/* Seniors lineup */}
+            <div className="space-y-1.5 mb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-3 w-3 text-amber-500" />
+                <span className="text-xs font-medium">Seniors</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {SENIORS_SPOTS.length - emptySeniorsSpots.length}/{SENIORS_SPOTS.length}
+                </span>
+              </div>
+              {emptySeniorsSpots.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {emptySeniorsSpots.map(spot => (
+                    <span key={spot} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-medium">
+                      {formatSpot(spot)}
+                    </span>
+                  ))}
                 </div>
               ) : (
-                <div className="text-xs text-green-600 dark:text-green-400">
-                  {spotsAvailable} spot{spotsAvailable !== 1 ? "s" : ""} available
-                </div>
+                <span className="text-[10px] text-green-600 dark:text-green-400">Full</span>
               )}
-              <div className="text-xs text-muted-foreground">
-                {seniorsCount} sen / {reservesCount} res
+            </div>
+            {/* Reserves lineup */}
+            <div className="space-y-1.5 pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <Users className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium">Reserves</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {RESERVES_SPOTS.length - emptyReservesSpots.length}/{RESERVES_SPOTS.length}
+                </span>
               </div>
+              {emptyReservesSpots.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {emptyReservesSpots.map(spot => (
+                    <span key={spot} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-medium">
+                      {formatSpot(spot)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-[10px] text-green-600 dark:text-green-400">Full</span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -177,26 +204,22 @@ export function DashboardOverview({
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {record && record.seniors.played > 0 ? (
-                    <>
-                      <span className="text-lg font-bold text-green-600 dark:text-green-400">{record.seniors.wins}</span>
-                      <span className="text-muted-foreground">-</span>
-                      <span className="text-lg font-bold text-red-500">{record.seniors.losses}</span>
+                {record && record.seniors.played > 0 ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold">{record.seniors.wins * 4 + record.seniors.draws * 2}</span>
+                    <span className="text-xs text-muted-foreground">pts</span>
+                    <div className="flex items-center gap-1 text-xs ml-auto">
+                      <span className="text-green-600 dark:text-green-400 font-medium">{record.seniors.wins}W</span>
+                      <span className="text-red-500 font-medium">{record.seniors.losses}L</span>
                       {record.seniors.draws > 0 && (
-                        <>
-                          <span className="text-muted-foreground">-</span>
-                          <span className="text-lg font-bold text-yellow-500">{record.seniors.draws}</span>
-                        </>
+                        <span className="text-yellow-500 font-medium">{record.seniors.draws}D</span>
                       )}
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {record.seniors.percentage.toFixed(0)}%
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No games yet</span>
-                  )}
-                </div>
+                      <span className="text-muted-foreground">({record.seniors.percentage.toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No games yet</span>
+                )}
               </div>
               {/* Reserves */}
               <div className="space-y-1 pt-2 border-t">
@@ -209,26 +232,22 @@ export function DashboardOverview({
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {record && record.reserves.played > 0 ? (
-                    <>
-                      <span className="text-lg font-bold text-green-600 dark:text-green-400">{record.reserves.wins}</span>
-                      <span className="text-muted-foreground">-</span>
-                      <span className="text-lg font-bold text-red-500">{record.reserves.losses}</span>
+                {record && record.reserves.played > 0 ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold">{record.reserves.wins * 4 + record.reserves.draws * 2}</span>
+                    <span className="text-xs text-muted-foreground">pts</span>
+                    <div className="flex items-center gap-1 text-xs ml-auto">
+                      <span className="text-green-600 dark:text-green-400 font-medium">{record.reserves.wins}W</span>
+                      <span className="text-red-500 font-medium">{record.reserves.losses}L</span>
                       {record.reserves.draws > 0 && (
-                        <>
-                          <span className="text-muted-foreground">-</span>
-                          <span className="text-lg font-bold text-yellow-500">{record.reserves.draws}</span>
-                        </>
+                        <span className="text-yellow-500 font-medium">{record.reserves.draws}D</span>
                       )}
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {record.reserves.percentage.toFixed(0)}%
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No games yet</span>
-                  )}
-                </div>
+                      <span className="text-muted-foreground">({record.reserves.percentage.toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No games yet</span>
+                )}
               </div>
             </div>
           </CardContent>
