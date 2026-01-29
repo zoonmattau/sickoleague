@@ -225,6 +225,17 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
     if (squad !== "all") {
       if (squad === "unassigned") {
         filtered = filtered.filter((p) => !p.squad);
+      } else if (squad === "BENCH") {
+        filtered = filtered.filter((p) => p.rosterSpot?.startsWith("BENCH"));
+      } else if (squad === "IL") {
+        filtered = filtered.filter((p) => p.rosterSpot?.startsWith("IL"));
+      } else if (squad === "SENIORS") {
+        // Seniors = SENIORS squad but not on Bench or IL
+        filtered = filtered.filter((p) =>
+          p.squad === "SENIORS" &&
+          !p.rosterSpot?.startsWith("BENCH") &&
+          !p.rosterSpot?.startsWith("IL")
+        );
       } else {
         filtered = filtered.filter((p) => p.squad === squad);
       }
@@ -252,7 +263,7 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
       const bVal = b[sortKey] ?? 0;
       return sortDir === "asc" ? aVal - bVal : bVal - aVal;
     });
-  }, [players, search, position, squad, sortKey, sortDir]);
+  }, [playersWithOptimistic, search, position, squad, sortKey, sortDir]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -337,12 +348,43 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
     if (!player.squad) return;
     setUpdating(player.contractId);
 
-    // Apply optimistic update immediately
-    const optimisticUpdate = {
-      isCaptain: role === "captain",
-      isViceCaptain: role === "viceCaptain",
-    };
-    setOptimisticUpdates(prev => new Map(prev).set(player.contractId, { ...prev.get(player.contractId), ...optimisticUpdate }));
+    // Find current captain/VC in same squad to clear their status
+    const currentCaptain = role === "captain"
+      ? playersWithOptimistic.find(p => p.isCaptain && p.squad === player.squad && p.contractId !== player.contractId)
+      : null;
+    const currentVc = role === "viceCaptain"
+      ? playersWithOptimistic.find(p => p.isViceCaptain && p.squad === player.squad && p.contractId !== player.contractId)
+      : null;
+
+    // Apply optimistic updates immediately (for both new and previous captain/VC)
+    setOptimisticUpdates(prev => {
+      const next = new Map(prev);
+
+      // Update the player being clicked
+      next.set(player.contractId, {
+        ...prev.get(player.contractId),
+        isCaptain: role === "captain",
+        isViceCaptain: role === "viceCaptain",
+      });
+
+      // Clear previous captain if setting new one
+      if (currentCaptain) {
+        next.set(currentCaptain.contractId, {
+          ...prev.get(currentCaptain.contractId),
+          isCaptain: false,
+        });
+      }
+
+      // Clear previous VC if setting new one
+      if (currentVc) {
+        next.set(currentVc.contractId, {
+          ...prev.get(currentVc.contractId),
+          isViceCaptain: false,
+        });
+      }
+
+      return next;
+    });
 
     const roleText = role === "captain" ? "Captain" : role === "viceCaptain" ? "Vice Captain" : "no role";
     toast.success(`${player.firstName.charAt(0)}. ${player.lastName} set as ${roleText}`);
@@ -354,19 +396,23 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
         role
       );
       if (result.error) {
-        // Revert optimistic update on error
+        // Revert optimistic updates on error
         setOptimisticUpdates(prev => {
           const next = new Map(prev);
           next.delete(player.contractId);
+          if (currentCaptain) next.delete(currentCaptain.contractId);
+          if (currentVc) next.delete(currentVc.contractId);
           return next;
         });
         toast.error(result.error);
       }
     } catch {
-      // Revert optimistic update on error
+      // Revert optimistic updates on error
       setOptimisticUpdates(prev => {
         const next = new Map(prev);
         next.delete(player.contractId);
+        if (currentCaptain) next.delete(currentCaptain.contractId);
+        if (currentVc) next.delete(currentVc.contractId);
         return next;
       });
       toast.error("Failed to update captain");
@@ -417,6 +463,8 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
             <SelectItem value="all">All Squads</SelectItem>
             <SelectItem value="SENIORS">Seniors</SelectItem>
             <SelectItem value="RESERVES">Reserves</SelectItem>
+            <SelectItem value="BENCH">Bench</SelectItem>
+            <SelectItem value="IL">Injury List</SelectItem>
             <SelectItem value="unassigned">Unassigned</SelectItem>
           </SelectContent>
         </Select>
