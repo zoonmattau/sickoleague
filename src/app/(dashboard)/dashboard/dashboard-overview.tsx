@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ClickableStatCard } from "./stat-card";
 import { SalaryDetailDialog } from "./dialogs/salary-detail-dialog";
 import { RosterDetailDialog } from "./dialogs/roster-detail-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Minus, Trophy, Users } from "lucide-react";
+import { Trophy, Users } from "lucide-react";
 import type { SerializedContract, SerializedRosterPlayer } from "./types";
 
 type RecordSummary = {
@@ -75,6 +74,15 @@ export function DashboardOverview({
   const totalContracts = contracts.length;
   const salaryPercent = Math.min(100, (salaryUsed / salaryCap) * 100);
 
+  // Calculate position counts
+  const positionCounts = { DEF: 0, MID: 0, RUC: 0, FWD: 0 };
+  for (const contract of contracts) {
+    const primaryPos = contract.aflPlayer.positions[0];
+    if (primaryPos && positionCounts[primaryPos as keyof typeof positionCounts] !== undefined) {
+      positionCounts[primaryPos as keyof typeof positionCounts]++;
+    }
+  }
+
   // Calculate roster needs
   const minRoster = 19;
   const maxRoster = 21;
@@ -128,6 +136,13 @@ export function DashboardOverview({
             <div className="text-2xl font-bold mb-2">
               {totalContracts}
               <span className="text-lg text-muted-foreground font-normal">/21</span>
+            </div>
+            {/* Position breakdown mini-bars */}
+            <div className="flex gap-1 mb-2">
+              <div className="flex-1 h-1.5 rounded bg-blue-500" style={{ flex: positionCounts.DEF }} title={`DEF: ${positionCounts.DEF}`} />
+              <div className="flex-1 h-1.5 rounded bg-green-500" style={{ flex: positionCounts.MID }} title={`MID: ${positionCounts.MID}`} />
+              <div className="flex-1 h-1.5 rounded bg-purple-500" style={{ flex: positionCounts.RUC }} title={`RUC: ${positionCounts.RUC}`} />
+              <div className="flex-1 h-1.5 rounded bg-red-500" style={{ flex: positionCounts.FWD }} title={`FWD: ${positionCounts.FWD}`} />
             </div>
             <div className="space-y-1">
               {spotsNeeded > 0 ? (

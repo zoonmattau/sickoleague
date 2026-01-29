@@ -134,7 +134,7 @@ export default async function DashboardPage() {
     playerStats = await getClubPlayerStats(club.id);
   }
 
-  // Find captains and vice-captains
+  // Find captains and vice-captains by matching IDs from club
   type CaptainInfo = { name: string; contractId: string } | null;
   let seniorCaptain: CaptainInfo = null;
   let seniorVc: CaptainInfo = null;
@@ -142,21 +142,21 @@ export default async function DashboardPage() {
   let reservesVc: CaptainInfo = null;
 
   if (club) {
+    // Captain IDs are roster player IDs stored on the club
     for (const rp of club.rosterPlayers) {
-      const rpAny = rp as { isCaptain?: boolean; isViceCaptain?: boolean; squad: string; contract: { aflPlayer: { firstName: string; lastName: string }; id: string } };
-      const playerName = `${rpAny.contract.aflPlayer.firstName.charAt(0)}. ${rpAny.contract.aflPlayer.lastName}`;
+      const playerName = `${rp.contract.aflPlayer.firstName.charAt(0)}. ${rp.contract.aflPlayer.lastName}`;
 
-      if (rpAny.isCaptain && rpAny.squad === "SENIORS") {
-        seniorCaptain = { name: playerName, contractId: rpAny.contract.id };
+      if (club.seniorCaptainId === rp.id) {
+        seniorCaptain = { name: playerName, contractId: rp.contract.id };
       }
-      if (rpAny.isViceCaptain && rpAny.squad === "SENIORS") {
-        seniorVc = { name: playerName, contractId: rpAny.contract.id };
+      if (club.seniorVcId === rp.id) {
+        seniorVc = { name: playerName, contractId: rp.contract.id };
       }
-      if (rpAny.isCaptain && rpAny.squad === "RESERVES") {
-        reservesCaptain = { name: playerName, contractId: rpAny.contract.id };
+      if (club.reservesCaptainId === rp.id) {
+        reservesCaptain = { name: playerName, contractId: rp.contract.id };
       }
-      if (rpAny.isViceCaptain && rpAny.squad === "RESERVES") {
-        reservesVc = { name: playerName, contractId: rpAny.contract.id };
+      if (club.reservesVcId === rp.id) {
+        reservesVc = { name: playerName, contractId: rp.contract.id };
       }
     }
   }

@@ -19,6 +19,14 @@ type Props = {
   reservesCount: number;
 };
 
+// Position color mapping
+const positionColors: Record<string, { bg: string; text: string; border: string }> = {
+  DEF: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/30" },
+  MID: { bg: "bg-green-500/20", text: "text-green-600 dark:text-green-400", border: "border-green-500/30" },
+  RUC: { bg: "bg-purple-500/20", text: "text-purple-600 dark:text-purple-400", border: "border-purple-500/30" },
+  FWD: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400", border: "border-red-500/30" },
+};
+
 export function RosterDetailDialog({
   open,
   onOpenChange,
@@ -30,6 +38,8 @@ export function RosterDetailDialog({
   const totalContracts = contracts.length;
   const maxRoster = 21;
   const minRoster = 19;
+  const benchCount = rosterPlayers.filter(rp => rp.rosterSpot.startsWith("BENCH")).length;
+  const ilCount = rosterPlayers.filter(rp => rp.rosterSpot.startsWith("IL")).length;
 
   // Group players by position
   const groupedByPosition: Record<string, SerializedContract[]> = {
@@ -44,7 +54,6 @@ export function RosterDetailDialog({
     if (primaryPosition && groupedByPosition[primaryPosition]) {
       groupedByPosition[primaryPosition].push(contract);
     } else if (contract.aflPlayer.positions.length > 0) {
-      // Use first position if primary not in standard groups
       const firstPos = contract.aflPlayer.positions.find(p => groupedByPosition[p]);
       if (firstPos) {
         groupedByPosition[firstPos].push(contract);
@@ -65,18 +74,26 @@ export function RosterDetailDialog({
 
         <div className="space-y-6">
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <div className="text-2xl font-bold">{totalContracts}</div>
-              <div className="text-sm text-muted-foreground">Total Players</div>
+          <div className="grid grid-cols-5 gap-3">
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <div className="text-xl font-bold">{totalContracts}</div>
+              <div className="text-xs text-muted-foreground">Total</div>
             </div>
-            <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <div className="text-2xl font-bold">{seniorsCount}</div>
-              <div className="text-sm text-muted-foreground">In Seniors</div>
+            <div className="p-3 rounded-lg bg-amber-500/10 text-center border border-amber-500/20">
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400">{seniorsCount}</div>
+              <div className="text-xs text-muted-foreground">Seniors</div>
             </div>
-            <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <div className="text-2xl font-bold">{reservesCount}</div>
-              <div className="text-sm text-muted-foreground">In Reserves</div>
+            <div className="p-3 rounded-lg bg-slate-500/10 text-center border border-slate-500/20">
+              <div className="text-xl font-bold">{reservesCount}</div>
+              <div className="text-xs text-muted-foreground">Reserves</div>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <div className="text-xl font-bold">{benchCount}</div>
+              <div className="text-xs text-muted-foreground">Bench</div>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <div className="text-xl font-bold">{ilCount}</div>
+              <div className="text-xs text-muted-foreground">IL</div>
             </div>
           </div>
 
@@ -104,38 +121,43 @@ export function RosterDetailDialog({
             </div>
           </div>
 
-          {/* Players by Position */}
+          {/* Players by Position - Color Coded */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold">Players by Position</h3>
             <div className="grid grid-cols-2 gap-4">
-              {Object.entries(groupedByPosition).map(([position, players]) => (
-                <div key={position} className="p-3 rounded-lg border">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline">{position}</Badge>
-                    <span className="text-sm font-medium">{players.length}</span>
+              {Object.entries(groupedByPosition).map(([position, players]) => {
+                const colors = positionColors[position] || positionColors.MID;
+                return (
+                  <div key={position} className={`p-3 rounded-lg border ${colors.bg} ${colors.border}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge className={`${colors.bg} ${colors.text} border-0`}>
+                        {position}
+                      </Badge>
+                      <span className={`text-sm font-bold ${colors.text}`}>{players.length}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {players.slice(0, 6).map((contract) => (
+                        <div key={contract.id} className="text-sm flex items-center justify-between">
+                          <span className="truncate font-medium">
+                            {contract.aflPlayer.lastName}, {contract.aflPlayer.firstName.charAt(0)}.
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {contract.aflPlayer.aflTeam?.abbreviation || "-"}
+                          </span>
+                        </div>
+                      ))}
+                      {players.length > 6 && (
+                        <div className="text-xs text-muted-foreground pt-1">
+                          +{players.length - 6} more
+                        </div>
+                      )}
+                      {players.length === 0 && (
+                        <div className="text-xs text-muted-foreground italic">None</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    {players.slice(0, 5).map((contract) => (
-                      <div key={contract.id} className="text-sm flex items-center justify-between">
-                        <span className="truncate">
-                          {contract.aflPlayer.lastName}, {contract.aflPlayer.firstName.charAt(0)}.
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {contract.aflPlayer.aflTeam?.abbreviation || "-"}
-                        </span>
-                      </div>
-                    ))}
-                    {players.length > 5 && (
-                      <div className="text-xs text-muted-foreground">
-                        +{players.length - 5} more
-                      </div>
-                    )}
-                    {players.length === 0 && (
-                      <div className="text-xs text-muted-foreground italic">None</div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -145,19 +167,30 @@ export function RosterDetailDialog({
             <div className="flex flex-wrap gap-2">
               {contracts
                 .filter(c => c.aflPlayer.positions.length > 1)
-                .map((contract) => (
-                  <div
-                    key={contract.id}
-                    className="px-3 py-1.5 rounded-lg border bg-muted/30 text-sm"
-                  >
-                    <span className="font-medium">
-                      {contract.aflPlayer.lastName}, {contract.aflPlayer.firstName.charAt(0)}.
-                    </span>
-                    <span className="text-muted-foreground ml-2">
-                      ({contract.aflPlayer.positions.join("/")})
-                    </span>
-                  </div>
-                ))}
+                .map((contract) => {
+                  const pos1 = contract.aflPlayer.positions[0];
+                  const pos2 = contract.aflPlayer.positions[1];
+                  const colors1 = positionColors[pos1] || positionColors.MID;
+                  const colors2 = positionColors[pos2] || positionColors.MID;
+                  return (
+                    <div
+                      key={contract.id}
+                      className="px-3 py-1.5 rounded-lg border bg-muted/30 text-sm flex items-center gap-2"
+                    >
+                      <span className="font-medium">
+                        {contract.aflPlayer.lastName}, {contract.aflPlayer.firstName.charAt(0)}.
+                      </span>
+                      <div className="flex gap-0.5">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${colors1.bg} ${colors1.text}`}>
+                          {pos1}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${colors2.bg} ${colors2.text}`}>
+                          {pos2}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               {contracts.filter(c => c.aflPlayer.positions.length > 1).length === 0 && (
                 <span className="text-sm text-muted-foreground italic">No dual position players</span>
               )}
@@ -169,22 +202,26 @@ export function RosterDetailDialog({
             <div>
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 Unassigned Players
-                <Badge variant="secondary" className="text-xs">{unassignedContracts.length}</Badge>
+                <Badge variant="destructive" className="text-xs">{unassignedContracts.length}</Badge>
               </h3>
               <div className="flex flex-wrap gap-2">
-                {unassignedContracts.map((contract) => (
-                  <div
-                    key={contract.id}
-                    className="px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm"
-                  >
-                    <span className="font-medium">
-                      {contract.aflPlayer.lastName}, {contract.aflPlayer.firstName.charAt(0)}.
-                    </span>
-                    <span className="text-muted-foreground ml-2">
-                      ({contract.aflPlayer.positions.join("/")})
-                    </span>
-                  </div>
-                ))}
+                {unassignedContracts.map((contract) => {
+                  const pos = contract.aflPlayer.positions[0];
+                  const colors = positionColors[pos] || positionColors.MID;
+                  return (
+                    <div
+                      key={contract.id}
+                      className="px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-sm flex items-center gap-2"
+                    >
+                      <span className="font-medium">
+                        {contract.aflPlayer.lastName}, {contract.aflPlayer.firstName.charAt(0)}.
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${colors.bg} ${colors.text}`}>
+                        {contract.aflPlayer.positions.join("/")}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
