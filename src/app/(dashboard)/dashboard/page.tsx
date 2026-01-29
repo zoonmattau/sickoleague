@@ -134,6 +134,40 @@ export default async function DashboardPage() {
     playerStats = await getClubPlayerStats(club.id);
   }
 
+  // Find captains and vice-captains
+  type CaptainInfo = { name: string; contractId: string } | null;
+  let seniorCaptain: CaptainInfo = null;
+  let seniorVc: CaptainInfo = null;
+  let reservesCaptain: CaptainInfo = null;
+  let reservesVc: CaptainInfo = null;
+
+  if (club) {
+    for (const rp of club.rosterPlayers) {
+      const rpAny = rp as { isCaptain?: boolean; isViceCaptain?: boolean; squad: string; contract: { aflPlayer: { firstName: string; lastName: string }; id: string } };
+      const playerName = `${rpAny.contract.aflPlayer.firstName.charAt(0)}. ${rpAny.contract.aflPlayer.lastName}`;
+
+      if (rpAny.isCaptain && rpAny.squad === "SENIORS") {
+        seniorCaptain = { name: playerName, contractId: rpAny.contract.id };
+      }
+      if (rpAny.isViceCaptain && rpAny.squad === "SENIORS") {
+        seniorVc = { name: playerName, contractId: rpAny.contract.id };
+      }
+      if (rpAny.isCaptain && rpAny.squad === "RESERVES") {
+        reservesCaptain = { name: playerName, contractId: rpAny.contract.id };
+      }
+      if (rpAny.isViceCaptain && rpAny.squad === "RESERVES") {
+        reservesVc = { name: playerName, contractId: rpAny.contract.id };
+      }
+    }
+  }
+
+  const captainDisplay = {
+    seniorCaptain,
+    seniorVc,
+    reservesCaptain,
+    reservesVc,
+  };
+
   // Fetch record, form, and upcoming match data
   const [record, form, upcomingMatch] = club
     ? await Promise.all([
@@ -182,6 +216,7 @@ export default async function DashboardPage() {
           record={record}
           form={form}
           upcomingMatch={upcomingMatch}
+          captains={captainDisplay}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

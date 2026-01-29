@@ -24,6 +24,15 @@ type UpcomingMatch = {
   opponent: { abbreviation: string; primaryColor: string | null; secondaryColor: string | null };
 } | null;
 
+type CaptainInfo = { name: string; contractId: string } | null;
+
+type CaptainDisplay = {
+  seniorCaptain: CaptainInfo;
+  seniorVc: CaptainInfo;
+  reservesCaptain: CaptainInfo;
+  reservesVc: CaptainInfo;
+};
+
 type DashboardOverviewProps = {
   clubId: string;
   contracts: SerializedContract[];
@@ -35,6 +44,7 @@ type DashboardOverviewProps = {
   record: RecordSummary;
   form: FormSummary;
   upcomingMatch: UpcomingMatch;
+  captains: CaptainDisplay;
 };
 
 export function DashboardOverview({
@@ -48,6 +58,7 @@ export function DashboardOverview({
   record,
   form,
   upcomingMatch,
+  captains,
 }: DashboardOverviewProps) {
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
   const [rosterDialogOpen, setRosterDialogOpen] = useState(false);
@@ -68,7 +79,7 @@ export function DashboardOverview({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <ClickableStatCard
           title="Salary Cap"
           badge="$750k"
@@ -111,6 +122,49 @@ export function DashboardOverview({
                     {record.reserves.percentage.toFixed(0)}%
                   </span>
                 )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Captains Card */}
+        <Card className="cursor-default">
+          <CardContent className="pt-4 pb-3">
+            <div className="text-sm font-medium text-muted-foreground mb-2">Captains</div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Seniors</span>
+                <div className="text-right">
+                  {captains.seniorCaptain ? (
+                    <span className="text-sm">
+                      <span className="font-bold text-amber-600">C</span> {captains.seniorCaptain.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">--</span>
+                  )}
+                  {captains.seniorVc && (
+                    <span className="text-sm ml-2">
+                      <span className="font-bold text-amber-500">VC</span> {captains.seniorVc.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Reserves</span>
+                <div className="text-right">
+                  {captains.reservesCaptain ? (
+                    <span className="text-sm">
+                      <span className="font-bold text-amber-600">C</span> {captains.reservesCaptain.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">--</span>
+                  )}
+                  {captains.reservesVc && (
+                    <span className="text-sm ml-2">
+                      <span className="font-bold text-amber-500">VC</span> {captains.reservesVc.name}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
