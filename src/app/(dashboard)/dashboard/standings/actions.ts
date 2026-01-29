@@ -20,7 +20,7 @@ export async function getClubRecord(clubId: string) {
   const allStandings = await prisma.standing.findMany({
     where: { seasonId: currentSeason.id },
     orderBy: [
-      { points: "desc" },
+      { wins: "desc" },
       { percentage: "desc" },
     ],
   });
