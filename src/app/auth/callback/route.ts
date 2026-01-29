@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -62,6 +63,35 @@ export async function GET(request: NextRequest) {
         await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
+        });
+      }
+
+      // Create or update Coach record for the user
+      if (data.user) {
+        const discordId = data.user.user_metadata?.provider_id || data.user.id;
+        const displayName = data.user.user_metadata?.full_name ||
+                           data.user.user_metadata?.name ||
+                           data.user.user_metadata?.preferred_username ||
+                           data.user.email?.split("@")[0] ||
+                           "Unknown";
+        const avatarUrl = data.user.user_metadata?.avatar_url || null;
+        const email = data.user.email || "";
+
+        console.log("[Auth Callback] Creating/updating coach:", displayName);
+
+        await prisma.coach.upsert({
+          where: { discordId },
+          create: {
+            discordId,
+            displayName,
+            email,
+            avatarUrl,
+          },
+          update: {
+            displayName,
+            email,
+            avatarUrl,
+          },
         });
       }
 
