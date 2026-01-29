@@ -9,7 +9,6 @@ import { DraggablePlayer } from "./draggable-player";
 import { DroppableSlot } from "./droppable-slot";
 import { PlayerDetailPanel } from "../player-detail-panel";
 import { assignPlayerToRoster, removePlayerFromRoster } from "../roster/actions";
-import { POSITION_COLORS } from "@/lib/position-colors";
 import { Shield, Users, Target, CircleDot, Armchair, Cross } from "lucide-react";
 import type {
   SerializedContract,
@@ -289,44 +288,33 @@ export function DraggableLineup({
 
           {groups.map((group) => {
             const config = GROUP_CONFIG[group.name];
-            const posColors = config ? POSITION_COLORS[config.position] : null;
             const Icon = config?.icon;
 
             return (
               <div key={group.name} className="border-b last:border-b-0">
                 {/* Position group header */}
-                <div className="grid grid-cols-2">
-                  <div
-                    className={`flex items-center gap-2 px-3 py-2 border-l-4 ${posColors?.solid || 'border-primary'}`}
-                    style={{ borderLeftColor: undefined }}
-                  >
-                    <div className={`flex items-center gap-2 ${posColors?.solid || 'bg-primary'} px-2 py-0.5 rounded`}>
-                      {Icon && <Icon className="h-3 w-3 text-white" />}
-                      <span className="text-[10px] font-black uppercase tracking-wider text-white">
-                        {group.name}
-                      </span>
-                    </div>
+                <div className="grid grid-cols-2 bg-muted/40">
+                  <div className="flex items-center gap-2 px-3 py-1.5">
+                    {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {group.name}
+                    </span>
                   </div>
-                  <div
-                    className={`flex items-center gap-2 px-3 py-2 border-l border-l-4 ${posColors?.solid || 'border-primary'}`}
-                    style={{ borderLeftColor: undefined }}
-                  >
-                    <div className={`flex items-center gap-2 ${posColors?.solid || 'bg-primary'} px-2 py-0.5 rounded`}>
-                      {Icon && <Icon className="h-3 w-3 text-white" />}
-                      <span className="text-[10px] font-black uppercase tracking-wider text-white">
-                        {group.name}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-l">
+                    {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {group.name}
+                    </span>
                   </div>
                 </div>
                 {/* Position slots */}
                 <div>
                   {group.rows.map((row, i) => (
-                    <div key={i} className="grid grid-cols-2 border-t border-dashed border-muted">
-                      <div className={`border-l-4 ${posColors?.solid || 'border-primary'}`}>
+                    <div key={i} className="grid grid-cols-2 border-t border-muted/50">
+                      <div>
                         {renderSlot(row.senior, "SENIORS")}
                       </div>
-                      <div className={`border-l border-l-4 ${posColors?.solid || 'border-primary'}`}>
+                      <div className="border-l">
                         {renderSlot(row.reserve, "RESERVES")}
                       </div>
                     </div>
@@ -342,24 +330,15 @@ export function DraggableLineup({
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="overflow-hidden border-0 shadow-lg">
           <CardHeader className="pb-0 pt-0 px-0">
-            <div className="flex items-center gap-2 px-4 py-3 bg-slate-600 border-b-4 border-slate-700">
-              <Armchair className="h-4 w-4 text-white" />
-              <CardTitle className="text-sm font-black tracking-tight uppercase text-white">Bench</CardTitle>
+            <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b">
+              <Armchair className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground">Bench</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b">
-              <span className="w-6 text-center"></span>
-              <span className="flex-1">Player</span>
-              <span className="w-10 text-center hidden md:inline">Team</span>
-              <span className="w-14 text-center">Pos</span>
-              <span className="w-10 text-right font-black">AVG</span>
-              <span className="w-10 text-right hidden md:inline">L5</span>
-              <span className="w-14 text-right hidden lg:inline">Salary</span>
-            </div>
             <div>
               {BENCH_SPOTS.map((spotConfig, i) => (
-                <div key={spotConfig.spot} className={`border-l-4 border-slate-500 ${i > 0 ? 'border-t border-dashed border-muted' : ''}`}>
+                <div key={spotConfig.spot} className={i > 0 ? 'border-t border-muted/50' : ''}>
                   <DroppableSlot
                     spot={spotConfig.spot}
                     label={spotConfig.label}
@@ -385,24 +364,15 @@ export function DraggableLineup({
 
         <Card className="overflow-hidden border-0 shadow-lg">
           <CardHeader className="pb-0 pt-0 px-0">
-            <div className="flex items-center gap-2 px-4 py-3 bg-rose-600 border-b-4 border-rose-700">
-              <Cross className="h-4 w-4 text-white" />
-              <CardTitle className="text-sm font-black tracking-tight uppercase text-white">Injury List</CardTitle>
+            <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b">
+              <Cross className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground">Injury List</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b">
-              <span className="w-6 text-center"></span>
-              <span className="flex-1">Player</span>
-              <span className="w-10 text-center hidden md:inline">Team</span>
-              <span className="w-14 text-center">Pos</span>
-              <span className="w-10 text-right font-black">AVG</span>
-              <span className="w-10 text-right hidden md:inline">L5</span>
-              <span className="w-14 text-right hidden lg:inline">Salary</span>
-            </div>
             <div>
               {IL_SPOTS.map((spotConfig, i) => (
-                <div key={spotConfig.spot} className={`border-l-4 border-rose-500 ${i > 0 ? 'border-t border-dashed border-muted' : ''}`}>
+                <div key={spotConfig.spot} className={i > 0 ? 'border-t border-muted/50' : ''}>
                   <DroppableSlot
                     spot={spotConfig.spot}
                     label={spotConfig.label}
@@ -431,31 +401,22 @@ export function DraggableLineup({
       {unassignedContracts.length > 0 && (
         <Card className="overflow-hidden border-0 shadow-lg">
           <CardHeader className="pb-0 pt-0 px-0">
-            <div className="flex items-center justify-between px-4 py-3 bg-amber-600 border-b-4 border-amber-700">
+            <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b">
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-white" />
-                <CardTitle className="text-sm font-black tracking-tight uppercase text-white">Unassigned Players</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground">Unassigned Players</CardTitle>
               </div>
-              <Badge className="bg-white/20 text-white border-0 font-black">
+              <Badge variant="secondary" className="font-bold">
                 {unassignedContracts.length}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b">
-              <span className="w-6 text-center"></span>
-              <span className="flex-1">Player</span>
-              <span className="w-10 text-center hidden md:inline">Team</span>
-              <span className="w-14 text-center">Pos</span>
-              <span className="w-10 text-right font-black">AVG</span>
-              <span className="w-10 text-right hidden md:inline">L5</span>
-              <span className="w-14 text-right hidden lg:inline">Salary</span>
-            </div>
             <div>
               {unassignedContracts.map((contract, i) => (
                 <div
                   key={contract.id}
-                  className={`border-l-4 border-amber-500 ${i > 0 ? 'border-t border-dashed border-muted' : ''}`}
+                  className={i > 0 ? 'border-t border-muted/50' : ''}
                   onClick={() => handlePlayerClick(contract)}
                 >
                   <DraggablePlayer

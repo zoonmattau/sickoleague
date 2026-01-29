@@ -43,34 +43,34 @@ export default function RosterLoading() {
           {["DEF", "MID", "RUC", "FWD"].map((pos, groupIdx) => (
             <div key={pos} className="border-b last:border-b-0">
               {/* Group Header */}
-              <div className="grid grid-cols-2">
-                <div className="flex items-center gap-2 px-3 py-2 border-l-4 border-muted">
-                  <Skeleton className="h-5 w-24 rounded" />
+              <div className="grid grid-cols-2 bg-muted/40">
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <Skeleton className="h-4 w-24" />
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2 border-l border-l-4 border-muted">
-                  <Skeleton className="h-5 w-24 rounded" />
+                <div className="flex items-center gap-2 px-3 py-1.5 border-l">
+                  <Skeleton className="h-4 w-24" />
                 </div>
               </div>
               {/* Slots */}
               {[...Array(pos === "RUC" ? 1 : pos === "MID" ? 4 : 3)].map((_, i) => (
-                <div key={i} className="grid grid-cols-2 border-t border-dashed border-muted">
-                  <div className="border-l-4 border-muted px-3 py-2">
+                <div key={i} className="grid grid-cols-2 border-t border-muted/50">
+                  <div className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-5 w-5 rounded-full" />
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="h-4 w-10 ml-auto hidden md:block" />
                       <Skeleton className="h-4 w-12" />
-                      <Skeleton className="h-4 w-8 font-black" />
+                      <Skeleton className="h-4 w-8" />
                     </div>
                   </div>
-                  <div className="border-l border-l-4 border-muted px-3 py-2">
+                  <div className="px-3 py-2 border-l">
                     {i < (pos === "RUC" ? 1 : pos === "MID" ? 3 : 2) ? (
                       <div className="flex items-center gap-2">
                         <Skeleton className="h-5 w-5 rounded-full" />
                         <Skeleton className="h-4 w-32" />
                         <Skeleton className="h-4 w-10 ml-auto hidden md:block" />
                         <Skeleton className="h-4 w-12" />
-                        <Skeleton className="h-4 w-8 font-black" />
+                        <Skeleton className="h-4 w-8" />
                       </div>
                     ) : (
                       <div className="h-8" />
@@ -87,13 +87,13 @@ export default function RosterLoading() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="overflow-hidden border-0 shadow-lg">
           <CardHeader className="pb-0 pt-0 px-0">
-            <div className="px-4 py-3 bg-slate-600">
-              <Skeleton className="h-5 w-20 bg-white/20" />
+            <div className="px-4 py-2 bg-muted/40 border-b">
+              <Skeleton className="h-5 w-20" />
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className={`border-l-4 border-slate-500 px-3 py-2 ${i > 0 ? 'border-t border-dashed' : ''}`}>
+              <div key={i} className={`px-3 py-2 ${i > 0 ? 'border-t border-muted/50' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-5 w-5 rounded-full" />
                   <Skeleton className="h-4 w-32" />
@@ -107,13 +107,13 @@ export default function RosterLoading() {
 
         <Card className="overflow-hidden border-0 shadow-lg">
           <CardHeader className="pb-0 pt-0 px-0">
-            <div className="px-4 py-3 bg-rose-600">
-              <Skeleton className="h-5 w-24 bg-white/20" />
+            <div className="px-4 py-2 bg-muted/40 border-b">
+              <Skeleton className="h-5 w-24" />
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className={`border-l-4 border-rose-500 px-3 py-2 ${i > 0 ? 'border-t border-dashed' : ''}`}>
+              <div key={i} className={`px-3 py-2 ${i > 0 ? 'border-t border-muted/50' : ''}`}>
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-5 w-5 rounded-full" />
                   <Skeleton className="h-4 w-32" />
