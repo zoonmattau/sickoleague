@@ -173,30 +173,51 @@ export default async function HomePage({
 
       <main className="container mx-auto px-4 py-8">
         {/* Hero Section */}
-        <div className="text-center max-w-4xl mx-auto mb-12">
+        <div className="text-center max-w-4xl mx-auto mb-8">
           <Badge variant="secondary" className="mb-4">
             {season ? `Season ${season.year}` : "New Season Coming"}
           </Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-            AFL Fantasy. Evolved.
+          <h2 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            Be a Real Coach
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Salary caps. Real trades. Complete control.
+          <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto">
+            Not just a fantasy team. A full club to manage.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
-              <Button size="lg" className="text-lg px-8 gap-2">
-                <Trophy className="h-5 w-5" />
-                Enter the League
-              </Button>
-            </Link>
-            <Link href="https://discord.gg/jQ65xTRcRb" target="_blank">
-              <Button size="lg" variant="outline" className="text-lg px-8 gap-2">
-                <Users className="h-5 w-5" />
-                Join Discord
-              </Button>
-            </Link>
+        </div>
+
+        {/* Key Features - Immediate Impact */}
+        <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
+          <div className="bg-gradient-to-br from-green-500/20 to-green-500/5 border border-green-500/30 rounded-xl p-5 text-center">
+            <DollarSign className="h-8 w-8 text-green-500 mx-auto mb-2" />
+            <div className="font-bold text-lg">750k Salary Cap</div>
+            <p className="text-sm text-muted-foreground">Sign multi-year contracts. Manage your cap. Build dynasties.</p>
           </div>
+          <div className="bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/30 rounded-xl p-5 text-center">
+            <ArrowRightLeft className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+            <div className="font-bold text-lg">Real Trading</div>
+            <p className="text-sm text-muted-foreground">Trade players, draft picks, salary & staff with any club.</p>
+          </div>
+          <div className="bg-gradient-to-br from-purple-500/20 to-purple-500/5 border border-purple-500/30 rounded-xl p-5 text-center">
+            <Users className="h-8 w-8 text-purple-500 mx-auto mb-2" />
+            <div className="font-bold text-lg">Two Squads</div>
+            <p className="text-sm text-muted-foreground">Run Seniors & Reserves. Develop depth. Win on two fronts.</p>
+          </div>
+        </div>
+
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          <Link href="/login">
+            <Button size="lg" className="text-lg px-8 gap-2">
+              <Trophy className="h-5 w-5" />
+              Enter the League
+            </Button>
+          </Link>
+          <Link href="https://discord.gg/jQ65xTRcRb" target="_blank">
+            <Button size="lg" variant="outline" className="text-lg px-8 gap-2">
+              <Users className="h-5 w-5" />
+              Join Discord
+            </Button>
+          </Link>
         </div>
 
         {/* Main Tabs */}
@@ -246,34 +267,6 @@ export default async function HomePage({
                 </CardContent>
               </Card>
             )}
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="text-center">
-                <CardContent className="pt-6">
-                  <div className="text-3xl font-bold text-primary">{totalClubs}</div>
-                  <p className="text-sm text-muted-foreground">Clubs</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardContent className="pt-6">
-                  <div className="text-3xl font-bold text-primary">750</div>
-                  <p className="text-sm text-muted-foreground">Salary Cap</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardContent className="pt-6">
-                  <div className="text-3xl font-bold text-primary">19-23</div>
-                  <p className="text-sm text-muted-foreground">List Size</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardContent className="pt-6">
-                  <div className="text-3xl font-bold text-primary">10</div>
-                  <p className="text-sm text-muted-foreground">Draft Rounds</p>
-                </CardContent>
-              </Card>
-            </div>
 
             {/* Features Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
