@@ -596,3 +596,28 @@ export async function getMyBoardMeetings() {
 
   return meetings;
 }
+
+// Cancel a pending board meeting
+export async function cancelBoardMeeting(meetingId: string) {
+  const club = await getMyClub();
+  if (!club) return { error: "No club found" };
+
+  // Only allow canceling PENDING or AWAITING_RESPONSE meetings
+  const meeting = await prisma.boardMeeting.findFirst({
+    where: {
+      id: meetingId,
+      board: { clubId: club.id },
+      status: { in: ["PENDING", "AWAITING_RESPONSE"] },
+    },
+  });
+
+  if (!meeting) return { error: "Meeting not found or cannot be canceled" };
+
+  // Delete the meeting
+  await prisma.boardMeeting.delete({
+    where: { id: meetingId },
+  });
+
+  revalidatePath("/dashboard/board");
+  return { success: true };
+}

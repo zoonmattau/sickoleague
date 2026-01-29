@@ -10,18 +10,24 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { GoalCard } from "@/components/board/goal-card";
-import { ConfidenceMeter } from "@/components/board/confidence-meter";
 import { MeetingTimeline } from "@/components/board/meeting-timeline";
-import { createBoardMeeting } from "./actions";
+import { createBoardMeeting, cancelBoardMeeting } from "./actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import {
   Users,
-  TrendingUp,
+  Trophy,
   Calendar,
   AlertTriangle,
   Shield,
+  Target,
+  History,
+  CheckCircle2,
+  XCircle,
+  Medal,
 } from "lucide-react";
 
 interface BoardDashboardProps {
@@ -94,13 +100,45 @@ const boardTypeDescriptions: Record<string, { label: string; description: string
   },
 };
 
+const goalTypeLabels: Record<string, string> = {
+  WIN_PREMIERSHIP: "Win Premiership",
+  MAKE_FINALS: "Make Finals",
+  FINISH_TOP_4: "Finish Top 4",
+  IMPROVE_LADDER: "Improve Ladder Position",
+  SPECIFIC_POSITION: "Finish in Position",
+  STAY_UNDER_CAP: "Stay Under Salary Cap",
+  WIN_PERCENTAGE: "Win Percentage",
+  AVOID_BOTTOM: "Avoid Bottom",
+};
+
+function getSecurityStatus(confidence: number) {
+  if (confidence >= 80) return { label: "SECURE", color: "bg-green-500", textColor: "text-green-500", description: "The board fully supports you" };
+  if (confidence >= 60) return { label: "STABLE", color: "bg-blue-500", textColor: "text-blue-500", description: "Good standing with the board" };
+  if (confidence >= 40) return { label: "UNCERTAIN", color: "bg-yellow-500", textColor: "text-yellow-500", description: "The board has some concerns" };
+  if (confidence >= 20) return { label: "AT RISK", color: "bg-orange-500", textColor: "text-orange-500", description: "Your position is under review" };
+  return { label: "CRITICAL", color: "bg-red-500", textColor: "text-red-500", description: "Termination is imminent" };
+}
+
 export function BoardDashboard({ board, currentSeasonYear }: BoardDashboardProps) {
   const router = useRouter();
   const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const currentSeasonGoals = board.goals.filter(
     (g) => g.season.year === currentSeasonYear
   );
+
+  const pastGoals = board.goals.filter(
+    (g) => g.season.year < currentSeasonYear
+  );
+
+  // Group past goals by season
+  const pastGoalsByYear = pastGoals.reduce((acc, goal) => {
+    const year = goal.season.year;
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(goal);
+    return acc;
+  }, {} as Record<number, typeof pastGoals>);
 
   const currentStandings = board.club.standings.filter(
     (s) => s.season.year === currentSeasonYear
@@ -115,11 +153,22 @@ export function BoardDashboard({ board, currentSeasonYear }: BoardDashboardProps
     (m) => m.status === "COMPLETED" && m.confidenceLevel !== null
   );
   const currentConfidence = latestCompletedMeeting?.confidenceLevel ?? 70;
+  const securityStatus = getSecurityStatus(currentConfidence);
 
   const boardConfig = boardTypeDescriptions[board.boardType] || {
     label: board.boardType,
     description: "",
   };
+
+  // Get premierships for trophy cabinet
+  const premierships = board.club.seasonResults.filter(r => r.isPremier);
+  const seniorsPremiershipYears = premierships.filter(r => r.competition === "SENIORS").map(r => r.season.year);
+  const reservesPremiershipYears = premierships.filter(r => r.competition === "RESERVES").map(r => r.season.year);
+
+  // Find pending meetings that can be canceled
+  const pendingMeetings = board.meetings.filter(
+    (m) => m.status === "PENDING" || m.status === "AWAITING_RESPONSE"
+  );
 
   const handleRequestMeeting = async (type: "MID_SEASON_REVIEW" | "EMERGENCY_REVIEW") => {
     setIsCreatingMeeting(true);
@@ -134,6 +183,18 @@ export function BoardDashboard({ board, currentSeasonYear }: BoardDashboardProps
     } finally {
       setIsCreatingMeeting(false);
     }
+  };
+
+  const handleCancelMeeting = (meetingId: string) => {
+    startTransition(async () => {
+      const result = await cancelBoardMeeting(meetingId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Meeting canceled");
+        router.refresh();
+      }
+    });
   };
 
   return (
@@ -159,97 +220,115 @@ export function BoardDashboard({ board, currentSeasonYear }: BoardDashboardProps
         </div>
       </div>
 
+      {/* Job Security Banner - Most prominent */}
+      <Card className={`border-2 ${currentConfidence < 30 ? 'border-red-500 bg-red-500/5' : currentConfidence < 50 ? 'border-yellow-500 bg-yellow-500/5' : 'border-green-500/50 bg-green-500/5'}`}>
+        <CardContent className="py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center ${securityStatus.color}`}>
+                <Shield className="h-10 w-10 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <h2 className="text-2xl font-bold">Job Security</h2>
+                  <Badge className={`${securityStatus.color} text-white text-sm px-3 py-1`}>
+                    {securityStatus.label}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground">{securityStatus.description}</p>
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Confidence:</span>
+                    <span className={`text-2xl font-bold ${securityStatus.textColor}`}>{currentConfidence}%</span>
+                  </div>
+                  <Progress value={currentConfidence} className={`w-48 h-3 ${currentConfidence < 30 ? '[&>div]:bg-red-500' : currentConfidence < 50 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'}`} />
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <div className="text-sm text-muted-foreground mb-1">Board Type</div>
+              <Badge variant="secondary" className="text-base px-3 py-1">
+                {boardConfig.label}
+              </Badge>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+                {boardConfig.description}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pending Meetings - Show if any */}
+      {pendingMeetings.length > 0 && (
+        <Card className="border-blue-500/50 bg-blue-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-6 w-6 text-blue-500" />
+                <div>
+                  <h4 className="font-medium">Pending Meeting</h4>
+                  <p className="text-sm text-muted-foreground">
+                    You have a {pendingMeetings[0].meetingType.replace(/_/g, " ").toLowerCase()} scheduled
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  onClick={() => router.push(`/dashboard/board/meeting/${pendingMeetings[0].id}`)}
+                >
+                  Continue Meeting
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleCancelMeeting(pendingMeetings[0].id)}
+                  disabled={isPending}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Warning if confidence is low */}
+      {currentConfidence < 30 && (
+        <Card className="border-red-500/50 bg-red-500/5">
+          <CardContent className="flex items-center gap-4 py-4">
+            <AlertTriangle className="h-8 w-8 text-red-500 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-red-500">Job in Jeopardy</h4>
+              <p className="text-sm text-muted-foreground">
+                The board&apos;s confidence in your leadership is critically low.
+                Request an emergency meeting to address their concerns.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => handleRequestMeeting("EMERGENCY_REVIEW")}
+              disabled={isCreatingMeeting}
+              className="flex-shrink-0"
+            >
+              Request Emergency Meeting
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Board info and confidence */}
-        <div className="space-y-6">
-          {/* Board Type Card */}
+        {/* Left column - Current Season Goals */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Current Season Goals */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Board Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Badge variant="secondary" className="mb-2">
-                  {boardConfig.label}
-                </Badge>
-                <p className="text-sm text-muted-foreground">
-                  {boardConfig.description}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Patience Level</span>
-                  <span>{board.toleranceRating}%</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${board.toleranceRating}%` }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Confidence Meter */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Job Security
+                <Target className="h-5 w-5" />
+                {currentSeasonYear} Season Objectives
               </CardTitle>
               <CardDescription>
-                Board&apos;s confidence in your leadership
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center py-4">
-              <ConfidenceMeter value={currentConfidence} size="md" />
-            </CardContent>
-          </Card>
-
-          {/* Current Performance */}
-          {seniorsStanding && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Current Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {seniorsStanding.ladderPosition || "-"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Ladder Position
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {seniorsStanding.wins}-{seniorsStanding.losses}
-                      {seniorsStanding.draws > 0 && `-${seniorsStanding.draws}`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Record</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Middle column - Goals */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Season Goals</CardTitle>
-              <CardDescription>
-                Objectives set by the board for {currentSeasonYear}
+                What the board expects you to achieve this season
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -272,10 +351,179 @@ export function BoardDashboard({ board, currentSeasonYear }: BoardDashboardProps
               )}
             </CardContent>
           </Card>
+
+          {/* Current Performance */}
+          {seniorsStanding && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  Current Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4 text-center">
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">
+                      {seniorsStanding.ladderPosition || "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Ladder Position
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold text-green-600">
+                      {seniorsStanding.wins}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Wins</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold text-red-500">
+                      {seniorsStanding.losses}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Losses</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">
+                      {seniorsStanding.wins * 4 + seniorsStanding.draws * 2}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Points</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Past Seasons Goals */}
+          {Object.keys(pastGoalsByYear).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Past Season Goals
+                </CardTitle>
+                <CardDescription>
+                  Your track record with the board
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Object.entries(pastGoalsByYear)
+                  .sort(([a], [b]) => Number(b) - Number(a))
+                  .map(([year, goals]) => {
+                    const achieved = goals.filter(g => g.isAchieved).length;
+                    const total = goals.length;
+                    const successRate = total > 0 ? Math.round((achieved / total) * 100) : 0;
+
+                    return (
+                      <div key={year} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold">{year} Season</h4>
+                          <Badge variant={successRate >= 50 ? "default" : "destructive"}>
+                            {achieved}/{total} achieved ({successRate}%)
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {goals.map((goal) => (
+                            <div key={goal.id} className="flex items-center gap-2 text-sm">
+                              {goal.isAchieved ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              )}
+                              <span className={goal.isAchieved ? "" : "text-muted-foreground"}>
+                                {goalTypeLabels[goal.goalType] || goal.goalType}
+                              </span>
+                              <Badge variant="outline" className="text-[10px] ml-auto">
+                                {goal.priority}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Right column - Meeting timeline */}
-        <div>
+        {/* Right column - Trophy Cabinet & Meeting History */}
+        <div className="space-y-6">
+          {/* Trophy Cabinet */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Medal className="h-5 w-5 text-amber-500" />
+                Trophy Cabinet
+              </CardTitle>
+              <CardDescription>
+                Club premiership history
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {premierships.length === 0 ? (
+                <div className="text-center py-8">
+                  <Trophy className="h-12 w-12 mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">No premierships yet</p>
+                  <p className="text-xs text-muted-foreground">Win one to fill the cabinet!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Seniors Premierships */}
+                  {seniorsPremiershipYears.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <Trophy className="h-4 w-4 text-amber-500" />
+                        Seniors
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {seniorsPremiershipYears.sort((a, b) => b - a).map((year) => (
+                          <div
+                            key={year}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30"
+                          >
+                            <Trophy className="h-4 w-4 text-amber-500" />
+                            <span className="font-bold text-amber-600 dark:text-amber-400">{year}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reserves Premierships */}
+                  {reservesPremiershipYears.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Reserves
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {reservesPremiershipYears.sort((a, b) => b - a).map((year) => (
+                          <div
+                            key={year}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-slate-500/20 to-gray-500/20 border border-slate-500/30"
+                          >
+                            <Trophy className="h-4 w-4 text-slate-500" />
+                            <span className="font-bold">{year}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Total count */}
+                  <div className="pt-2 border-t text-center">
+                    <span className="text-2xl font-bold">{premierships.length}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      {premierships.length === 1 ? "Premiership" : "Premierships"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Meeting Timeline */}
           <Card>
             <CardHeader>
               <CardTitle>Meeting History</CardTitle>
@@ -289,31 +537,6 @@ export function BoardDashboard({ board, currentSeasonYear }: BoardDashboardProps
           </Card>
         </div>
       </div>
-
-      {/* Warning if confidence is low */}
-      {currentConfidence < 30 && (
-        <Card className="border-red-500/50 bg-red-500/5">
-          <CardContent className="flex items-center gap-4 py-4">
-            <AlertTriangle className="h-8 w-8 text-red-500 flex-shrink-0" />
-            <div>
-              <h4 className="font-medium text-red-500">Job in Jeopardy</h4>
-              <p className="text-sm text-muted-foreground">
-                The board&apos;s confidence in your leadership is critically low.
-                Consider requesting a meeting to address their concerns before
-                they take action.
-              </p>
-            </div>
-            <Button
-              variant="destructive"
-              onClick={() => handleRequestMeeting("EMERGENCY_REVIEW")}
-              disabled={isCreatingMeeting}
-              className="flex-shrink-0"
-            >
-              Request Emergency Meeting
-            </Button>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
