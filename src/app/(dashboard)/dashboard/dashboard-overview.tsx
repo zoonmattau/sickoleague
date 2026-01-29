@@ -99,29 +99,33 @@ export function DashboardOverview({
         {/* W/L Record Card */}
         <Card className="cursor-default">
           <CardContent className="pt-4 pb-3">
-            <div className="text-sm font-medium text-muted-foreground mb-2">Season Record</div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Seniors</span>
-                <span className="font-bold text-lg">
-                  {record ? formatRecord(record.seniors) : "--"}
-                </span>
-                {record && record.seniors.played > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {record.seniors.percentage.toFixed(0)}%
+            <div className="text-sm font-medium text-muted-foreground mb-3">Season Record</div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-10">Sen</span>
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="font-bold text-xl tabular-nums">
+                    {record ? formatRecord(record.seniors) : "--"}
                   </span>
-                )}
+                  {record && record.seniors.played > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
+                      {record.seniors.percentage.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Reserves</span>
-                <span className="font-bold text-lg">
-                  {record ? formatRecord(record.reserves) : "--"}
-                </span>
-                {record && record.reserves.played > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {record.reserves.percentage.toFixed(0)}%
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-10">Res</span>
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="font-bold text-xl tabular-nums">
+                    {record ? formatRecord(record.reserves) : "--"}
                   </span>
-                )}
+                  {record && record.reserves.played > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
+                      {record.reserves.percentage.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -130,39 +134,43 @@ export function DashboardOverview({
         {/* Captains Card */}
         <Card className="cursor-default">
           <CardContent className="pt-4 pb-3">
-            <div className="text-sm font-medium text-muted-foreground mb-2">Captains</div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Seniors</span>
-                <div className="text-right">
+            <div className="text-sm font-medium text-muted-foreground mb-3">Captains</div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-10">Sen</span>
+                <div className="flex items-center gap-2 flex-1">
                   {captains.seniorCaptain ? (
-                    <span className="text-sm">
-                      <span className="font-bold text-amber-600">C</span> {captains.seniorCaptain.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">C</span>
+                      <span className="text-sm font-medium">{captains.seniorCaptain.name}</span>
+                    </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">--</span>
+                    <span className="text-sm text-muted-foreground">--</span>
                   )}
                   {captains.seniorVc && (
-                    <span className="text-sm ml-2">
-                      <span className="font-bold text-amber-500">VC</span> {captains.seniorVc.name}
-                    </span>
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <span className="w-5 h-5 rounded bg-amber-400 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">VC</span>
+                      <span className="text-sm">{captains.seniorVc.name}</span>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Reserves</span>
-                <div className="text-right">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-10">Res</span>
+                <div className="flex items-center gap-2 flex-1">
                   {captains.reservesCaptain ? (
-                    <span className="text-sm">
-                      <span className="font-bold text-amber-600">C</span> {captains.reservesCaptain.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">C</span>
+                      <span className="text-sm font-medium">{captains.reservesCaptain.name}</span>
+                    </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">--</span>
+                    <span className="text-sm text-muted-foreground">--</span>
                   )}
                   {captains.reservesVc && (
-                    <span className="text-sm ml-2">
-                      <span className="font-bold text-amber-500">VC</span> {captains.reservesVc.name}
-                    </span>
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <span className="w-5 h-5 rounded bg-amber-400 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">VC</span>
+                      <span className="text-sm">{captains.reservesVc.name}</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -173,58 +181,60 @@ export function DashboardOverview({
         {/* Form & Upcoming Card */}
         <Card className="cursor-default">
           <CardContent className="pt-4 pb-3">
-            <div className="text-sm font-medium text-muted-foreground mb-2">Form & Next Up</div>
-            <div className="space-y-2">
-              {/* Form indicators */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground w-12">Sen:</span>
-                <div className="flex gap-0.5">
+            <div className="text-sm font-medium text-muted-foreground mb-3">Form</div>
+            <div className="space-y-3">
+              {/* Seniors form */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-10">Sen</span>
+                <div className="flex gap-1">
                   {form?.seniors.last5.map((r, i) => (
                     <div
                       key={i}
-                      className={`w-4 h-4 rounded-sm ${getFormColor(r)} flex items-center justify-center text-[9px] font-bold text-white`}
+                      className={`w-5 h-5 rounded ${getFormColor(r)} flex items-center justify-center text-[10px] font-bold text-white shadow-sm`}
                     >
                       {r}
                     </div>
                   ))}
                   {(!form || form.seniors.last5.length === 0) && (
-                    <span className="text-xs text-muted-foreground">--</span>
+                    <span className="text-sm text-muted-foreground">--</span>
                   )}
                 </div>
                 {form?.seniors.streak && form.seniors.streak > 1 && (
-                  <span className={`text-xs font-medium ${form.seniors.streakType === "W" ? "text-green-600" : form.seniors.streakType === "L" ? "text-red-600" : ""}`}>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${form.seniors.streakType === "W" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : form.seniors.streakType === "L" ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" : "bg-muted"}`}>
                     {form.seniors.streak}{form.seniors.streakType}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground w-12">Res:</span>
-                <div className="flex gap-0.5">
+              {/* Reserves form */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-10">Res</span>
+                <div className="flex gap-1">
                   {form?.reserves.last5.map((r, i) => (
                     <div
                       key={i}
-                      className={`w-4 h-4 rounded-sm ${getFormColor(r)} flex items-center justify-center text-[9px] font-bold text-white`}
+                      className={`w-5 h-5 rounded ${getFormColor(r)} flex items-center justify-center text-[10px] font-bold text-white shadow-sm`}
                     >
                       {r}
                     </div>
                   ))}
                   {(!form || form.reserves.last5.length === 0) && (
-                    <span className="text-xs text-muted-foreground">--</span>
+                    <span className="text-sm text-muted-foreground">--</span>
                   )}
                 </div>
                 {form?.reserves.streak && form.reserves.streak > 1 && (
-                  <span className={`text-xs font-medium ${form.reserves.streakType === "W" ? "text-green-600" : form.reserves.streakType === "L" ? "text-red-600" : ""}`}>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${form.reserves.streakType === "W" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : form.reserves.streakType === "L" ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" : "bg-muted"}`}>
                     {form.reserves.streak}{form.reserves.streakType}
                   </span>
                 )}
               </div>
               {/* Next match */}
               {upcomingMatch && (
-                <div className="flex items-center gap-2 pt-1 border-t">
-                  <span className="text-xs text-muted-foreground">R{upcomingMatch.roundNumber}:</span>
-                  <span className="text-xs">{upcomingMatch.isHome ? "vs" : "@"}</span>
+                <div className="flex items-center gap-2 pt-2 mt-1 border-t">
+                  <span className="text-xs text-muted-foreground">Next:</span>
+                  <span className="text-xs font-medium">R{upcomingMatch.roundNumber}</span>
+                  <span className="text-xs text-muted-foreground">{upcomingMatch.isHome ? "vs" : "@"}</span>
                   <span
-                    className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                    className="px-2 py-0.5 rounded text-xs font-bold"
                     style={{
                       backgroundColor: upcomingMatch.opponent.primaryColor || "#6b7280",
                       color: upcomingMatch.opponent.secondaryColor || "#ffffff",
