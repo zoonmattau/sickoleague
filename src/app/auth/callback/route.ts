@@ -79,20 +79,38 @@ export async function GET(request: NextRequest) {
 
         console.log("[Auth Callback] Creating/updating coach:", displayName);
 
-        await prisma.coach.upsert({
-          where: { discordId },
-          create: {
-            discordId,
-            displayName,
-            email,
-            avatarUrl,
-          },
-          update: {
-            displayName,
-            email,
-            avatarUrl,
+        // First check if a coach exists with this discordId or email
+        const existingCoach = await prisma.coach.findFirst({
+          where: {
+            OR: [
+              { discordId },
+              { email },
+            ],
           },
         });
+
+        if (existingCoach) {
+          // Update existing coach, linking discordId if it changed
+          await prisma.coach.update({
+            where: { id: existingCoach.id },
+            data: {
+              discordId,
+              displayName,
+              email,
+              avatarUrl,
+            },
+          });
+        } else {
+          // Create new coach
+          await prisma.coach.create({
+            data: {
+              discordId,
+              displayName,
+              email,
+              avatarUrl,
+            },
+          });
+        }
       }
 
       console.log("[Auth Callback] Redirecting to:", redirectUrl);

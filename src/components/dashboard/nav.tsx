@@ -30,6 +30,7 @@ const navSections: NavSection[] = [
       { href: "/dashboard", label: "Overview" },
       { href: "/dashboard/roster", label: "Roster" },
       { href: "/dashboard/matches", label: "Matches" },
+      { href: "/dashboard/board", label: "Board" },
     ],
   },
   {

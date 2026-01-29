@@ -77,6 +77,8 @@ model Club {
   rfaPreviousClub   ContractOffer[]   @relation("RfaPreviousClub")
   rfaList           RfaPlayer[]
   venuesPurchased   Match[]           @relation("VenueBuyer")
+  board             ClubBoard?
+  negotiationSessions NegotiationSession[]
 
   @@map("clubs")
 }
@@ -159,6 +161,8 @@ model AflPlayer {
   draftSelections  DraftPick[]
   draftEligibility DraftEligibility[]
   matchScores      MatchPlayerScore[]
+  personalityProfile PersonalityProfile?
+  negotiationSessions NegotiationSession[]
 
   @@index([lastName, firstName])
   @@map("afl_players")
@@ -315,6 +319,8 @@ model Staff {
   aflTeamId      String?         @map("afl_team_id")
   aflTeam        AflTeam?        @relation(fields: [aflTeamId], references: [id])
   staffContracts StaffContract[]
+  personalityProfile PersonalityProfile?
+  negotiationSessions NegotiationSession[]
 
   @@map("staff")
 }
@@ -376,6 +382,8 @@ model Season {
   draftPicks    DraftPick[]
   rfaPlayers    RfaPlayer[]
   clubTensions  ClubTension[]
+  boardGoals    BoardGoal[]
+  boardMeetings BoardMeeting[]
 
   @@map("seasons")
 }
@@ -405,6 +413,7 @@ model Round {
   rosterPlayers   RosterPlayer[]
   rosterHistory   RosterHistory[]
   draftEligibility DraftEligibility[]
+  boardMeetings   BoardMeeting[]
 
   @@unique([seasonId, roundNumber])
   @@map("rounds")
@@ -732,4 +741,196 @@ model SeasonResult {
 
   @@unique([seasonId, clubId, competition])
   @@map("season_results")
+}
+
+// ============================================================================
+// AI NEGOTIATION & BOARD MANAGEMENT
+// ============================================================================
+
+// Player/Staff personality for AI negotiations
+model PersonalityProfile {
+  id                String   @id @default(uuid())
+  aflPlayerId       String?  @unique @map("afl_player_id")
+  staffId           String?  @unique @map("staff_id")
+
+  // Personality traits (1-10 scale)
+  ambition          Int      @default(5)
+  loyalty           Int      @default(5)
+  riskTolerance     Int      @default(5) @map("risk_tolerance")
+  prideLevel        Int      @default(5) @map("pride_level")
+
+  negotiationStyle  NegotiationStyle @default(BALANCED) @map("negotiation_style")
+
+  aflPlayer         AflPlayer? @relation(fields: [aflPlayerId], references: [id])
+  staff             Staff?     @relation(fields: [staffId], references: [id])
+
+  @@map("personality_profiles")
+}
+
+enum NegotiationStyle {
+  AGGRESSIVE
+  BALANCED
+  EASYGOING
+  UNPREDICTABLE
+}
+
+// Track negotiation conversations
+model NegotiationSession {
+  id              String            @id @default(uuid())
+  status          NegotiationStatus @default(ACTIVE)
+  clubId          String            @map("club_id")
+  aflPlayerId     String?           @map("afl_player_id")
+  staffId         String?           @map("staff_id")
+
+  currentOffer    Json              @map("current_offer") // Current offer details
+  aiContext       Json              @default("[]") @map("ai_context") // Conversation history for AI
+  playerMood      Int               @default(50) @map("player_mood") // 0-100
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  club            Club              @relation(fields: [clubId], references: [id])
+  aflPlayer       AflPlayer?        @relation(fields: [aflPlayerId], references: [id])
+  staff           Staff?            @relation(fields: [staffId], references: [id])
+  messages        NegotiationMessage[]
+
+  @@map("negotiation_sessions")
+}
+
+enum NegotiationStatus {
+  ACTIVE
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model NegotiationMessage {
+  id           String      @id @default(uuid())
+  sessionId    String      @map("session_id")
+  role         MessageRole
+  content      String      @db.Text
+  emotion      String?
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  session      NegotiationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("negotiation_messages")
+}
+
+enum MessageRole {
+  COACH
+  PLAYER
+  STAFF
+  SYSTEM
+}
+
+// Club board configuration
+model ClubBoard {
+  id               String         @id @default(uuid())
+  clubId           String         @unique @map("club_id")
+
+  boardType        BoardType      @default(TRADITIONAL) @map("board_type")
+  toleranceRating  Int            @default(50) @map("tolerance_rating") // 0-100: lower = quicker to fire
+
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  club             Club           @relation(fields: [clubId], references: [id])
+  goals            BoardGoal[]
+  meetings         BoardMeeting[]
+
+  @@map("club_boards")
+}
+
+enum BoardType {
+  TRADITIONAL   // Patient, values loyalty
+  AMBITIOUS     // Wants immediate success
+  DEVELOPMENT   // Youth focus, long-term
+  RUTHLESS      // Fires quickly
+  SUPPORTIVE    // Very patient
+}
+
+model BoardGoal {
+  id            String       @id @default(uuid())
+  boardId       String       @map("board_id")
+  seasonId      String       @map("season_id")
+
+  goalType      GoalType     @map("goal_type")
+  targetValue   Int?         @map("target_value")
+  competition   MatchType?
+  priority      GoalPriority @default(SECONDARY)
+
+  isAchieved    Boolean      @default(false) @map("is_achieved")
+  currentValue  Int?         @map("current_value")
+
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  board         ClubBoard    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  season        Season       @relation(fields: [seasonId], references: [id])
+
+  @@map("board_goals")
+}
+
+enum GoalType {
+  WIN_PREMIERSHIP
+  MAKE_FINALS
+  FINISH_TOP_4
+  IMPROVE_LADDER
+  SPECIFIC_POSITION
+  STAY_UNDER_CAP
+  WIN_PERCENTAGE
+  AVOID_BOTTOM
+}
+
+enum GoalPriority {
+  PRIMARY
+  SECONDARY
+  ASPIRATIONAL
+}
+
+model BoardMeeting {
+  id              String        @id @default(uuid())
+  boardId         String        @map("board_id")
+  seasonId        String        @map("season_id")
+  roundId         String?       @map("round_id")
+
+  meetingType     MeetingType   @map("meeting_type")
+  status          MeetingStatus @default(PENDING)
+
+  boardStatement  String?       @db.Text @map("board_statement")
+  coachRebuttal   String?       @db.Text @map("coach_rebuttal")
+  finalVerdict    String?       @db.Text @map("final_verdict")
+
+  outcome         MeetingOutcome?
+  confidenceLevel Int?          @map("confidence_level")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  board           ClubBoard     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  season          Season        @relation(fields: [seasonId], references: [id])
+  round           Round?        @relation(fields: [roundId], references: [id])
+
+  @@map("board_meetings")
+}
+
+enum MeetingType {
+  PRESEASON_GOALS
+  MID_SEASON_REVIEW
+  END_SEASON_REVIEW
+  EMERGENCY_REVIEW
+}
+
+enum MeetingStatus {
+  PENDING
+  AWAITING_RESPONSE
+  COMPLETED
+}
+
+enum MeetingOutcome {
+  CONFIDENCE_HIGH
+  CONFIDENCE_MEDIUM
+  CONFIDENCE_LOW
+  FIRED
 }
