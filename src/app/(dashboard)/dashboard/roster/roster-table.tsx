@@ -28,7 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, Crown, Star } from "lucide-react";
 import { getPositionColorClasses } from "@/lib/position-colors";
-import { assignPlayerToRoster, removePlayerFromRoster, setCaptain } from "./actions";
+import { assignPlayerToRoster, removePlayerFromRoster } from "./actions";
+import { setCaptain } from "./captain-actions";
 import { RosterSpot, Squad } from "@prisma/client";
 import { toast } from "sonner";
 
