@@ -13,17 +13,48 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ChevronDown } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
-const navItems = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/roster", label: "Roster" },
-  { href: "/dashboard/matches", label: "Matches" },
-  { href: "/dashboard/standings", label: "Standings" },
-  { href: "/dashboard/clubs", label: "Clubs" },
-  { href: "/dashboard/players", label: "Players" },
-  { href: "/dashboard/trades", label: "Trades" },
-  { href: "/dashboard/draft", label: "Draft" },
+type NavItem = { href: string; label: string };
+
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
+  {
+    label: "My Team",
+    items: [
+      { href: "/dashboard", label: "Overview" },
+      { href: "/dashboard/roster", label: "Roster" },
+      { href: "/dashboard/matches", label: "Matches" },
+    ],
+  },
+  {
+    label: "League",
+    items: [
+      { href: "/dashboard/standings", label: "Standings" },
+      { href: "/dashboard/stats", label: "Stats" },
+      { href: "/dashboard/clubs", label: "Clubs" },
+      { href: "/dashboard/players", label: "Players" },
+    ],
+  },
+  {
+    label: "Transactions",
+    items: [
+      { href: "/dashboard/trades", label: "Trades" },
+      { href: "/dashboard/draft", label: "Draft" },
+    ],
+  },
+  {
+    label: "Info",
+    items: [
+      { href: "/dashboard/rules", label: "Rules" },
+      { href: "/dashboard/history", label: "History" },
+    ],
+  },
 ];
 
 interface DashboardNavProps {
@@ -56,16 +87,35 @@ export function DashboardNav({ user }: DashboardNavProps) {
               Sicko League
             </Link>
             <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant={pathname === item.href ? "secondary" : "ghost"}
-                    size="sm"
-                  >
-                    {item.label}
-                  </Button>
-                </Link>
-              ))}
+              {navSections.map((section) => {
+                const isActive = section.items.some(item => pathname === item.href);
+                return (
+                  <DropdownMenu key={section.label}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        size="sm"
+                        className="gap-1"
+                      >
+                        {section.label}
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {section.items.map((item) => (
+                        <DropdownMenuItem key={item.href} asChild>
+                          <Link
+                            href={item.href}
+                            className={pathname === item.href ? "bg-accent" : ""}
+                          >
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              })}
             </nav>
           </div>
 

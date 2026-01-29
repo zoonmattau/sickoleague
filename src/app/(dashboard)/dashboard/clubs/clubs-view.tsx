@@ -32,6 +32,7 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
+import { RivalryMatrix } from "./rivalry-matrix";
 
 type Club = {
   id: string;
@@ -84,10 +85,37 @@ type Season = {
   salaryCap: number;
 };
 
+type Tension = {
+  id: string;
+  clubAId: string;
+  clubBId: string;
+  score: number;
+  closeMatches: number;
+  finalsMatches?: number;
+  trades: number;
+  ladderBattles: number;
+  playerMovements?: number;
+  clubA: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    primaryColor: string | null;
+    secondaryColor: string | null;
+  };
+  clubB: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    primaryColor: string | null;
+    secondaryColor: string | null;
+  };
+};
+
 interface ClubsViewProps {
   clubs: Club[];
   season: Season;
   myClubId: string | null;
+  tensions: Tension[];
 }
 
 function formatSalary(value: number): string {
@@ -105,7 +133,7 @@ function getCapColor(usage: number): string {
   return "bg-green-500/30";
 }
 
-export function ClubsView({ clubs, season, myClubId }: ClubsViewProps) {
+export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps) {
   const [selectedClub, setSelectedClub] = useState<string | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ clubId: string; year: number } | null>(null);
   const [sortYear, setSortYear] = useState<number | null>(null);
@@ -160,55 +188,19 @@ export function ClubsView({ clubs, season, myClubId }: ClubsViewProps) {
     }
   }
 
+  // Build a set of my club's rival IDs
+  const myRivalIds = new Set<string>();
+  if (myClubId) {
+    const myClub = clubs.find(c => c.id === myClubId);
+    if (myClub) {
+      for (const rival of myClub.rivals) {
+        myRivalIds.add(rival.club.id);
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Rivalry Matrix */}
-      {rivalryPairs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Swords className="h-5 w-5 text-orange-500" />
-              Rivalries
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {rivalryPairs.map((pair, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-orange-500/5 border-orange-500/20"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="px-2 py-1 rounded text-xs font-semibold"
-                      style={{
-                        backgroundColor: pair.clubA.primaryColor || "#6b7280",
-                        color: pair.clubA.secondaryColor || "#ffffff",
-                      }}
-                    >
-                      {pair.clubA.abbreviation}
-                    </span>
-                    <span className="text-muted-foreground font-bold">vs</span>
-                    <span
-                      className="px-2 py-1 rounded text-xs font-semibold"
-                      style={{
-                        backgroundColor: pair.clubB.primaryColor || "#6b7280",
-                        color: pair.clubB.secondaryColor || "#ffffff",
-                      }}
-                    >
-                      {pair.clubB.abbreviation}
-                    </span>
-                  </div>
-                  <Badge variant="outline" className="text-[10px]">
-                    {pair.reason === "FINALS_OPPONENT" ? "Finals" : "Nominated"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Salary Cap Matrix */}
       <Card>
         <CardHeader className="pb-3">
@@ -256,8 +248,8 @@ export function ClubsView({ clubs, season, myClubId }: ClubsViewProps) {
                           </div>
                           <span className="text-sm font-medium">{club.name}</span>
                           {isMyClub && <Badge variant="default" className="text-[10px] px-1 py-0 h-4">You</Badge>}
-                          {club.rivals.length > 0 && (
-                            <Swords className="h-3 w-3 text-orange-500" title={`${club.rivals.length} rival(s)`} />
+                          {myRivalIds.has(club.id) && (
+                            <Swords className="h-3 w-3 text-orange-500" title="Your rival" />
                           )}
                         </button>
                       </TableCell>
@@ -580,6 +572,24 @@ export function ClubsView({ clubs, season, myClubId }: ClubsViewProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Rivalry Matrix */}
+      <RivalryMatrix
+        clubs={clubs.map(c => ({
+          id: c.id,
+          name: c.name,
+          abbreviation: c.abbreviation,
+          primaryColor: c.primaryColor,
+          secondaryColor: c.secondaryColor,
+        }))}
+        tensions={tensions}
+        rivalries={rivalryPairs.map(p => ({
+          clubAId: p.clubA.id,
+          clubBId: p.clubB.id,
+          reason: p.reason,
+        }))}
+        myClubId={myClubId}
+      />
     </div>
   );
 }

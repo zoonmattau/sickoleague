@@ -1,11 +1,13 @@
 import { getAllClubsWithContracts, getCurrentSeason, getMyClubId } from "./actions";
+import { getAllClubTensions } from "./rivalry-actions";
 import { ClubsView } from "./clubs-view";
 
 export default async function ClubsPage() {
-  const [clubs, season, myClubId] = await Promise.all([
+  const [clubs, season, myClubId, tensions] = await Promise.all([
     getAllClubsWithContracts(),
     getCurrentSeason(),
     getMyClubId(),
+    getAllClubTensions(),
   ]);
 
   return (
@@ -16,7 +18,7 @@ export default async function ClubsPage() {
           View contracts, salary cap usage, and rivalries across the league
         </p>
       </div>
-      <ClubsView clubs={clubs} season={season} myClubId={myClubId} />
+      <ClubsView clubs={clubs} season={season} myClubId={myClubId} tensions={tensions} />
     </div>
   );
 }

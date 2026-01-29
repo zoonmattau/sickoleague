@@ -65,6 +65,8 @@ model Club {
   seasonResults     SeasonResult[]
   rivalsA           Rival[]           @relation("RivalClubA")
   rivalsB           Rival[]           @relation("RivalClubB")
+  tensionsA         ClubTension[]     @relation("TensionClubA")
+  tensionsB         ClubTension[]     @relation("TensionClubB")
   ownedDraftPicks   DraftPick[]       @relation("CurrentOwner")
   originalDraftPicks DraftPick[]      @relation("OriginalOwner")
   tradesProposed    Trade[]           @relation("TradeProposer")
@@ -99,6 +101,24 @@ model Rival {
 enum RivalReason {
   FINALS_OPPONENT
   NOMINATED
+}
+
+model ClubTension {
+  id            String   @id @default(uuid())
+  score         Int      @default(0)
+  closeMatches  Int      @default(0)    // Matches with <20 point margin
+  trades        Int      @default(0)    // Trades between clubs
+  ladderBattles Int      @default(0)    // Same ladder position fights
+
+  clubAId   String @map("club_a_id")
+  clubA     Club   @relation("TensionClubA", fields: [clubAId], references: [id])
+  clubBId   String @map("club_b_id")
+  clubB     Club   @relation("TensionClubB", fields: [clubBId], references: [id])
+  seasonId  String @map("season_id")
+  season    Season @relation(fields: [seasonId], references: [id])
+
+  @@unique([clubAId, clubBId, seasonId])
+  @@map("club_tensions")
 }
 
 // ============================================================================
@@ -353,6 +373,7 @@ model Season {
   rivals        Rival[]
   draftPicks    DraftPick[]
   rfaPlayers    RfaPlayer[]
+  clubTensions  ClubTension[]
 
   @@map("seasons")
 }

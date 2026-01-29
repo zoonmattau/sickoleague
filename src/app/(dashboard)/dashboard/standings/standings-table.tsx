@@ -9,12 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { TeamInfoDialog } from "./team-info-dialog";
 
 type Standing = {
   id: string;
@@ -101,82 +96,13 @@ export function StandingsTable({ standings, isReserves = false }: Props) {
       </Table>
 
       {/* Team Info Dialog */}
-      <Dialog open={!!selectedTeam} onOpenChange={() => setSelectedTeam(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span
-                className="px-3 py-1 rounded font-semibold"
-                style={{
-                  backgroundColor: selectedTeam?.club.primaryColor || "#6b7280",
-                  color: selectedTeam?.club.secondaryColor || "#ffffff",
-                }}
-              >
-                {isReserves
-                  ? (selectedTeam?.club.reservesName ?? selectedTeam?.club.name)
-                  : selectedTeam?.club.name}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-          {selectedTeam && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Position</div>
-                  <div className="text-2xl font-bold">
-                    {standings.findIndex((s) => s.id === selectedTeam.id) + 1}
-                    <span className="text-sm text-muted-foreground">
-                      {standings.findIndex((s) => s.id === selectedTeam.id) < 4 ? " (Finals)" : ""}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Points</div>
-                  <div className="text-2xl font-bold">{selectedTeam.wins * 4 + selectedTeam.draws * 2}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 text-center">
-                <div className="p-2 bg-muted rounded">
-                  <div className="text-xs text-muted-foreground">Played</div>
-                  <div className="font-semibold">{selectedTeam.played}</div>
-                </div>
-                <div className="p-2 bg-green-500/10 rounded">
-                  <div className="text-xs text-muted-foreground">Wins</div>
-                  <div className="font-semibold text-green-600">{selectedTeam.wins}</div>
-                </div>
-                <div className="p-2 bg-yellow-500/10 rounded">
-                  <div className="text-xs text-muted-foreground">Draws</div>
-                  <div className="font-semibold text-yellow-600">{selectedTeam.draws}</div>
-                </div>
-                <div className="p-2 bg-red-500/10 rounded">
-                  <div className="text-xs text-muted-foreground">Losses</div>
-                  <div className="font-semibold text-red-600">{selectedTeam.losses}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 bg-muted rounded">
-                  <div className="text-xs text-muted-foreground">Points For</div>
-                  <div className="font-semibold">{selectedTeam.pointsFor}</div>
-                </div>
-                <div className="p-2 bg-muted rounded">
-                  <div className="text-xs text-muted-foreground">Points Against</div>
-                  <div className="font-semibold">{selectedTeam.pointsAgainst}</div>
-                </div>
-                <div className="p-2 bg-muted rounded">
-                  <div className="text-xs text-muted-foreground">Percentage</div>
-                  <div className="font-semibold">{selectedTeam.percentage.toFixed(1)}%</div>
-                </div>
-              </div>
-
-              <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-                Win Rate: {selectedTeam.played > 0 ? ((selectedTeam.wins / selectedTeam.played) * 100).toFixed(0) : 0}%
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <TeamInfoDialog
+        standing={selectedTeam}
+        standings={standings}
+        isReserves={isReserves}
+        open={!!selectedTeam}
+        onOpenChange={(open) => !open && setSelectedTeam(null)}
+      />
     </>
   );
 }

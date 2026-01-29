@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { getMyClubWithRoster, getClubPlayerStats, getClubHfaSummary } from "@/app/(dashboard)/dashboard/roster/actions";
-import { DashboardLineup } from "./dashboard-lineup";
+import { Card, CardContent } from "@/components/ui/card";
+import { getMyClubWithRoster, getClubPlayerStats } from "@/app/(dashboard)/dashboard/roster/actions";
+import { getClubRecord, getClubUpcomingMatch, getTeamFormAnalysis } from "@/app/(dashboard)/dashboard/standings/actions";
+import { DraggableLineup } from "./lineup/draggable-lineup";
+import { DashboardOverview } from "./dashboard-overview";
+import { UpcomingMatchPanel } from "./upcoming-match-panel";
 import { WeekendChecklist } from "./weekend-checklist";
 import { TeamGraphs } from "./team-graphs";
 import { LeagueGraphs } from "./league-graphs";
@@ -132,8 +134,14 @@ export default async function DashboardPage() {
     playerStats = await getClubPlayerStats(club.id);
   }
 
-  // Fetch HFA summary (outside the club block so we have a default)
-  const hfaSummary = club ? await getClubHfaSummary(club.id) : null;
+  // Fetch record, form, and upcoming match data
+  const [record, form, upcomingMatch] = club
+    ? await Promise.all([
+        getClubRecord(club.id),
+        getTeamFormAnalysis(club.id),
+        getClubUpcomingMatch(club.id),
+      ])
+    : [null, null, null];
 
   if (club) {
     // Track the real DB values for the checklist
@@ -162,97 +170,60 @@ export default async function DashboardPage() {
       </div>
 
       {/* Club Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Salary Cap</CardTitle>
-            <Badge variant="outline">$750k</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{club ? `$${(salaryUsed * 1000).toLocaleString()}` : "--"}</div>
-            <p className="text-xs text-muted-foreground">
-              {club ? `$${(salaryRemaining * 1000).toLocaleString()} remaining` : "-- remaining"}
-            </p>
-          </CardContent>
-        </Card>
+      {club ? (
+        <DashboardOverview
+          clubId={club.id}
+          contracts={serializedContracts}
+          rosterPlayers={serializedRosterPlayers}
+          salaryUsed={salaryUsed}
+          salaryCap={salaryCap}
+          seniorsCount={seniorsCount}
+          reservesCount={reservesCount}
+          record={record}
+          form={form}
+          upcomingMatch={upcomingMatch}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card><CardContent className="py-6 text-center text-muted-foreground">--</CardContent></Card>
+          <Card><CardContent className="py-6 text-center text-muted-foreground">--</CardContent></Card>
+          <Card><CardContent className="py-6 text-center text-muted-foreground">--</CardContent></Card>
+          <Card><CardContent className="py-6 text-center text-muted-foreground">--</CardContent></Card>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Roster Size</CardTitle>
-            <Badge variant="outline">19-21</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{club ? `${totalContracts}/21` : "--/21"}</div>
-            <p className="text-xs text-muted-foreground">
-              {club ? `${seniorsCount} seniors, ${reservesCount} reserves` : "-- seniors, -- reserves"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Seniors HFA</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {hfaSummary ? (hfaSummary.seniors.current >= 0 ? "+" : "") + hfaSummary.seniors.current : "--"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {hfaSummary && hfaSummary.seniors.gamesPlayed > 0 ? (
-                <>
-                  <span className={hfaSummary.seniors.change >= 0 ? "text-green-600" : "text-red-600"}>
-                    {hfaSummary.seniors.change >= 0 ? "+" : ""}{hfaSummary.seniors.change}
-                  </span>
-                  {" "}from last home game
-                </>
-              ) : (
-                "No home games yet"
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reserves HFA</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {hfaSummary ? (hfaSummary.reserves.current >= 0 ? "+" : "") + hfaSummary.reserves.current : "--"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {hfaSummary && hfaSummary.reserves.gamesPlayed > 0 ? (
-                <>
-                  <span className={hfaSummary.reserves.change >= 0 ? "text-green-600" : "text-red-600"}>
-                    {hfaSummary.reserves.change >= 0 ? "+" : ""}{hfaSummary.reserves.change}
-                  </span>
-                  {" "}from last home game
-                </>
-              ) : (
-                "No home games yet"
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Weekend Checklist + Team Graphs */}
+      {/* Upcoming Match + Weekend Checklist */}
       {club && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <UpcomingMatchPanel
+            clubId={club.id}
+            clubName={club.name}
+            reservesName={club.reservesName ?? club.name + " Reserves"}
+            primaryColor={club.primaryColor}
+            secondaryColor={club.secondaryColor}
+            rosterPlayers={serializedRosterPlayers}
+            contracts={serializedContracts}
+            playerStats={playerStats}
+            captaincy={captaincy}
+          />
           <WeekendChecklist
             rosterPlayers={serializedRosterPlayers}
             contracts={serializedContracts}
             captaincy={captaincy}
             realCaptaincy={realCaptaincy}
           />
-          <TeamGraphs
-            clubId={club.id}
-            clubName={club.name}
-            reservesName={club.reservesName ?? club.name + " Reserves"}
-            primaryColor={club.primaryColor}
-            secondaryColor={club.secondaryColor}
-          />
         </div>
+      )}
+
+      {/* Team Graphs */}
+      {club && (
+        <TeamGraphs
+          clubId={club.id}
+          clubName={club.name}
+          reservesName={club.reservesName ?? club.name + " Reserves"}
+          primaryColor={club.primaryColor}
+          secondaryColor={club.secondaryColor}
+        />
       )}
 
       {/* League-wide Graphs */}
@@ -260,7 +231,7 @@ export default async function DashboardPage() {
 
       {/* Lineups */}
       {club ? (
-        <DashboardLineup
+        <DraggableLineup
           clubId={club.id}
           clubName={club.name}
           reservesName={club.reservesName ?? club.name + " Reserves"}
