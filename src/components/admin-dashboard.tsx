@@ -173,7 +173,7 @@ export function AdminDashboard({
   const [recalculating, setRecalculating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Club editing state
+  // Club editing state (dialog)
   const [editingClub, setEditingClub] = useState<ClubWithCoach | null>(null);
   const [clubForm, setClubForm] = useState({
     name: "",
@@ -183,6 +183,14 @@ export function AdminDashboard({
     primaryColor: "",
     secondaryColor: "",
   });
+
+  // Inline club editing state
+  const [inlineEditingClubId, setInlineEditingClubId] = useState<string | null>(null);
+  const [inlineClubValues, setInlineClubValues] = useState<Record<string, {
+    name: string;
+    abbreviation: string;
+    reservesName: string;
+  }>>({});
 
   // Contract editing state
   const [contractSearch, setContractSearch] = useState("");
@@ -304,6 +312,54 @@ export function AdminDashboard({
     setSaving(null);
   };
 
+  // Inline editing functions
+  const startInlineEdit = (club: ClubWithCoach) => {
+    setInlineEditingClubId(club.id);
+    setInlineClubValues(prev => ({
+      ...prev,
+      [club.id]: {
+        name: club.name,
+        abbreviation: club.abbreviation,
+        reservesName: club.reservesName || "",
+      }
+    }));
+  };
+
+  const cancelInlineEdit = () => {
+    setInlineEditingClubId(null);
+  };
+
+  const handleInlineSave = async (clubId: string) => {
+    const values = inlineClubValues[clubId];
+    if (!values) return;
+
+    setSaving(clubId);
+    const result = await updateClub(clubId, {
+      name: values.name,
+      abbreviation: values.abbreviation,
+      reservesName: values.reservesName || undefined,
+    });
+
+    if (result.success) {
+      setMessage({ type: "success", text: "Club updated!" });
+      setInlineEditingClubId(null);
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to update" });
+    }
+    setSaving(null);
+  };
+
+  const updateInlineValue = (clubId: string, field: string, value: string) => {
+    setInlineClubValues(prev => ({
+      ...prev,
+      [clubId]: {
+        ...prev[clubId],
+        [field]: value,
+      }
+    }));
+  };
+
   const handleAssignCoach = async (clubId: string, coachId: string | null) => {
     const result = await assignCoachToClub(coachId === "none" ? null : coachId, clubId);
     if (result.success) {
@@ -421,24 +477,56 @@ export function AdminDashboard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clubsWithCoaches.map(club => (
+                {clubsWithCoaches.map(club => {
+                  const isEditing = inlineEditingClubId === club.id;
+                  const editValues = inlineClubValues[club.id];
+
+                  return (
                   <TableRow key={club.id}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="px-2 py-1 rounded text-sm font-semibold"
-                          style={{
-                            backgroundColor: club.primaryColor || "#666",
-                            color: club.secondaryColor || "#fff",
-                          }}
-                        >
-                          {club.abbreviation}
-                        </span>
-                        <span className="font-medium">{club.name}</span>
-                      </div>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editValues?.abbreviation || ""}
+                            onChange={(e) => updateInlineValue(club.id, "abbreviation", e.target.value)}
+                            className="w-16 h-8 text-sm"
+                            placeholder="Abbr"
+                          />
+                          <Input
+                            value={editValues?.name || ""}
+                            onChange={(e) => updateInlineValue(club.id, "name", e.target.value)}
+                            className="w-40 h-8"
+                            placeholder="Club name"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => startInlineEdit(club)}>
+                          <span
+                            className="px-2 py-1 rounded text-sm font-semibold"
+                            style={{
+                              backgroundColor: club.primaryColor || "#666",
+                              color: club.secondaryColor || "#fff",
+                            }}
+                          >
+                            {club.abbreviation}
+                          </span>
+                          <span className="font-medium hover:underline">{club.name}</span>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {club.reservesName || "-"}
+                      {isEditing ? (
+                        <Input
+                          value={editValues?.reservesName || ""}
+                          onChange={(e) => updateInlineValue(club.id, "reservesName", e.target.value)}
+                          className="w-40 h-8"
+                          placeholder="Reserves name"
+                        />
+                      ) : (
+                        <span className="cursor-pointer hover:underline" onClick={() => startInlineEdit(club)}>
+                          {club.reservesName || "-"}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -476,12 +564,33 @@ export function AdminDashboard({
                       <Badge variant="outline">{club.contractCount}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleEditClub(club)}>
-                        <Palette className="h-4 w-4" />
-                      </Button>
+                      {isEditing ? (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleInlineSave(club.id)}
+                            disabled={saving === club.id}
+                          >
+                            {saving === club.id ? "Saving..." : "Save"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={cancelInlineEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => handleEditClub(club)} title="Edit colors">
+                          <Palette className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
