@@ -31,7 +31,15 @@ async function getRounds() {
     },
     orderBy: { roundNumber: "asc" }
   });
-  return rounds;
+  // Serialize Decimal fields to numbers
+  return rounds.map(round => ({
+    ...round,
+    matches: round.matches.map(match => ({
+      ...match,
+      homeScore: match.homeScore ? Number(match.homeScore) : null,
+      awayScore: match.awayScore ? Number(match.awayScore) : null,
+    })),
+  }));
 }
 
 async function getClubs() {
@@ -50,7 +58,13 @@ async function getStandings() {
       { percentage: "desc" }
     ]
   });
-  return standings;
+  // Serialize Decimal fields to numbers
+  return standings.map(s => ({
+    ...s,
+    pointsFor: Number(s.pointsFor),
+    pointsAgainst: Number(s.pointsAgainst),
+    percentage: Number(s.percentage),
+  }));
 }
 
 export default async function AdminPage() {

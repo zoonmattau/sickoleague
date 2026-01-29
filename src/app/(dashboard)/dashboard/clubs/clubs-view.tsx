@@ -249,7 +249,7 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                           <span className="text-sm font-medium">{club.name}</span>
                           {isMyClub && <Badge variant="default" className="text-[10px] px-1 py-0 h-4">You</Badge>}
                           {myRivalIds.has(club.id) && (
-                            <Swords className="h-3 w-3 text-orange-500" title="Your rival" />
+                            <Swords className="h-3 w-3 text-orange-500" />
                           )}
                         </button>
                       </TableCell>

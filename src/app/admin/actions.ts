@@ -90,16 +90,18 @@ export async function recalculateStandings() {
       standingsData[awayKey].played++;
 
       // Update points for/against
-      standingsData[homeKey].pointsFor += match.homeScore;
-      standingsData[homeKey].pointsAgainst += match.awayScore;
-      standingsData[awayKey].pointsFor += match.awayScore;
-      standingsData[awayKey].pointsAgainst += match.homeScore;
+      const homeScore = Number(match.homeScore ?? 0);
+      const awayScore = Number(match.awayScore ?? 0);
+      standingsData[homeKey].pointsFor += homeScore;
+      standingsData[homeKey].pointsAgainst += awayScore;
+      standingsData[awayKey].pointsFor += awayScore;
+      standingsData[awayKey].pointsAgainst += homeScore;
 
       // Update wins/losses/draws
-      if (match.homeScore > match.awayScore) {
+      if (homeScore > awayScore) {
         standingsData[homeKey].wins++;
         standingsData[awayKey].losses++;
-      } else if (match.awayScore > match.homeScore) {
+      } else if (awayScore > homeScore) {
         standingsData[awayKey].wins++;
         standingsData[homeKey].losses++;
       } else {

@@ -14,13 +14,11 @@ export async function getAllClubTensions() {
     if (!currentSeason) return [];
 
     // Check if clubTension table exists (may not be migrated yet)
-    // @ts-expect-error - clubTension might not exist in Prisma client yet
     if (!prisma.clubTension) {
       // Generate fake tension data for demo purposes
       return generateFakeTensions();
     }
 
-    // @ts-expect-error - clubTension might not exist in Prisma client yet
     const tensions = await prisma.clubTension.findMany({
       where: { seasonId: currentSeason.id },
       include: {
@@ -278,10 +276,8 @@ export async function getRivalryDetails(clubAId: string, clubBId: string) {
   let tension = null;
   if (currentSeason) {
     try {
-      // @ts-expect-error - clubTension might not exist in Prisma client yet
       if (prisma.clubTension) {
-        // @ts-expect-error - clubTension might not exist in Prisma client yet
-        tension = await prisma.clubTension.findFirst({
+          tension = await prisma.clubTension.findFirst({
           where: {
             seasonId: currentSeason.id,
             OR: [
@@ -439,33 +435,41 @@ export async function calculateTensionFromMatches() {
   const standingsMap = new Map(standings.map(s => [s.clubId, s]));
 
   // Get player scoring history for quality assessment
-  const playerScores = await prisma.playerScore.groupBy({
-    by: ["contractId"],
-    _avg: { score: true },
-    _count: { score: true },
+  const matchPlayerScores = await prisma.matchPlayerScore.findMany({
     where: {
+      played: true,
+      aflFantasyScore: { not: null },
       match: {
         round: {
           season: { year: { gte: currentYear - 2 } },
         },
       },
     },
+    include: {
+      rosterPlayer: {
+        select: { contractId: true },
+      },
+    },
   });
+
+  // Build a map of contractId -> scores
+  const contractScores = new Map<string, number[]>();
+  for (const score of matchPlayerScores) {
+    const contractId = score.rosterPlayer.contractId;
+    if (!contractScores.has(contractId)) {
+      contractScores.set(contractId, []);
+    }
+    contractScores.get(contractId)!.push(score.aflFantasyScore!);
+  }
 
   // Build a map of contractId -> average score (only if they've played enough games)
   const playerAvgScores = new Map<string, number>();
-  for (const p of playerScores) {
-    if ((p._count.score ?? 0) >= 3) { // Need at least 3 games
-      playerAvgScores.set(p.contractId, p._avg.score ?? 0);
+  for (const [contractId, scores] of contractScores) {
+    if (scores.length >= 3) { // Need at least 3 games
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      playerAvgScores.set(contractId, avg);
     }
   }
-
-  // Keep star set for backwards compatibility
-  const starContractIds = new Set(
-    playerScores
-      .filter(p => (p._avg.score ?? 0) >= 85 && (p._count.score ?? 0) >= 5)
-      .map(p => p.contractId)
-  );
 
   // Get contract history for player movement tracking
   const contractHistory = await prisma.contract.findMany({
@@ -517,10 +521,8 @@ export async function calculateTensionFromMatches() {
   // Save to database
   for (const { clubAId, clubBId, details } of tensionResults) {
     try {
-      // @ts-expect-error - clubTension might not exist in Prisma client yet
       if (prisma.clubTension) {
-        // @ts-expect-error - clubTension might not exist in Prisma client yet
-        await prisma.clubTension.upsert({
+          await prisma.clubTension.upsert({
           where: {
             clubAId_clubBId_seasonId: {
               clubAId,

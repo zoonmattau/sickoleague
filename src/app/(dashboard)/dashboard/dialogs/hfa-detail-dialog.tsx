@@ -168,8 +168,8 @@ export function HfaDetailDialog({
                         <YAxis className="text-xs" />
                         <Tooltip
                           contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                          formatter={(value: number, name: string) => [
-                            name === "hfa" ? `${value >= 0 ? "+" : ""}${value}` : value,
+                          formatter={(value, name) => [
+                            name === "hfa" ? `${(Number(value) ?? 0) >= 0 ? "+" : ""}${value ?? 0}` : (value ?? 0),
                             name === "hfa" ? "HFA" : "Margin",
                           ]}
                         />

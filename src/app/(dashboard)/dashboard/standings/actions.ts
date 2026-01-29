@@ -244,7 +244,7 @@ export async function getTeamFormAnalysis(clubId: string) {
     const olderAvg = olderHalf.length > 0
       ? olderHalf.reduce((sum, r) => sum + r.margin, 0) / olderHalf.length
       : 0;
-    const trend = recentAvg > olderAvg + 5 ? "up" : recentAvg < olderAvg - 5 ? "down" : "neutral";
+    const trend: "up" | "down" | "neutral" = recentAvg > olderAvg + 5 ? "up" : recentAvg < olderAvg - 5 ? "down" : "neutral";
 
     return {
       streak,

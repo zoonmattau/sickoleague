@@ -75,14 +75,13 @@ const getCachedHistory = unstable_cache(
     const champions: Champion[] = [];
 
     for (const season of seasons) {
-      // Find grand final matches
+      // Find grand final matches (finals are in rounds 20+)
       const grandFinals = await prisma.match.findMany({
         where: {
           status: "COMPLETED",
-          matchType: "FINALS",
           round: {
             seasonId: season.id,
-            roundNumber: { gte: 20 }, // Assuming finals are rounds 20+
+            roundNumber: { gte: 20 },
           },
         },
         include: {
@@ -167,13 +166,18 @@ const getCachedHistory = unstable_cache(
     }
 
     // Get highest player score
-    const highestPlayerScoreRecord = await prisma.playerScore.findFirst({
-      orderBy: { score: "desc" },
+    const highestPlayerScoreRecord = await prisma.matchPlayerScore.findFirst({
+      where: { aflFantasyScore: { not: null } },
+      orderBy: { aflFantasyScore: "desc" },
       include: {
-        contract: {
+        rosterPlayer: {
           include: {
-            aflPlayer: true,
-            club: true,
+            contract: {
+              include: {
+                aflPlayer: true,
+                club: true,
+              },
+            },
           },
         },
         match: {
@@ -187,9 +191,9 @@ const getCachedHistory = unstable_cache(
     let highestPlayerScore: ScoringRecord | null = null;
     if (highestPlayerScoreRecord) {
       highestPlayerScore = {
-        score: Number(highestPlayerScoreRecord.score),
-        club: highestPlayerScoreRecord.contract.club.name,
-        player: `${highestPlayerScoreRecord.contract.aflPlayer.firstName} ${highestPlayerScoreRecord.contract.aflPlayer.lastName}`,
+        score: Number(highestPlayerScoreRecord.aflFantasyScore ?? 0),
+        club: highestPlayerScoreRecord.rosterPlayer.contract.club.name,
+        player: `${highestPlayerScoreRecord.rosterPlayer.contract.aflPlayer.firstName} ${highestPlayerScoreRecord.rosterPlayer.contract.aflPlayer.lastName}`,
         round: highestPlayerScoreRecord.match.round.roundNumber,
         year: highestPlayerScoreRecord.match.round.season.year,
       };

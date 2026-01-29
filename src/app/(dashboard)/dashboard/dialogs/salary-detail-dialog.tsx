@@ -106,7 +106,7 @@ export function SalaryDetailDialog({
                   <YAxis className="text-xs" />
                   <Tooltip
                     contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                    formatter={(value: number) => [`$${value}k`, ""]}
+                    formatter={(value) => [`$${value ?? 0}k`, ""]}
                   />
                   <ReferenceLine y={salaryCap} stroke="hsl(var(--destructive))" strokeDasharray="5 5" />
                   <Bar dataKey="used" stackId="a" fill="hsl(var(--primary))" name="Used" />
