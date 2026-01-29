@@ -106,6 +106,7 @@ const getCachedPlayerStats = unstable_cache(
                 totalValue: true,
                 tradeBlock: true,
                 yearBreakdown: true,
+                endSeason: true,
                 aflPlayer: {
                   select: {
                     id: true,
@@ -155,6 +156,7 @@ const getCachedPlayerStats = unstable_cache(
       secondaryColor: string | null;
       salary: number;
       tradeBlock: boolean;
+      endSeason: number;
       scores: number[];
       seniorsGames: number;
       reservesGames: number;
@@ -186,6 +188,7 @@ const getCachedPlayerStats = unstable_cache(
         secondaryColor: club.secondaryColor,
         salary: currentYearSalary,
         tradeBlock: contract.tradeBlock,
+        endSeason: contract.endSeason,
         scores: [],
         seniorsGames: 0,
         reservesGames: 0,
@@ -221,6 +224,7 @@ const getCachedPlayerStats = unstable_cache(
         secondaryColor: p.secondaryColor,
         salary: p.salary,
         tradeBlock: p.tradeBlock,
+        endSeason: p.endSeason,
         avgScore: p.scores.length > 0 ? Math.round((total / p.scores.length) * 10) / 10 : null,
         last5Avg: last5.length > 0 ? Math.round((last5Total / last5.length) * 10) / 10 : null,
         gamesPlayed: p.scores.length,

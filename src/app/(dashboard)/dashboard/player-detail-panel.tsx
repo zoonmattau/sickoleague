@@ -92,6 +92,12 @@ type PlayerDetailPanelProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   playerStats: Map<string, PlayerStats>;
+  myClubId?: string | null;
+  playerClubId?: string | null;
+  playerClubName?: string | null;
+  onProposeTrade?: (contractId: string) => void;
+  onToggleShortlist?: (contractId: string) => void;
+  isOnShortlist?: boolean;
 };
 
 export function PlayerDetailPanel({
@@ -99,7 +105,14 @@ export function PlayerDetailPanel({
   open,
   onOpenChange,
   playerStats,
+  myClubId,
+  playerClubId,
+  playerClubName,
+  onProposeTrade,
+  onToggleShortlist,
+  isOnShortlist,
 }: PlayerDetailPanelProps) {
+  const isForeignPlayer = myClubId && playerClubId && myClubId !== playerClubId;
   const [tradeBlockState, setTradeBlockState] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -289,36 +302,60 @@ export function PlayerDetailPanel({
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="space-y-2 pt-2">
-              <Button
-                variant={tradeBlockState ? "outline" : "secondary"}
-                className="w-full"
-                onClick={handleToggleTradeBlock}
-                disabled={toggling}
-              >
-                {tradeBlockState ? "Remove from Trade Block" : "Add to Trade Block"}
-              </Button>
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={handleRelease}
-                disabled={releasing}
-              >
-                {confirmRelease
-                  ? "Confirm Release — This cannot be undone"
-                  : "Release Player"}
-              </Button>
-              {confirmRelease && (
+            {/* Actions - Different for foreign vs own players */}
+            {isForeignPlayer ? (
+              <div className="space-y-2 pt-2">
+                {playerClubName && (
+                  <div className="text-sm text-muted-foreground text-center mb-2">
+                    Owned by {playerClubName}
+                  </div>
+                )}
                 <Button
-                  variant="ghost"
+                  variant="default"
                   className="w-full"
-                  onClick={() => setConfirmRelease(false)}
+                  onClick={() => onProposeTrade?.(contract.id)}
                 >
-                  Cancel
+                  Propose Trade
                 </Button>
-              )}
-            </div>
+                <Button
+                  variant={isOnShortlist ? "outline" : "secondary"}
+                  className="w-full"
+                  onClick={() => onToggleShortlist?.(contract.id)}
+                >
+                  {isOnShortlist ? "Remove from Shortlist" : "Add to Shortlist"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-2">
+                <Button
+                  variant={tradeBlockState ? "outline" : "secondary"}
+                  className="w-full"
+                  onClick={handleToggleTradeBlock}
+                  disabled={toggling}
+                >
+                  {tradeBlockState ? "Remove from Trade Block" : "Add to Trade Block"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={handleRelease}
+                  disabled={releasing}
+                >
+                  {confirmRelease
+                    ? "Confirm Release — This cannot be undone"
+                    : "Release Player"}
+                </Button>
+                {confirmRelease && (
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setConfirmRelease(false)}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="stats" className="space-y-4 mt-4">

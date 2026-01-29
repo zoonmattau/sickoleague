@@ -16,10 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, ArrowRightLeft, Star } from "lucide-react";
+import { getPositionColorClasses } from "@/lib/position-colors";
+import { toast } from "sonner";
 
 type PlayerStat = {
   contractId: string;
@@ -36,6 +39,7 @@ type PlayerStat = {
   secondaryColor: string | null;
   salary: number;
   tradeBlock: boolean;
+  endSeason: number;
   avgScore: number | null;
   last5Avg: number | null;
   gamesPlayed: number;
@@ -46,12 +50,16 @@ type PlayerStat = {
 type Props = {
   stats: PlayerStat[];
   clubs: { id: string; name: string; abbreviation: string }[];
+  myClubId?: string | null;
   onPlayerClick?: (player: PlayerStat) => void;
+  onProposeTrade?: (player: PlayerStat) => void;
+  shortlist: Set<string>;
+  onToggleShortlist: (contractId: string) => void;
 };
 
 type SortKey = "lastName" | "avgScore" | "last5Avg" | "gamesPlayed" | "salary";
 
-export function PlayersStats({ stats, clubs, onPlayerClick }: Props) {
+export function PlayersStats({ stats, clubs, myClubId, onPlayerClick, onProposeTrade, shortlist, onToggleShortlist }: Props) {
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<string>("all");
   const [club, setClub] = useState<string>("all");
@@ -224,6 +232,8 @@ export function PlayersStats({ stats, clubs, onPlayerClick }: Props) {
                   Salary <SortIcon column="salary" />
                 </button>
               </TableHead>
+              <TableHead className="text-center">Ends</TableHead>
+              {myClubId && <TableHead className="text-center">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -263,7 +273,12 @@ export function PlayersStats({ stats, clubs, onPlayerClick }: Props) {
                   <TableCell>
                     <div className="flex gap-1">
                       {player.positions.map((pos) => (
-                        <Badge key={pos} variant="outline" className="text-xs">{pos}</Badge>
+                        <span
+                          key={pos}
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getPositionColorClasses(pos)}`}
+                        >
+                          {pos}
+                        </span>
                       ))}
                     </div>
                   </TableCell>
@@ -279,11 +294,48 @@ export function PlayersStats({ stats, clubs, onPlayerClick }: Props) {
                   <TableCell className="text-right">
                     ${player.salary}k
                   </TableCell>
+                  <TableCell className="text-center text-muted-foreground">
+                    {player.endSeason}
+                  </TableCell>
+                  {myClubId && (
+                    <TableCell className="text-center">
+                      {player.clubId !== myClubId ? (
+                        <div className="flex gap-1 justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onProposeTrade?.(player);
+                            }}
+                            title="Propose trade"
+                          >
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-7 w-7 ${shortlist.has(player.contractId) ? "text-yellow-500" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleShortlist(player.contractId);
+                            }}
+                            title={shortlist.has(player.contractId) ? "Remove from shortlist" : "Add to shortlist"}
+                          >
+                            <Star className={`h-3.5 w-3.5 ${shortlist.has(player.contractId) ? "fill-current" : ""}`} />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={myClubId ? 10 : 9} className="text-center text-muted-foreground py-8">
                   No players match your filters
                 </TableCell>
               </TableRow>

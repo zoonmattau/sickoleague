@@ -1,12 +1,16 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { getAllTeamStats, getAllPlayerStats } from "./actions";
 import { TeamsStats } from "./teams-stats";
-import { PlayersStats } from "./players-stats";
+import { PlayersStatsWrapper } from "./players-stats-wrapper";
 import prisma from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function StatsPage() {
-  const [teamStats, playerStats, clubs] = await Promise.all([
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [teamStats, playerStats, clubs, myClub] = await Promise.all([
     getAllTeamStats(),
     getAllPlayerStats(),
     prisma.club.findMany({
@@ -17,6 +21,10 @@ export default async function StatsPage() {
       },
       orderBy: { name: "asc" },
     }),
+    user ? prisma.club.findFirst({
+      where: { coach: { discordId: user.user_metadata?.provider_id } },
+      select: { id: true },
+    }) : null,
   ]);
 
   return (
@@ -41,7 +49,7 @@ export default async function StatsPage() {
             </TabsContent>
 
             <TabsContent value="players" className="mt-6">
-              <PlayersStats stats={playerStats} clubs={clubs} />
+              <PlayersStatsWrapper stats={playerStats} clubs={clubs} myClubId={myClub?.id ?? null} />
             </TabsContent>
           </Tabs>
         </CardContent>
