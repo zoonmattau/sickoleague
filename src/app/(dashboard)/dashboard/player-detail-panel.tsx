@@ -32,21 +32,15 @@ import {
   getPlayerSeasonAverages,
   getPlayerContractHistory,
 } from "./roster/actions";
+import { getPositionCombinedClasses } from "@/lib/position-colors";
 import type { SerializedContract, PlayerStats } from "./types";
 
 function formatSalary(value: number): string {
   return `$${(value * 1000).toLocaleString()}`;
 }
 
-const POSITION_COLORS: Record<string, string> = {
-  DEF: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
-  MID: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
-  RUC: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
-  FWD: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30",
-};
-
 function PositionBadge({ pos }: { pos: string }) {
-  const colors = POSITION_COLORS[pos] ?? "bg-muted text-muted-foreground";
+  const colors = getPositionCombinedClasses(pos);
   return (
     <span className={`inline-flex items-center rounded-md border font-medium text-xs px-1.5 py-0 h-5 ${colors}`}>
       {pos}

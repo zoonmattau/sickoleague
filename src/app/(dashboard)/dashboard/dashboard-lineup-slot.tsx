@@ -14,6 +14,7 @@ import { Position } from "@prisma/client";
 import { useState } from "react";
 import { assignPlayerToRoster, removePlayerFromRoster } from "./roster/actions";
 import { X } from "lucide-react";
+import { getPositionCombinedClasses } from "@/lib/position-colors";
 import type {
   SpotConfig,
   SerializedContract,
@@ -21,15 +22,8 @@ import type {
   PlayerStats,
 } from "./types";
 
-const POSITION_COLORS: Record<string, string> = {
-  DEF: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
-  MID: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
-  RUC: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
-  FWD: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30",
-};
-
 function PositionBadge({ pos, size = "sm" }: { pos: string; size?: "sm" | "xs" }) {
-  const colors = POSITION_COLORS[pos] ?? "bg-muted text-muted-foreground";
+  const colors = getPositionCombinedClasses(pos);
   const sizeClass = size === "xs"
     ? "text-[10px] px-1 py-0 h-4"
     : "text-xs px-1.5 py-0 h-5";

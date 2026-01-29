@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { POSITION_COLORS } from "@/lib/position-colors";
 import type { SerializedContract, SerializedRosterPlayer } from "../types";
 
 type Props = {
@@ -19,13 +20,8 @@ type Props = {
   reservesCount: number;
 };
 
-// Position color mapping
-const positionColors: Record<string, { bg: string; text: string; border: string }> = {
-  DEF: { bg: "bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/30" },
-  MID: { bg: "bg-green-500/20", text: "text-green-600 dark:text-green-400", border: "border-green-500/30" },
-  RUC: { bg: "bg-purple-500/20", text: "text-purple-600 dark:text-purple-400", border: "border-purple-500/30" },
-  FWD: { bg: "bg-red-500/20", text: "text-red-600 dark:text-red-400", border: "border-red-500/30" },
-};
+// Use centralized position colors
+const positionColors = POSITION_COLORS;
 
 export function RosterDetailDialog({
   open,
