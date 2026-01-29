@@ -47,54 +47,66 @@ export function DraggablePlayer({
   const salary = contract.yearBreakdown?.find(y => y.season === currentYear)?.value ?? 0;
 
   if (compact) {
-    // Table row style - aligned columns
+    // ESPN-style table row - aligned columns with bold stats
     return (
       <div
         ref={setNodeRef}
         style={style}
         {...listeners}
         {...attributes}
-        className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/50 cursor-grab active:cursor-grabbing hover:bg-muted transition-colors"
+        className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing hover:bg-muted/60 transition-colors group"
       >
         {/* Captain/VC indicator */}
-        <span className="w-6 text-center text-xs font-bold text-primary shrink-0">
-          {isCaptain ? "C" : isVc ? "VC" : ""}
+        <span className="w-6 text-center shrink-0">
+          {isCaptain && (
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-black">
+              C
+            </span>
+          )}
+          {isVc && (
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted text-foreground text-[10px] font-bold border">
+              VC
+            </span>
+          )}
         </span>
 
-        {/* Player name */}
-        <span className="text-sm font-medium truncate flex-1 min-w-0" title={`${player.firstName} ${player.lastName}`}>
-          {player.firstName.charAt(0)}. {player.lastName}
+        {/* Player name - bold and prominent */}
+        <span
+          className="text-sm font-bold truncate flex-1 min-w-0 group-hover:text-primary transition-colors"
+          title={`${player.firstName} ${player.lastName}`}
+        >
+          {player.firstName.charAt(0)}. <span className="uppercase">{player.lastName}</span>
         </span>
 
         {/* AFL Team - hidden on small */}
-        <span className="text-[10px] text-muted-foreground w-10 text-center hidden md:inline shrink-0">
+        <span className="text-[10px] font-semibold text-muted-foreground w-10 text-center hidden md:inline shrink-0 uppercase">
           {player.aflTeam?.abbreviation || "-"}
         </span>
 
-        {/* Positions - color coded */}
+        {/* Positions - color coded badges */}
         <div className="flex gap-0.5 w-14 justify-center shrink-0">
           {player.positions.map((pos) => (
             <span
               key={pos}
-              className={`text-[9px] px-1 rounded font-medium ${getPositionColorClasses(pos)}`}
+              className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${getPositionColorClasses(pos)}`}
             >
               {pos}
             </span>
           ))}
         </div>
 
-        {/* Avg score */}
-        <span className="text-xs font-semibold tabular-nums w-8 text-right shrink-0">
+        {/* Avg score - prominent stat */}
+        <span className="text-sm font-black tabular-nums w-10 text-right shrink-0">
           {stats?.avgScore?.toFixed(0) ?? "-"}
         </span>
 
         {/* L5 avg - hidden on small */}
-        <span className="text-xs text-muted-foreground tabular-nums w-8 text-right hidden md:inline shrink-0">
+        <span className="text-xs font-semibold text-muted-foreground tabular-nums w-10 text-right hidden md:inline shrink-0">
           {stats?.last5Avg?.toFixed(0) ?? "-"}
         </span>
 
         {/* Salary - hidden on small/medium */}
-        <span className="text-xs text-muted-foreground tabular-nums w-12 text-right hidden lg:inline shrink-0">
+        <span className="text-xs font-semibold text-muted-foreground tabular-nums w-14 text-right hidden lg:inline shrink-0">
           ${salary}k
         </span>
       </div>

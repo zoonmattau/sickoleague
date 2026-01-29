@@ -9,6 +9,8 @@ import { DraggablePlayer } from "./draggable-player";
 import { DroppableSlot } from "./droppable-slot";
 import { PlayerDetailPanel } from "../player-detail-panel";
 import { assignPlayerToRoster, removePlayerFromRoster } from "../roster/actions";
+import { POSITION_COLORS } from "@/lib/position-colors";
+import { Shield, Users, Target, CircleDot, Armchair, Cross } from "lucide-react";
 import type {
   SerializedContract,
   SerializedRosterPlayer,
@@ -16,6 +18,16 @@ import type {
   PlayerStats,
   CaptaincyInfo,
 } from "../types";
+
+// Group icons and colors
+const GROUP_CONFIG: Record<string, { icon: typeof Shield; position: string }> = {
+  Defenders: { icon: Shield, position: "DEF" },
+  Midfielders: { icon: Users, position: "MID" },
+  Ruck: { icon: CircleDot, position: "RUC" },
+  Forwards: { icon: Target, position: "FWD" },
+  Bench: { icon: Armchair, position: "BENCH" },
+  "Injury List": { icon: Cross, position: "IL" },
+};
 
 // Aligned rows: each row is [seniors spot | reserves spot], with null for gaps
 type AlignedRow = {
@@ -220,154 +232,195 @@ export function DraggableLineup({
     );
   };
 
+  // Column header component to reduce repetition
+  const ColumnHeader = () => (
+    <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30">
+      <span className="w-6 text-center"></span>
+      <span className="flex-1">Player</span>
+      <span className="w-10 text-center hidden md:inline">Team</span>
+      <span className="w-14 text-center">Pos</span>
+      <span className="w-10 text-right font-black">AVG</span>
+      <span className="w-10 text-right hidden md:inline">L5</span>
+      <span className="w-14 text-right hidden lg:inline">Salary</span>
+    </div>
+  );
+
   return (
     <LineupDndProvider onDragEnd={handleDragEnd}>
       {/* Main lineup */}
-      <Card className="">
-        <CardHeader className="pb-2">
-          <div className="grid grid-cols-2 gap-4">
-            <CardTitle className="text-base">
-              <span
-                className="inline-flex items-center rounded-md px-2.5 py-0.5 text-sm font-semibold"
-                style={teamBadgeStyle}
-              >
+      <Card className="overflow-hidden border-0 shadow-lg">
+        {/* Header with team badges */}
+        <CardHeader className="pb-0 pt-4 px-0">
+          <div className="grid grid-cols-2">
+            <div
+              className="px-4 py-3 border-b-4"
+              style={{
+                borderColor: primaryColor || 'hsl(var(--primary))',
+                background: `linear-gradient(135deg, ${primaryColor}15 0%, transparent 100%)`
+              }}
+            >
+              <CardTitle className="text-lg font-black tracking-tight uppercase">
                 {clubName}
-              </span>
-            </CardTitle>
-            <CardTitle className="text-base">
-              <span
-                className="inline-flex items-center rounded-md px-2.5 py-0.5 text-sm font-semibold"
-                style={teamBadgeStyle}
-              >
-                {reservesName}
-              </span>
-            </CardTitle>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Drag players between positions to rearrange your lineup
-          </p>
-        </CardHeader>
-        <CardContent>
-          {/* Column Headers */}
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b">
-              <span className="w-6 text-center">C</span>
-              <span className="flex-1">Name</span>
-              <span className="w-10 text-center hidden md:inline">Team</span>
-              <span className="w-14 text-center">Pos</span>
-              <span className="w-8 text-right">Avg</span>
-              <span className="w-8 text-right hidden md:inline">L5</span>
-              <span className="w-12 text-right hidden lg:inline">Salary</span>
+              </CardTitle>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Seniors</p>
             </div>
-            <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b">
-              <span className="w-6 text-center">C</span>
-              <span className="flex-1">Name</span>
-              <span className="w-10 text-center hidden md:inline">Team</span>
-              <span className="w-14 text-center">Pos</span>
-              <span className="w-8 text-right">Avg</span>
-              <span className="w-8 text-right hidden md:inline">L5</span>
-              <span className="w-12 text-right hidden lg:inline">Salary</span>
+            <div
+              className="px-4 py-3 border-b-4 border-l"
+              style={{
+                borderBottomColor: primaryColor || 'hsl(var(--primary))',
+                background: `linear-gradient(135deg, ${primaryColor}10 0%, transparent 100%)`
+              }}
+            >
+              <CardTitle className="text-lg font-black tracking-tight uppercase">
+                {reservesName}
+              </CardTitle>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Reserves</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {/* Column Headers */}
+          <div className="grid grid-cols-2 border-b">
+            <ColumnHeader />
+            <div className="border-l">
+              <ColumnHeader />
             </div>
           </div>
 
-          {groups.map((group) => (
-            <div key={group.name} className="mb-3">
-              <div className="grid grid-cols-2 gap-2 mb-1">
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2 border-l-2 border-primary">
-                  {group.name}
-                </div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2 border-l-2 border-primary">
-                  {group.name}
-                </div>
-              </div>
-              <div className="space-y-1">
-                {group.rows.map((row, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-2">
-                    {renderSlot(row.senior, "SENIORS")}
-                    {renderSlot(row.reserve, "RESERVES")}
+          {groups.map((group) => {
+            const config = GROUP_CONFIG[group.name];
+            const posColors = config ? POSITION_COLORS[config.position] : null;
+            const Icon = config?.icon;
+
+            return (
+              <div key={group.name} className="border-b last:border-b-0">
+                {/* Position group header */}
+                <div className="grid grid-cols-2">
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 border-l-4 ${posColors?.solid || 'border-primary'}`}
+                    style={{ borderLeftColor: undefined }}
+                  >
+                    <div className={`flex items-center gap-2 ${posColors?.solid || 'bg-primary'} px-2 py-0.5 rounded`}>
+                      {Icon && <Icon className="h-3 w-3 text-white" />}
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white">
+                        {group.name}
+                      </span>
+                    </div>
                   </div>
-                ))}
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 border-l border-l-4 ${posColors?.solid || 'border-primary'}`}
+                    style={{ borderLeftColor: undefined }}
+                  >
+                    <div className={`flex items-center gap-2 ${posColors?.solid || 'bg-primary'} px-2 py-0.5 rounded`}>
+                      {Icon && <Icon className="h-3 w-3 text-white" />}
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white">
+                        {group.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {/* Position slots */}
+                <div>
+                  {group.rows.map((row, i) => (
+                    <div key={i} className="grid grid-cols-2 border-t border-dashed border-muted">
+                      <div className={`border-l-4 ${posColors?.solid || 'border-primary'}`}>
+                        {renderSlot(row.senior, "SENIORS")}
+                      </div>
+                      <div className={`border-l border-l-4 ${posColors?.solid || 'border-primary'}`}>
+                        {renderSlot(row.reserve, "RESERVES")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
       {/* Bench & IL */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Bench</CardTitle>
+        <Card className="overflow-hidden border-0 shadow-lg">
+          <CardHeader className="pb-0 pt-0 px-0">
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-600 border-b-4 border-slate-700">
+              <Armchair className="h-4 w-4 text-white" />
+              <CardTitle className="text-sm font-black tracking-tight uppercase text-white">Bench</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b mb-1">
-              <span className="w-6 text-center">C</span>
-              <span className="flex-1">Name</span>
+          <CardContent className="p-0">
+            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b">
+              <span className="w-6 text-center"></span>
+              <span className="flex-1">Player</span>
               <span className="w-10 text-center hidden md:inline">Team</span>
               <span className="w-14 text-center">Pos</span>
-              <span className="w-8 text-right">Avg</span>
-              <span className="w-8 text-right hidden md:inline">L5</span>
-              <span className="w-12 text-right hidden lg:inline">Salary</span>
+              <span className="w-10 text-right font-black">AVG</span>
+              <span className="w-10 text-right hidden md:inline">L5</span>
+              <span className="w-14 text-right hidden lg:inline">Salary</span>
             </div>
-            <div className="space-y-1">
-              {BENCH_SPOTS.map((spotConfig) => (
-                <DroppableSlot
-                  key={spotConfig.spot}
-                  spot={spotConfig.spot}
-                  label={spotConfig.label}
-                  isEmpty={!rosterMap.get(spotConfig.spot)}
-                >
-                  {rosterMap.get(spotConfig.spot) && (
-                    <div onClick={() => handlePlayerClick(rosterMap.get(spotConfig.spot)!.contract)}>
-                      <DraggablePlayer
-                        contract={rosterMap.get(spotConfig.spot)!.contract}
-                        sourceSpot={spotConfig.spot}
-                        sourceSquad="SENIORS"
-                        stats={statsMap.get(rosterMap.get(spotConfig.spot)!.contractId)}
-                        compact
-                      />
-                    </div>
-                  )}
-                </DroppableSlot>
+            <div>
+              {BENCH_SPOTS.map((spotConfig, i) => (
+                <div key={spotConfig.spot} className={`border-l-4 border-slate-500 ${i > 0 ? 'border-t border-dashed border-muted' : ''}`}>
+                  <DroppableSlot
+                    spot={spotConfig.spot}
+                    label={spotConfig.label}
+                    isEmpty={!rosterMap.get(spotConfig.spot)}
+                  >
+                    {rosterMap.get(spotConfig.spot) && (
+                      <div onClick={() => handlePlayerClick(rosterMap.get(spotConfig.spot)!.contract)}>
+                        <DraggablePlayer
+                          contract={rosterMap.get(spotConfig.spot)!.contract}
+                          sourceSpot={spotConfig.spot}
+                          sourceSquad="SENIORS"
+                          stats={statsMap.get(rosterMap.get(spotConfig.spot)!.contractId)}
+                          compact
+                        />
+                      </div>
+                    )}
+                  </DroppableSlot>
+                </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Injury List</CardTitle>
+        <Card className="overflow-hidden border-0 shadow-lg">
+          <CardHeader className="pb-0 pt-0 px-0">
+            <div className="flex items-center gap-2 px-4 py-3 bg-rose-600 border-b-4 border-rose-700">
+              <Cross className="h-4 w-4 text-white" />
+              <CardTitle className="text-sm font-black tracking-tight uppercase text-white">Injury List</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b mb-1">
-              <span className="w-6 text-center">C</span>
-              <span className="flex-1">Name</span>
+          <CardContent className="p-0">
+            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b">
+              <span className="w-6 text-center"></span>
+              <span className="flex-1">Player</span>
               <span className="w-10 text-center hidden md:inline">Team</span>
               <span className="w-14 text-center">Pos</span>
-              <span className="w-8 text-right">Avg</span>
-              <span className="w-8 text-right hidden md:inline">L5</span>
-              <span className="w-12 text-right hidden lg:inline">Salary</span>
+              <span className="w-10 text-right font-black">AVG</span>
+              <span className="w-10 text-right hidden md:inline">L5</span>
+              <span className="w-14 text-right hidden lg:inline">Salary</span>
             </div>
-            <div className="space-y-1">
-              {IL_SPOTS.map((spotConfig) => (
-                <DroppableSlot
-                  key={spotConfig.spot}
-                  spot={spotConfig.spot}
-                  label={spotConfig.label}
-                  isEmpty={!rosterMap.get(spotConfig.spot)}
-                >
-                  {rosterMap.get(spotConfig.spot) && (
-                    <div onClick={() => handlePlayerClick(rosterMap.get(spotConfig.spot)!.contract)}>
-                      <DraggablePlayer
-                        contract={rosterMap.get(spotConfig.spot)!.contract}
-                        sourceSpot={spotConfig.spot}
-                        sourceSquad="SENIORS"
-                        stats={statsMap.get(rosterMap.get(spotConfig.spot)!.contractId)}
-                        compact
-                      />
-                    </div>
-                  )}
-                </DroppableSlot>
+            <div>
+              {IL_SPOTS.map((spotConfig, i) => (
+                <div key={spotConfig.spot} className={`border-l-4 border-rose-500 ${i > 0 ? 'border-t border-dashed border-muted' : ''}`}>
+                  <DroppableSlot
+                    spot={spotConfig.spot}
+                    label={spotConfig.label}
+                    isEmpty={!rosterMap.get(spotConfig.spot)}
+                  >
+                    {rosterMap.get(spotConfig.spot) && (
+                      <div onClick={() => handlePlayerClick(rosterMap.get(spotConfig.spot)!.contract)}>
+                        <DraggablePlayer
+                          contract={rosterMap.get(spotConfig.spot)!.contract}
+                          sourceSpot={spotConfig.spot}
+                          sourceSquad="SENIORS"
+                          stats={statsMap.get(rosterMap.get(spotConfig.spot)!.contractId)}
+                          compact
+                        />
+                      </div>
+                    )}
+                  </DroppableSlot>
+                </div>
               ))}
             </div>
           </CardContent>
@@ -376,26 +429,35 @@ export function DraggableLineup({
 
       {/* Unassigned Player Pool */}
       {unassignedContracts.length > 0 && (
-        <Card className="">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              Unassigned Players
-              <Badge variant="secondary">{unassignedContracts.length}</Badge>
-            </CardTitle>
+        <Card className="overflow-hidden border-0 shadow-lg">
+          <CardHeader className="pb-0 pt-0 px-0">
+            <div className="flex items-center justify-between px-4 py-3 bg-amber-600 border-b-4 border-amber-700">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-white" />
+                <CardTitle className="text-sm font-black tracking-tight uppercase text-white">Unassigned Players</CardTitle>
+              </div>
+              <Badge className="bg-white/20 text-white border-0 font-black">
+                {unassignedContracts.length}
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b mb-1">
-              <span className="w-6 text-center">C</span>
-              <span className="flex-1">Name</span>
+          <CardContent className="p-0">
+            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b">
+              <span className="w-6 text-center"></span>
+              <span className="flex-1">Player</span>
               <span className="w-10 text-center hidden md:inline">Team</span>
               <span className="w-14 text-center">Pos</span>
-              <span className="w-8 text-right">Avg</span>
-              <span className="w-8 text-right hidden md:inline">L5</span>
-              <span className="w-12 text-right hidden lg:inline">Salary</span>
+              <span className="w-10 text-right font-black">AVG</span>
+              <span className="w-10 text-right hidden md:inline">L5</span>
+              <span className="w-14 text-right hidden lg:inline">Salary</span>
             </div>
-            <div className="space-y-1">
-              {unassignedContracts.map((contract) => (
-                <div key={contract.id} onClick={() => handlePlayerClick(contract)}>
+            <div>
+              {unassignedContracts.map((contract, i) => (
+                <div
+                  key={contract.id}
+                  className={`border-l-4 border-amber-500 ${i > 0 ? 'border-t border-dashed border-muted' : ''}`}
+                  onClick={() => handlePlayerClick(contract)}
+                >
                   <DraggablePlayer
                     contract={contract}
                     sourceSpot="pool"
