@@ -106,6 +106,23 @@ export async function getContractedPlayers(clubId: string) {
   return contracts;
 }
 
+// Get required position for a roster spot
+function getRequiredPosition(spot: RosterSpot): Position | null {
+  if (spot.startsWith("DEF") || spot.startsWith("RDEF")) return "DEF";
+  if (spot.startsWith("MID") || spot.startsWith("RMID")) return "MID";
+  if (spot === "RUC" || spot === "RRUC") return "RUC";
+  if (spot.startsWith("FWD") || spot.startsWith("RFWD")) return "FWD";
+  // Bench and IL can hold any position
+  return null;
+}
+
+// Check if a player can play a roster spot
+function canPlaySpot(playerPositions: Position[], spot: RosterSpot): boolean {
+  const required = getRequiredPosition(spot);
+  if (!required) return true; // Bench/IL accepts any
+  return playerPositions.includes(required);
+}
+
 // Assign a player to a roster spot (optimized for speed)
 export async function assignPlayerToRoster(
   contractId: string,
@@ -113,16 +130,59 @@ export async function assignPlayerToRoster(
   squad: Squad,
   rosterSpot: RosterSpot
 ) {
+  // Get the player's positions
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    include: { aflPlayer: { select: { positions: true } } },
+  });
+
+  if (!contract) {
+    return { success: false, error: "Contract not found" };
+  }
+
+  // Validate the player can play this position
+  if (!canPlaySpot(contract.aflPlayer.positions, rosterSpot)) {
+    const required = getRequiredPosition(rosterSpot);
+    return { success: false, error: `Player doesn't have ${required} eligibility` };
+  }
+
   // Single query to get roster state
   const allRosterPlayers = await prisma.rosterPlayer.findMany({
     where: { clubId, roundId: null },
-    select: { id: true, contractId: true, squad: true, rosterSpot: true },
+    include: { contract: { include: { aflPlayer: { select: { positions: true } } } } },
   });
 
   const existingAssignment = allRosterPlayers.find(rp => rp.contractId === contractId);
   const existingInSpot = allRosterPlayers.find(
     rp => rp.squad === squad && rp.rosterSpot === rosterSpot && rp.contractId !== contractId
   );
+
+  // If swapping, validate the displaced player can go to the old spot
+  if (existingInSpot && existingAssignment) {
+    const displacedPositions = existingInSpot.contract.aflPlayer.positions;
+    if (!canPlaySpot(displacedPositions, existingAssignment.rosterSpot)) {
+      // Can't swap - displaced player can't play the old spot, move them to bench instead
+      const benchSpots: RosterSpot[] = ["BENCH1", "BENCH2", "IL1", "IL2"];
+      const usedSpots = new Set(allRosterPlayers.filter(rp => rp.squad === "SENIORS").map(rp => rp.rosterSpot));
+      const emptySpot = benchSpots.find(s => !usedSpots.has(s));
+      if (!emptySpot) {
+        return { success: false, error: "No bench spot available for displaced player" };
+      }
+      // Convert to bench displacement instead of swap
+      await prisma.$transaction(async (tx) => {
+        await tx.rosterPlayer.update({
+          where: { id: existingInSpot.id },
+          data: { rosterSpot: emptySpot },
+        });
+        await tx.rosterPlayer.update({
+          where: { id: existingAssignment.id },
+          data: { squad, rosterSpot },
+        });
+      });
+      revalidatePath("/dashboard");
+      return { success: true };
+    }
+  }
 
   // Use a transaction for atomic updates
   await prisma.$transaction(async (tx) => {
@@ -183,6 +243,86 @@ export async function removePlayerFromRoster(rosterPlayerId: string) {
   await prisma.rosterPlayer.delete({
     where: { id: rosterPlayerId },
   });
+
+  revalidatePath("/dashboard/roster");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// Set captain or vice-captain for a squad
+export async function setCaptain(
+  contractId: string,
+  squad: Squad,
+  role: "captain" | "viceCaptain" | "none"
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const coach = await prisma.coach.findFirst({
+    where: {
+      OR: [
+        { discordId: user.id },
+        { email: user.email ?? "" },
+      ],
+    },
+    include: { club: true },
+  });
+
+  if (!coach?.club) return { error: "No club found" };
+
+  // Find the roster player for this contract
+  const rosterPlayer = await prisma.rosterPlayer.findFirst({
+    where: {
+      contractId,
+      clubId: coach.club.id,
+      roundId: null,
+      squad,
+    },
+  });
+
+  if (!rosterPlayer) return { error: "Player not found in roster" };
+
+  // If setting as captain or VC, clear the existing one first
+  if (role === "captain") {
+    // Clear existing captain in this squad
+    await prisma.rosterPlayer.updateMany({
+      where: {
+        clubId: coach.club.id,
+        roundId: null,
+        squad,
+        isCaptain: true,
+      },
+      data: { isCaptain: false },
+    });
+    // Set new captain
+    await prisma.rosterPlayer.update({
+      where: { id: rosterPlayer.id },
+      data: { isCaptain: true, isViceCaptain: false },
+    });
+  } else if (role === "viceCaptain") {
+    // Clear existing VC in this squad
+    await prisma.rosterPlayer.updateMany({
+      where: {
+        clubId: coach.club.id,
+        roundId: null,
+        squad,
+        isViceCaptain: true,
+      },
+      data: { isViceCaptain: false },
+    });
+    // Set new VC
+    await prisma.rosterPlayer.update({
+      where: { id: rosterPlayer.id },
+      data: { isViceCaptain: true, isCaptain: false },
+    });
+  } else {
+    // Remove captain/VC status
+    await prisma.rosterPlayer.update({
+      where: { id: rosterPlayer.id },
+      data: { isCaptain: false, isViceCaptain: false },
+    });
+  }
 
   revalidatePath("/dashboard/roster");
   revalidatePath("/dashboard");
@@ -1000,4 +1140,126 @@ function getRosterSpotInfo(spot: RosterSpot) {
   };
 
   return info[spot];
+}
+
+// Get roster players with full stats for the roster table view
+export async function getMyRosterWithStats() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const coach = await prisma.coach.findFirst({
+    where: {
+      OR: [
+        { discordId: user.id },
+        { email: user.email ?? "" },
+      ],
+    },
+    include: {
+      club: {
+        include: {
+          contracts: {
+            where: { status: "ACTIVE" },
+            include: {
+              aflPlayer: {
+                include: { aflTeam: true },
+              },
+              rosterPlayers: {
+                where: { roundId: null },
+                select: {
+                  id: true,
+                  squad: true,
+                  rosterSpot: true,
+                  isCaptain: true,
+                  isViceCaptain: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!coach?.club) return [];
+
+  const currentYear = new Date().getFullYear();
+
+  // Get scores for all contracted players
+  const contractIds = coach.club.contracts.map(c => c.id);
+
+  const scores = await prisma.matchPlayerScore.findMany({
+    where: {
+      rosterPlayer: {
+        contractId: { in: contractIds },
+      },
+      played: true,
+      aflFantasyScore: { not: null },
+    },
+    include: {
+      rosterPlayer: {
+        select: { contractId: true },
+      },
+      match: {
+        select: { matchType: true },
+      },
+    },
+  });
+
+  // Build score aggregates per contract
+  const scoreMap = new Map<string, {
+    scores: number[];
+    seniorsGames: number;
+    reservesGames: number;
+  }>();
+
+  for (const score of scores) {
+    const contractId = score.rosterPlayer.contractId;
+    const existing = scoreMap.get(contractId) ?? { scores: [], seniorsGames: 0, reservesGames: 0 };
+    existing.scores.push(score.aflFantasyScore!);
+    if (score.match.matchType === "SENIORS") {
+      existing.seniorsGames++;
+    } else {
+      existing.reservesGames++;
+    }
+    scoreMap.set(contractId, existing);
+  }
+
+  // Transform contracts to roster player format
+  return coach.club.contracts.map(contract => {
+    const breakdown = contract.yearBreakdown as { season: number; value: number }[];
+    const currentYearSalary = breakdown.find(y => y.season === currentYear)?.value ?? 0;
+    const rosterPlayer = contract.rosterPlayers[0];
+    const scoreData = scoreMap.get(contract.id);
+    const allScores = scoreData?.scores ?? [];
+    const last5 = allScores.slice(-5);
+
+    return {
+      contractId: contract.id,
+      firstName: contract.aflPlayer.firstName,
+      lastName: contract.aflPlayer.lastName,
+      positions: contract.aflPlayer.positions,
+      aflTeam: contract.aflPlayer.aflTeam?.abbreviation ?? null,
+      salary: currentYearSalary,
+      endSeason: contract.endSeason,
+      contractType: contract.contractType,
+      tradeBlock: contract.tradeBlock,
+      squad: rosterPlayer?.squad ?? null,
+      rosterSpot: rosterPlayer?.rosterSpot ?? null,
+      isCaptain: rosterPlayer?.isCaptain ?? false,
+      isViceCaptain: rosterPlayer?.isViceCaptain ?? false,
+      avgScore: allScores.length > 0
+        ? Math.round((allScores.reduce((a, b) => a + b, 0) / allScores.length) * 10) / 10
+        : null,
+      last5Avg: last5.length > 0
+        ? Math.round((last5.reduce((a, b) => a + b, 0) / last5.length) * 10) / 10
+        : null,
+      gamesPlayed: allScores.length,
+      seniorsGames: scoreData?.seniorsGames ?? 0,
+      reservesGames: scoreData?.reservesGames ?? 0,
+      highScore: allScores.length > 0 ? Math.max(...allScores) : null,
+      lowScore: allScores.length > 0 ? Math.min(...allScores) : null,
+    };
+  });
 }

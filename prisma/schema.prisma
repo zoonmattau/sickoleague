@@ -224,12 +224,14 @@ enum ContractStatus {
 }
 
 model RosterPlayer {
-  id         String     @id @default(uuid())
-  squad      Squad
-  rosterSpot RosterSpot @map("roster_spot")
-  lockedAt   DateTime?  @map("locked_at")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  id            String     @id @default(uuid())
+  squad         Squad
+  rosterSpot    RosterSpot @map("roster_spot")
+  isCaptain     Boolean    @default(false) @map("is_captain")
+  isViceCaptain Boolean    @default(false) @map("is_vice_captain")
+  lockedAt      DateTime?  @map("locked_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
 
   // Relations
   clubId     String   @map("club_id")

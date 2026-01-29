@@ -2,11 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { AdminDashboard } from "@/components/admin-dashboard";
-
-// List of admin Discord IDs (add your Discord user ID here)
-const ADMIN_IDS = [
-  // Add admin Discord IDs here
-];
+import { getAllClubsWithCoaches, getAllCoaches, getAllContracts, getAllAflPlayers } from "./actions";
 
 async function getUser() {
   const supabase = await createClient();
@@ -74,17 +70,14 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  // For now, allow any authenticated user to access admin
-  // Uncomment below to restrict to specific Discord IDs
-  // const discordId = user.user_metadata?.provider_id;
-  // if (!ADMIN_IDS.includes(discordId)) {
-  //   redirect("/");
-  // }
-
-  const [rounds, clubs, standings] = await Promise.all([
+  const [rounds, clubs, standings, clubsWithCoaches, coaches, contracts, aflPlayers] = await Promise.all([
     getRounds(),
     getClubs(),
-    getStandings()
+    getStandings(),
+    getAllClubsWithCoaches(),
+    getAllCoaches(),
+    getAllContracts(),
+    getAllAflPlayers(),
   ]);
 
   return (
@@ -92,13 +85,17 @@ export default async function AdminPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage matches and standings</p>
+          <p className="text-muted-foreground">Manage clubs, coaches, contracts, and match results</p>
         </div>
 
         <AdminDashboard
           rounds={rounds}
           clubs={clubs}
           standings={standings}
+          clubsWithCoaches={clubsWithCoaches}
+          coaches={coaches}
+          contracts={contracts}
+          aflPlayers={aflPlayers}
         />
       </div>
     </div>

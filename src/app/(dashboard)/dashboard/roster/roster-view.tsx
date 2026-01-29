@@ -80,6 +80,7 @@ export function RosterView({ club, rosterStats, serializedContracts }: RosterVie
   const playerStatsMap = new Map<string, PlayerStats>();
   for (const player of rosterStats) {
     playerStatsMap.set(player.contractId, {
+      contractId: player.contractId,
       avgScore: player.avgScore,
       last5Avg: player.last5Avg,
       gamesPlayed: player.gamesPlayed,

@@ -30,7 +30,8 @@ export default async function RosterPage() {
     endSeason: 0,
     totalValue: 0,
     yearBreakdown: [],
-    contractType: "DRAFT",
+    contractType: "DRAFT" as const,
+    status: "ACTIVE" as const,
     isMinimum: false,
     tradeBlock: false,
     aflPlayer: {
@@ -38,11 +39,19 @@ export default async function RosterPage() {
       firstName: c.aflPlayer.firstName,
       lastName: c.aflPlayer.lastName,
       positions: c.aflPlayer.positions,
+      photoUrl: null,
+      isAvailable: true,
       aflTeam: c.aflPlayer.aflTeam ? {
+        id: "",
         name: c.aflPlayer.aflTeam.abbreviation,
         abbreviation: c.aflPlayer.aflTeam.abbreviation,
       } : null,
     },
+    rosterPlayers: c.rosterPlayers.map(rp => ({
+      id: rp.id,
+      rosterSpot: rp.rosterSpot,
+      squad: "SENIORS" as const,
+    })),
   }));
 
   // Serialize club data to avoid passing Decimal types to client

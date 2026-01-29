@@ -4,15 +4,55 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Trophy,
   Calendar,
   Save,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Users,
+  FileText,
+  Palette,
+  UserCog,
+  Search,
 } from "lucide-react";
-import { updateMatchResult, recalculateStandings } from "@/app/admin/actions";
+import {
+  updateMatchResult,
+  recalculateStandings,
+  updateClub,
+  assignCoachToClub,
+  updateContract,
+  transferContract,
+  terminateContract,
+  updateAflPlayer,
+} from "@/app/admin/actions";
+import { getPositionColorClasses } from "@/lib/position-colors";
 
 interface Club {
   id: string;
@@ -52,22 +92,126 @@ interface Standing {
   percentage: number;
 }
 
+interface ClubWithCoach {
+  id: string;
+  name: string;
+  abbreviation: string;
+  reservesName: string | null;
+  reservesAbbreviation: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  coachId: string | null;
+  coachName: string | null;
+  coachEmail: string | null;
+  contractCount: number;
+}
+
+interface Coach {
+  id: string;
+  displayName: string;
+  email: string;
+  discordId: string | null;
+  avatarUrl: string | null;
+  isCommissioner: boolean;
+  clubId: string | null;
+  clubName: string | null;
+}
+
+interface Contract {
+  id: string;
+  playerId: string;
+  playerName: string;
+  positions: string[];
+  aflTeam: string | null;
+  clubId: string;
+  clubName: string;
+  clubAbbr: string;
+  startSeason: number;
+  endSeason: number;
+  totalValue: number;
+  currentYearSalary: number;
+  contractType: string;
+  tradeBlock: boolean;
+  yearBreakdown: { season: number; value: number }[];
+}
+
+interface AflPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  positions: string[];
+  aflTeam: string | null;
+  aflTeamName: string | null;
+  isAvailable: boolean;
+  status: string;
+  currentClub: string | null;
+  currentClubAbbr: string | null;
+}
+
 interface AdminDashboardProps {
   rounds: Round[];
   clubs: Club[];
   standings: Standing[];
+  clubsWithCoaches: ClubWithCoach[];
+  coaches: Coach[];
+  contracts: Contract[];
+  aflPlayers: AflPlayer[];
 }
 
-export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps) {
+export function AdminDashboard({
+  rounds,
+  clubs,
+  standings,
+  clubsWithCoaches,
+  coaches,
+  contracts,
+  aflPlayers,
+}: AdminDashboardProps) {
   const [selectedRound, setSelectedRound] = useState<string>(rounds[0]?.id || "");
   const [matchScores, setMatchScores] = useState<Record<string, { home: string; away: string }>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [recalculating, setRecalculating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Club editing state
+  const [editingClub, setEditingClub] = useState<ClubWithCoach | null>(null);
+  const [clubForm, setClubForm] = useState({
+    name: "",
+    abbreviation: "",
+    reservesName: "",
+    reservesAbbreviation: "",
+    primaryColor: "",
+    secondaryColor: "",
+  });
+
+  // Contract editing state
+  const [contractSearch, setContractSearch] = useState("");
+  const [contractClubFilter, setContractClubFilter] = useState("all");
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+
+  // Player editing state
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [editingPlayer, setEditingPlayer] = useState<AflPlayer | null>(null);
+  const [playerPositions, setPlayerPositions] = useState<string[]>([]);
+
   const currentRound = rounds.find(r => r.id === selectedRound);
   const seniorsStandings = standings.filter(s => s.competition === "SENIORS");
   const reservesStandings = standings.filter(s => s.competition === "RESERVES");
+
+  // Filter contracts
+  const filteredContracts = contracts.filter(c => {
+    const matchesSearch = contractSearch === "" ||
+      c.playerName.toLowerCase().includes(contractSearch.toLowerCase());
+    const matchesClub = contractClubFilter === "all" || c.clubId === contractClubFilter;
+    return matchesSearch && matchesClub;
+  });
+
+  // Filter players
+  const filteredPlayers = aflPlayers.filter(p => {
+    return playerSearch === "" ||
+      `${p.firstName} ${p.lastName}`.toLowerCase().includes(playerSearch.toLowerCase()) ||
+      (p.aflTeam?.toLowerCase().includes(playerSearch.toLowerCase()) ?? false);
+  });
 
   const handleScoreChange = (matchId: string, team: "home" | "away", value: string) => {
     setMatchScores(prev => ({
@@ -116,7 +260,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
       const result = await recalculateStandings();
       if (result.success) {
         setMessage({ type: "success", text: "Standings recalculated!" });
-        // Refresh the page to show updated standings
         window.location.reload();
       } else {
         setMessage({ type: "error", text: result.error || "Failed to recalculate" });
@@ -128,9 +271,111 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
     }
   };
 
+  const handleEditClub = (club: ClubWithCoach) => {
+    setEditingClub(club);
+    setClubForm({
+      name: club.name,
+      abbreviation: club.abbreviation,
+      reservesName: club.reservesName || "",
+      reservesAbbreviation: club.reservesAbbreviation || "",
+      primaryColor: club.primaryColor || "#000000",
+      secondaryColor: club.secondaryColor || "#ffffff",
+    });
+  };
+
+  const handleSaveClub = async () => {
+    if (!editingClub) return;
+    setSaving(editingClub.id);
+    const result = await updateClub(editingClub.id, {
+      name: clubForm.name,
+      abbreviation: clubForm.abbreviation,
+      reservesName: clubForm.reservesName || undefined,
+      reservesAbbreviation: clubForm.reservesAbbreviation || undefined,
+      primaryColor: clubForm.primaryColor,
+      secondaryColor: clubForm.secondaryColor,
+    });
+    if (result.success) {
+      setMessage({ type: "success", text: "Club updated!" });
+      setEditingClub(null);
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to update" });
+    }
+    setSaving(null);
+  };
+
+  const handleAssignCoach = async (clubId: string, coachId: string | null) => {
+    const result = await assignCoachToClub(coachId === "none" ? null : coachId, clubId);
+    if (result.success) {
+      setMessage({ type: "success", text: "Coach assigned!" });
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to assign" });
+    }
+  };
+
+  const handleTransferContract = async (contractId: string, newClubId: string) => {
+    const result = await transferContract(contractId, newClubId);
+    if (result.success) {
+      setMessage({ type: "success", text: "Contract transferred!" });
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to transfer" });
+    }
+  };
+
+  const handleTerminateContract = async (contractId: string) => {
+    if (!confirm("Are you sure you want to terminate this contract?")) return;
+    const result = await terminateContract(contractId);
+    if (result.success) {
+      setMessage({ type: "success", text: "Contract terminated!" });
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to terminate" });
+    }
+  };
+
+  const handleEditPlayer = (player: AflPlayer) => {
+    setEditingPlayer(player);
+    setPlayerPositions(player.positions);
+  };
+
+  const handleSavePlayer = async () => {
+    if (!editingPlayer) return;
+    const result = await updateAflPlayer(editingPlayer.id, {
+      positions: playerPositions,
+      isAvailable: editingPlayer.isAvailable,
+    });
+    if (result.success) {
+      setMessage({ type: "success", text: "Player updated!" });
+      setEditingPlayer(null);
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to update" });
+    }
+  };
+
+  const togglePosition = (pos: string) => {
+    setPlayerPositions(prev =>
+      prev.includes(pos) ? prev.filter(p => p !== pos) : [...prev, pos]
+    );
+  };
+
   return (
-    <Tabs defaultValue="matches" className="space-y-6">
-      <TabsList>
+    <Tabs defaultValue="clubs" className="space-y-6">
+      <TabsList className="flex-wrap">
+        <TabsTrigger value="clubs" className="gap-2">
+          <Users className="h-4 w-4" />
+          Clubs & Coaches
+        </TabsTrigger>
+        <TabsTrigger value="contracts" className="gap-2">
+          <FileText className="h-4 w-4" />
+          Contracts
+        </TabsTrigger>
+        <TabsTrigger value="players" className="gap-2">
+          <UserCog className="h-4 w-4" />
+          Players
+        </TabsTrigger>
         <TabsTrigger value="matches" className="gap-2">
           <Calendar className="h-4 w-4" />
           Match Results
@@ -156,8 +401,309 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
         </div>
       )}
 
+      {/* CLUBS & COACHES TAB */}
+      <TabsContent value="clubs" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Club Management</CardTitle>
+            <CardDescription>Edit club details and assign coaches</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Reserves Name</TableHead>
+                  <TableHead>Colors</TableHead>
+                  <TableHead>Coach</TableHead>
+                  <TableHead>Players</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clubsWithCoaches.map(club => (
+                  <TableRow key={club.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="px-2 py-1 rounded text-sm font-semibold"
+                          style={{
+                            backgroundColor: club.primaryColor || "#666",
+                            color: club.secondaryColor || "#fff",
+                          }}
+                        >
+                          {club.abbreviation}
+                        </span>
+                        <span className="font-medium">{club.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {club.reservesName || "-"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <div
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: club.primaryColor || "#666" }}
+                          title="Primary"
+                        />
+                        <div
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: club.secondaryColor || "#fff" }}
+                          title="Secondary"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={club.coachId || "none"}
+                        onValueChange={(value) => handleAssignCoach(club.id, value)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="No coach" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No coach</SelectItem>
+                          {coaches.map(coach => (
+                            <SelectItem key={coach.id} value={coach.id}>
+                              {coach.displayName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{club.contractCount}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => handleEditClub(club)}>
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Unassigned Coaches */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Unassigned Coaches</CardTitle>
+            <CardDescription>Users who have signed up but aren't assigned to a club</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {coaches.filter(c => !c.clubId).length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">All coaches are assigned</p>
+            ) : (
+              <div className="space-y-2">
+                {coaches.filter(c => !c.clubId).map(coach => (
+                  <div key={coach.id} className="flex items-center justify-between p-2 rounded border">
+                    <div>
+                      <div className="font-medium">{coach.displayName}</div>
+                      <div className="text-sm text-muted-foreground">{coach.email}</div>
+                    </div>
+                    {coach.isCommissioner && <Badge>Commissioner</Badge>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* CONTRACTS TAB */}
+      <TabsContent value="contracts" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Contract Management</CardTitle>
+            <CardDescription>View, transfer, and terminate contracts</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search players..."
+                  value={contractSearch}
+                  onChange={(e) => setContractSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={contractClubFilter} onValueChange={setContractClubFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All clubs" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clubs</SelectItem>
+                  {clubsWithCoaches.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Player</TableHead>
+                  <TableHead>Positions</TableHead>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Years</TableHead>
+                  <TableHead>Salary</TableHead>
+                  <TableHead>Transfer To</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredContracts.slice(0, 50).map(contract => (
+                  <TableRow key={contract.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{contract.playerName}</div>
+                        <div className="text-xs text-muted-foreground">{contract.aflTeam}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {contract.positions.map(pos => (
+                          <span
+                            key={pos}
+                            className={`text-[10px] px-1 rounded font-medium ${getPositionColorClasses(pos)}`}
+                          >
+                            {pos}
+                          </span>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{contract.clubAbbr}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {contract.startSeason}-{contract.endSeason}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      ${contract.currentYearSalary}k
+                    </TableCell>
+                    <TableCell>
+                      <Select onValueChange={(val) => handleTransferContract(contract.id, val)}>
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue placeholder="Transfer..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clubsWithCoaches
+                            .filter(c => c.id !== contract.clubId)
+                            .map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.abbreviation}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleTerminateContract(contract.id)}
+                      >
+                        Terminate
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {filteredContracts.length > 50 && (
+              <p className="text-sm text-muted-foreground text-center">
+                Showing first 50 of {filteredContracts.length} contracts
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* PLAYERS TAB */}
+      <TabsContent value="players" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Player Management</CardTitle>
+            <CardDescription>Edit player positions and availability</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search players..."
+                value={playerSearch}
+                onChange={(e) => setPlayerSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Player</TableHead>
+                  <TableHead>AFL Team</TableHead>
+                  <TableHead>Positions</TableHead>
+                  <TableHead>Contracted To</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPlayers.slice(0, 50).map(player => (
+                  <TableRow key={player.id}>
+                    <TableCell className="font-medium">
+                      {player.firstName} {player.lastName}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {player.aflTeam || "-"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {player.positions.map(pos => (
+                          <span
+                            key={pos}
+                            className={`text-[10px] px-1 rounded font-medium ${getPositionColorClasses(pos)}`}
+                          >
+                            {pos}
+                          </span>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {player.currentClubAbbr ? (
+                        <Badge variant="outline">{player.currentClubAbbr}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Free Agent</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={player.isAvailable ? "default" : "destructive"}>
+                        {player.isAvailable ? "Available" : "Unavailable"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => handleEditPlayer(player)}>
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {filteredPlayers.length > 50 && (
+              <p className="text-sm text-muted-foreground text-center">
+                Showing first 50 of {filteredPlayers.length} players
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* MATCHES TAB */}
       <TabsContent value="matches" className="space-y-6">
-        {/* Round Selector */}
         <Card>
           <CardHeader>
             <CardTitle>Select Round</CardTitle>
@@ -177,7 +723,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
           </CardContent>
         </Card>
 
-        {/* Match Entry */}
         {currentRound && (
           <div className="grid gap-4">
             <h3 className="text-lg font-semibold">
@@ -201,7 +746,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
                 <Card key={match.id}>
                   <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row items-center gap-4">
-                      {/* Home Team */}
                       <div className="flex-1 text-center sm:text-right">
                         <span
                           className="px-2 py-1 rounded text-sm font-semibold"
@@ -217,7 +761,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
                         </span>
                       </div>
 
-                      {/* Score Inputs */}
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
@@ -238,7 +781,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
                         />
                       </div>
 
-                      {/* Away Team */}
                       <div className="flex-1 text-center sm:text-left">
                         <span
                           className="px-2 py-1 rounded text-sm font-semibold"
@@ -254,7 +796,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
                         </span>
                       </div>
 
-                      {/* Save Button */}
                       <Button
                         onClick={() => handleSaveMatch(match)}
                         disabled={saving === match.id}
@@ -278,7 +819,6 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
           </div>
         )}
 
-        {/* Recalculate Button */}
         <Card>
           <CardContent className="pt-6">
             <Button
@@ -297,13 +837,12 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
         </Card>
       </TabsContent>
 
+      {/* STANDINGS TAB */}
       <TabsContent value="standings" className="space-y-6">
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Seniors Standings */}
           <Card>
             <CardHeader>
               <CardTitle>Seniors Ladder</CardTitle>
-              <CardDescription>Current standings</CardDescription>
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
@@ -343,11 +882,9 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
             </CardContent>
           </Card>
 
-          {/* Reserves Standings */}
           <Card>
             <CardHeader>
               <CardTitle>Reserves Ladder</CardTitle>
-              <CardDescription>Current standings</CardDescription>
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
@@ -388,6 +925,151 @@ export function AdminDashboard({ rounds, clubs, standings }: AdminDashboardProps
           </Card>
         </div>
       </TabsContent>
+
+      {/* EDIT CLUB DIALOG */}
+      <Dialog open={!!editingClub} onOpenChange={() => setEditingClub(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Club</DialogTitle>
+            <DialogDescription>Update club name and colors</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Seniors Name</label>
+                <Input
+                  value={clubForm.name}
+                  onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Abbreviation</label>
+                <Input
+                  value={clubForm.abbreviation}
+                  onChange={(e) => setClubForm({ ...clubForm, abbreviation: e.target.value })}
+                  maxLength={5}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Reserves Name</label>
+                <Input
+                  value={clubForm.reservesName}
+                  onChange={(e) => setClubForm({ ...clubForm, reservesName: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Reserves Abbr</label>
+                <Input
+                  value={clubForm.reservesAbbreviation}
+                  onChange={(e) => setClubForm({ ...clubForm, reservesAbbreviation: e.target.value })}
+                  maxLength={5}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Primary Color (Background)</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={clubForm.primaryColor}
+                    onChange={(e) => setClubForm({ ...clubForm, primaryColor: e.target.value })}
+                    className="w-12 h-10 p-1"
+                  />
+                  <Input
+                    value={clubForm.primaryColor}
+                    onChange={(e) => setClubForm({ ...clubForm, primaryColor: e.target.value })}
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Secondary Color (Text)</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={clubForm.secondaryColor}
+                    onChange={(e) => setClubForm({ ...clubForm, secondaryColor: e.target.value })}
+                    className="w-12 h-10 p-1"
+                  />
+                  <Input
+                    value={clubForm.secondaryColor}
+                    onChange={(e) => setClubForm({ ...clubForm, secondaryColor: e.target.value })}
+                    placeholder="#ffffff"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Preview</label>
+              <div className="mt-2">
+                <span
+                  className="px-3 py-1.5 rounded font-semibold"
+                  style={{
+                    backgroundColor: clubForm.primaryColor,
+                    color: clubForm.secondaryColor,
+                  }}
+                >
+                  {clubForm.abbreviation || "ABC"} - {clubForm.name || "Club Name"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingClub(null)}>Cancel</Button>
+            <Button onClick={handleSaveClub} disabled={saving === editingClub?.id}>
+              {saving === editingClub?.id ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT PLAYER DIALOG */}
+      <Dialog open={!!editingPlayer} onOpenChange={() => setEditingPlayer(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Player</DialogTitle>
+            <DialogDescription>
+              {editingPlayer?.firstName} {editingPlayer?.lastName} ({editingPlayer?.aflTeam})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium">Positions</label>
+              <div className="flex gap-2 mt-2">
+                {["DEF", "MID", "RUC", "FWD"].map(pos => (
+                  <Button
+                    key={pos}
+                    variant={playerPositions.includes(pos) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => togglePosition(pos)}
+                    className={playerPositions.includes(pos) ? getPositionColorClasses(pos) : ""}
+                  >
+                    {pos}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={editingPlayer?.isAvailable ?? false}
+                onChange={(e) => setEditingPlayer(prev => prev ? { ...prev, isAvailable: e.target.checked } : null)}
+                id="available"
+              />
+              <label htmlFor="available" className="text-sm">Available for selection</label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingPlayer(null)}>Cancel</Button>
+            <Button onClick={handleSavePlayer}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   );
 }
