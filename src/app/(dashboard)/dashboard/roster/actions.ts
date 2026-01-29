@@ -249,7 +249,7 @@ export async function removePlayerFromRoster(rosterPlayerId: string) {
   return { success: true };
 }
 
-// Set captain or vice-captain for a squad
+// Set captain or vice-captain for a squad (C or VC)
 export async function setCaptain(
   contractId: string,
   squad: Squad,
