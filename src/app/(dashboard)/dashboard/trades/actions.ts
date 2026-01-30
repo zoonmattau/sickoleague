@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { validateSalaryCap, formatSalaryCapError, updateClubSalaryRecords } from "@/lib/salary-cap";
+import { calculateMarketAppeal, calculateAdjustedPrice, formatAppealModifier } from "@/lib/market-appeal";
 
 // Helper to get the current user's club
 async function getMyClub() {
@@ -33,6 +34,57 @@ async function getMyClub() {
   });
 
   return coach?.club ?? null;
+}
+
+// Helper to get club with city data (for market appeal calculations)
+async function getMyClubWithCity() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  // Use raw query approach to handle optional city relation
+  const coach = await prisma.coach.findFirst({
+    where: {
+      OR: [{ discordId: user.id }, { email: user.email ?? "" }],
+    },
+    include: {
+      club: true,
+    },
+  });
+
+  if (!coach?.club) return null;
+
+  // Try to fetch city data separately (handles case where city relation doesn't exist yet)
+  try {
+    const clubWithCity = await prisma.$queryRaw<Array<{
+      city_name: string | null;
+      city_state: string | null;
+      city_market_size: string | null;
+    }>>`
+      SELECT c.name as city_name, c.state as city_state, c.market_size as city_market_size
+      FROM clubs cl
+      LEFT JOIN cities c ON cl.city_id = c.id
+      WHERE cl.id = ${coach.club.id}
+    `;
+
+    if (clubWithCity[0]?.city_name) {
+      return {
+        ...coach.club,
+        city: {
+          name: clubWithCity[0].city_name,
+          state: clubWithCity[0].city_state!,
+          marketSize: clubWithCity[0].city_market_size as "MAJOR" | "LARGE" | "MEDIUM" | "SMALL",
+        },
+      };
+    }
+  } catch {
+    // City relation doesn't exist yet, return club without city
+  }
+
+  return { ...coach.club, city: null };
 }
 
 // Get list manager discount percentage for the current club
@@ -68,6 +120,9 @@ export type FreeAgentPlayer = {
   } | null;
   averagePoints: number | null;
   expectedPrice: number;
+  adjustedExpectedPrice: number;
+  marketAppeal: number;
+  marketAppealDisplay: string;
   activeBids: number;
   topBid: number | null;
   decision: Date | null;
@@ -109,6 +164,9 @@ export type MyBid = {
  * Get all unsigned players as free agents
  */
 export async function getFreeAgentPlayers(): Promise<FreeAgentPlayer[]> {
+  // Get the current user's club to calculate market appeal
+  const club = await getMyClubWithCity();
+
   // Get players with no active contract
   const players = await prisma.aflPlayer.findMany({
     where: {
@@ -149,6 +207,12 @@ export async function getFreeAgentPlayers(): Promise<FreeAgentPlayer[]> {
     // Expected price based on average points or default
     const expectedPrice = avgPoints ? Math.round(avgPoints * 0.8) : 30;
 
+    // Calculate market appeal for this player based on club's city
+    const marketAppeal = club
+      ? calculateMarketAppeal(club, player.aflTeam ? { name: player.aflTeam.name } : null)
+      : 0;
+    const adjustedExpectedPrice = calculateAdjustedPrice(expectedPrice, marketAppeal);
+
     return {
       id: player.id,
       firstName: player.firstName,
@@ -164,6 +228,9 @@ export async function getFreeAgentPlayers(): Promise<FreeAgentPlayer[]> {
         : null,
       averagePoints: avgPoints,
       expectedPrice,
+      adjustedExpectedPrice,
+      marketAppeal,
+      marketAppealDisplay: formatAppealModifier(marketAppeal),
       activeBids: player.contractOffers.length,
       topBid:
         player.contractOffers.length > 0

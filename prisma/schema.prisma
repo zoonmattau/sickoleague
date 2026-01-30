@@ -48,6 +48,22 @@ model Club {
   coachId String? @unique @map("coach_id")
   coach   Coach?  @relation(fields: [coachId], references: [id])
 
+  // City and venue relations (seniors)
+  cityId       String?  @map("city_id")
+  city         City?    @relation(fields: [cityId], references: [id])
+  homeVenueId  String?  @map("home_venue_id")
+  homeVenue    Venue?   @relation("HomeVenue", fields: [homeVenueId], references: [id])
+
+  // Town and venue relations (reserves)
+  reservesTownId   String?  @map("reserves_town_id")
+  reservesTown     Town?    @relation("ReservesTown", fields: [reservesTownId], references: [id])
+  reservesVenueId  String?  @map("reserves_venue_id")
+  reservesVenue    Venue?   @relation("ReservesVenue", fields: [reservesVenueId], references: [id])
+
+  // Club history
+  founded      Int?                        // Year club was founded
+  history      String?    @db.Text         // Club historical backstory
+
   // Captain references (stored as roster player IDs)
   seniorCaptainId   String? @map("senior_captain_id")
   seniorVcId        String? @map("senior_vc_id")
@@ -104,6 +120,86 @@ model Rival {
 enum RivalReason {
   FINALS_OPPONENT
   NOMINATED
+  SAME_CITY
+}
+
+// ============================================================================
+// CITIES & VENUES
+// ============================================================================
+
+model City {
+  id           String     @id @default(uuid())
+  name         String     @unique
+  state        String     @db.VarChar(3)  // VIC, NSW, QLD, SA, WA, TAS
+  marketSize   MarketSize @map("market_size")
+  population   Int
+  description  String?    @db.Text
+  history      String?    @db.Text        // Historical backstory
+  founded      Int?                        // Year founded
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  clubs        Club[]
+  venues       Venue[]
+  nearbyTowns  Town[]     @relation("NearbyTowns")
+
+  @@map("cities")
+}
+
+model Town {
+  id           String     @id @default(uuid())
+  name         String     @unique
+  state        String     @db.VarChar(3)
+  population   Int
+  description  String?    @db.Text
+  history      String?    @db.Text        // Historical backstory
+  founded      Int?                        // Year founded
+  nearCityId   String?    @map("near_city_id")  // The major city this town is near
+  nearCity     City?      @relation("NearbyTowns", fields: [nearCityId], references: [id])
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  reservesClubs Club[]    @relation("ReservesTown")
+  venues        Venue[]   @relation("TownVenues")
+
+  @@map("towns")
+}
+
+enum MarketSize {
+  MAJOR    // +15% free agent appeal (dual-team cities)
+  LARGE    // +10% appeal
+  MEDIUM   // +5% appeal
+  SMALL    // baseline (0%)
+}
+
+model Venue {
+  id              String     @id @default(uuid())
+  name            String     @unique
+  capacity        Int
+  venueClass      VenueClass @map("venue_class")
+  atmosphereBonus Decimal    @default(0) @map("atmosphere_bonus") @db.Decimal(4, 2)
+  description     String?    @db.Text
+  history         String?    @db.Text        // Venue history
+  opened          Int?                        // Year opened
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  cityId          String?    @map("city_id")
+  city            City?      @relation(fields: [cityId], references: [id])
+  townId          String?    @map("town_id")
+  town            Town?      @relation("TownVenues", fields: [townId], references: [id])
+
+  homeClubs       Club[]     @relation("HomeVenue")
+  reservesClubs   Club[]     @relation("ReservesVenue")
+
+  @@map("venues")
+}
+
+enum VenueClass {
+  ELITE     // 80k+ capacity, +3 HFA bonus
+  MAJOR     // 40-79k capacity, +2 HFA bonus
+  STANDARD  // 20-39k capacity, +1 HFA bonus
+  BOUTIQUE  // <20k capacity, +0 HFA bonus
 }
 
 model ClubTension {

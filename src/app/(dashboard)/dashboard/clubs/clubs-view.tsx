@@ -31,8 +31,15 @@ import {
   Swords,
   AlertTriangle,
   X,
+  MapPin,
+  Building2,
 } from "lucide-react";
 import { RivalryMatrix } from "./rivalry-matrix";
+import { CityBadge } from "./city-badge";
+import { VenueInfo } from "./venue-info";
+
+type MarketSize = "MAJOR" | "LARGE" | "MEDIUM" | "SMALL";
+type VenueClass = "ELITE" | "MAJOR" | "STANDARD" | "BOUTIQUE";
 
 type Club = {
   id: string;
@@ -45,6 +52,22 @@ type Club = {
     id: string;
     displayName: string;
     discordId: string | null;
+  } | null;
+  city: {
+    id: string;
+    name: string;
+    state: string;
+    marketSize: MarketSize;
+    population: number;
+    description: string | null;
+  } | null;
+  homeVenue: {
+    id: string;
+    name: string;
+    capacity: number;
+    venueClass: VenueClass;
+    atmosphereBonus: number;
+    description: string | null;
   } | null;
   contracts: {
     id: string;
@@ -428,6 +451,11 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                   {selectedClubData.coach ? `Coach: ${selectedClubData.coach.displayName}` : "No coach"}
                   {selectedClubData.reservesName && ` | Reserves: ${selectedClubData.reservesName}`}
                 </p>
+                {selectedClubData.city && (
+                  <div className="mt-1">
+                    <CityBadge city={selectedClubData.city} showAppeal size="sm" />
+                  </div>
+                )}
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setSelectedClub(null)}>
@@ -435,6 +463,44 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
             </Button>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* City & Venue Info */}
+            {(selectedClubData.city || selectedClubData.homeVenue) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedClubData.city && (
+                  <div className="p-3 rounded-lg bg-muted/30 border">
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4" />
+                      Home City
+                    </h4>
+                    <div className="space-y-1">
+                      <div className="font-medium">{selectedClubData.city.name}, {selectedClubData.city.state}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Population: {selectedClubData.city.population.toLocaleString()}
+                      </div>
+                      {selectedClubData.city.description && (
+                        <div className="text-xs text-muted-foreground italic mt-1">
+                          {selectedClubData.city.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {selectedClubData.homeVenue && (
+                  <div className="p-3 rounded-lg bg-muted/30 border">
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                      <Building2 className="h-4 w-4" />
+                      Home Venue
+                    </h4>
+                    <VenueInfo venue={selectedClubData.homeVenue} showHfaBonus />
+                    {selectedClubData.homeVenue.description && (
+                      <div className="text-xs text-muted-foreground italic mt-1">
+                        {selectedClubData.homeVenue.description}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Salary Cap by Year */}
             <div>
               <h4 className="font-semibold mb-3">Salary Cap by Year</h4>
@@ -487,7 +553,7 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                       </div>
                       <span className="font-medium">{rival.club.name}</span>
                       <Badge variant="outline" className="text-xs">
-                        {rival.reason === "FINALS_OPPONENT" ? "Finals" : "Nominated"}
+                        {rival.reason === "FINALS_OPPONENT" ? "Finals" : rival.reason === "SAME_CITY" ? "Same City" : "Nominated"}
                       </Badge>
                     </div>
                   ))}

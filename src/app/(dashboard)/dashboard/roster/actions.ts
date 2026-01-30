@@ -680,35 +680,98 @@ export async function getClubHfaHistory(clubId: string) {
   }));
 }
 
+// HFA cap to prevent runaway values
+const HFA_CAP = 50;
+
+// Helper type for venue data
+type VenueData = {
+  name: string;
+  capacity: number;
+  venueClass: string;
+  atmosphereBonus: number;
+} | null;
+
 // Get HFA summary for dashboard cards (current value and change)
 export async function getClubHfaSummary(clubId: string) {
+  // Get club basic data
+  const club = await prisma.club.findUnique({
+    where: { id: clubId },
+  });
+
   const results = await prisma.homeGameResult.findMany({
     where: { clubId },
     orderBy: { gameNumber: "asc" },
   });
 
+  // Try to fetch venue data separately (handles case where venue relation doesn't exist yet)
+  let venueData: VenueData = null;
+  try {
+    const venueResult = await prisma.$queryRaw<Array<{
+      venue_name: string | null;
+      venue_capacity: number | null;
+      venue_class: string | null;
+      atmosphere_bonus: number | null;
+    }>>`
+      SELECT v.name as venue_name, v.capacity as venue_capacity, v.venue_class as venue_class, v.atmosphere_bonus
+      FROM clubs cl
+      LEFT JOIN venues v ON cl.home_venue_id = v.id
+      WHERE cl.id = ${clubId}
+    `;
+
+    if (venueResult[0]?.venue_name) {
+      venueData = {
+        name: venueResult[0].venue_name,
+        capacity: venueResult[0].venue_capacity!,
+        venueClass: venueResult[0].venue_class!,
+        atmosphereBonus: Number(venueResult[0].atmosphere_bonus ?? 0),
+      };
+    }
+  } catch {
+    // Venue relation doesn't exist yet
+  }
+
+  // Venue atmosphere bonus (default 0 if no venue)
+  const venueBonus = venueData?.atmosphereBonus ?? 0;
+
   // HFA calculation: negative margins count as half (to not punish bad teams too harshly)
   const calcHfaValue = (margin: number) => margin < 0 ? margin / 2 : margin;
 
   const calcHfa = (data: typeof results) => {
-    if (data.length === 0) return { current: 0, previous: 0, change: 0, gamesPlayed: 0 };
+    if (data.length === 0) {
+      // Even with no games, the venue bonus still applies
+      const total = Math.min(HFA_CAP, venueBonus);
+      return {
+        current: Math.round(total * 10) / 10,
+        previous: 0,
+        change: 0,
+        gamesPlayed: 0,
+        venueBonus: Math.round(venueBonus * 10) / 10,
+        baseHfa: 0,
+      };
+    }
 
-    // Current HFA: average of last 10 (or all if less than 10)
+    // Current base HFA: average of last 10 (or all if less than 10)
     const last10 = data.slice(-10);
-    const current = last10.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / last10.length;
+    const baseHfa = last10.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / last10.length;
+
+    // Total HFA = base + venue bonus, capped at HFA_CAP
+    const current = Math.min(HFA_CAP, baseHfa + venueBonus);
 
     // Previous HFA: average of games before the last one (last 10 of those)
-    let previous = 0;
+    let previousBase = 0;
     if (data.length > 1) {
       const beforeLast = data.slice(0, -1).slice(-10);
-      previous = beforeLast.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / beforeLast.length;
+      previousBase = beforeLast.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / beforeLast.length;
     }
+    const previous = Math.min(HFA_CAP, previousBase + venueBonus);
 
     return {
       current: Math.round(current * 10) / 10,
       previous: Math.round(previous * 10) / 10,
       change: Math.round((current - previous) * 10) / 10,
       gamesPlayed: data.length,
+      venueBonus: Math.round(venueBonus * 10) / 10,
+      baseHfa: Math.round(baseHfa * 10) / 10,
     };
   };
 
@@ -718,6 +781,7 @@ export async function getClubHfaSummary(clubId: string) {
   return {
     seniors: calcHfa(seniorsData),
     reserves: calcHfa(reservesData),
+    venue: venueData,
   };
 }
 

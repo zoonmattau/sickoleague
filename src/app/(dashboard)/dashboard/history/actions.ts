@@ -281,3 +281,165 @@ const getCachedHistory = unstable_cache(
 export async function getLeagueHistory(): Promise<LeagueHistory> {
   return getCachedHistory();
 }
+
+// Types for backstories
+type CityBackstory = {
+  id: string;
+  name: string;
+  state: string;
+  marketSize: string;
+  population: number;
+  founded: number | null;
+  description: string | null;
+  history: string | null;
+};
+
+type TownBackstory = {
+  id: string;
+  name: string;
+  state: string;
+  population: number;
+  founded: number | null;
+  description: string | null;
+  history: string | null;
+  nearCityName: string | null;
+};
+
+type ClubBackstory = {
+  id: string;
+  name: string;
+  abbreviation: string;
+  reservesName: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  founded: number | null;
+  history: string | null;
+  cityName: string | null;
+  townName: string | null;
+  venueName: string | null;
+  reservesVenueName: string | null;
+};
+
+export type BackstoryData = {
+  cities: CityBackstory[];
+  towns: TownBackstory[];
+  clubs: ClubBackstory[];
+};
+
+const getCachedBackstories = unstable_cache(
+  async (): Promise<BackstoryData> => {
+    let cities: CityBackstory[] = [];
+    let towns: TownBackstory[] = [];
+    let clubs: ClubBackstory[] = [];
+
+    try {
+      // Fetch cities with backstories
+      const cityRows = await prisma.$queryRaw<Array<{
+        id: string;
+        name: string;
+        state: string;
+        market_size: string;
+        population: number;
+        founded: number | null;
+        description: string | null;
+        history: string | null;
+      }>>`
+        SELECT id, name, state, market_size, population, founded, description, history
+        FROM cities
+        ORDER BY population DESC
+      `;
+
+      cities = cityRows.map(row => ({
+        id: row.id,
+        name: row.name,
+        state: row.state,
+        marketSize: row.market_size,
+        population: row.population,
+        founded: row.founded,
+        description: row.description,
+        history: row.history,
+      }));
+
+      // Fetch towns with backstories
+      const townRows = await prisma.$queryRaw<Array<{
+        id: string;
+        name: string;
+        state: string;
+        population: number;
+        founded: number | null;
+        description: string | null;
+        history: string | null;
+        near_city_name: string | null;
+      }>>`
+        SELECT t.id, t.name, t.state, t.population, t.founded, t.description, t.history,
+               c.name as near_city_name
+        FROM towns t
+        LEFT JOIN cities c ON t.near_city_id = c.id
+        ORDER BY t.population DESC
+      `;
+
+      towns = townRows.map(row => ({
+        id: row.id,
+        name: row.name,
+        state: row.state,
+        population: row.population,
+        founded: row.founded,
+        description: row.description,
+        history: row.history,
+        nearCityName: row.near_city_name,
+      }));
+
+      // Fetch clubs with backstories
+      const clubRows = await prisma.$queryRaw<Array<{
+        id: string;
+        name: string;
+        abbreviation: string;
+        reserves_name: string | null;
+        primary_color: string | null;
+        secondary_color: string | null;
+        founded: number | null;
+        history: string | null;
+        city_name: string | null;
+        town_name: string | null;
+        venue_name: string | null;
+        reserves_venue_name: string | null;
+      }>>`
+        SELECT cl.id, cl.name, cl.abbreviation, cl.reserves_name,
+               cl.primary_color, cl.secondary_color, cl.founded, cl.history,
+               c.name as city_name, t.name as town_name,
+               v.name as venue_name, rv.name as reserves_venue_name
+        FROM clubs cl
+        LEFT JOIN cities c ON cl.city_id = c.id
+        LEFT JOIN towns t ON cl.reserves_town_id = t.id
+        LEFT JOIN venues v ON cl.home_venue_id = v.id
+        LEFT JOIN venues rv ON cl.reserves_venue_id = rv.id
+        ORDER BY cl.name
+      `;
+
+      clubs = clubRows.map(row => ({
+        id: row.id,
+        name: row.name,
+        abbreviation: row.abbreviation,
+        reservesName: row.reserves_name,
+        primaryColor: row.primary_color,
+        secondaryColor: row.secondary_color,
+        founded: row.founded,
+        history: row.history,
+        cityName: row.city_name,
+        townName: row.town_name,
+        venueName: row.venue_name,
+        reservesVenueName: row.reserves_venue_name,
+      }));
+    } catch {
+      // Tables don't exist yet - return empty data
+    }
+
+    return { cities, towns, clubs };
+  },
+  ["backstories"],
+  { revalidate: 600 }
+);
+
+export async function getBackstories(): Promise<BackstoryData> {
+  return getCachedBackstories();
+}
