@@ -83,24 +83,29 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
     return Math.max(...tensions.map(t => t.score), 1);
   }, [tensions]);
 
-  // Get clubs that have at least one rivalry
-  const clubsWithRivalries = useMemo(() => {
-    const rivalClubIds = new Set<string>();
-    for (const r of rivalries) {
-      rivalClubIds.add(r.clubAId);
-      rivalClubIds.add(r.clubBId);
-    }
-    return clubs.filter(c => rivalClubIds.has(c.id));
-  }, [clubs, rivalries]);
-
   // Sort clubs to put user's club first
   const sortedClubs = useMemo(() => {
-    return [...clubsWithRivalries].sort((a, b) => {
+    return [...clubs].sort((a, b) => {
       if (a.id === myClubId) return -1;
       if (b.id === myClubId) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [clubsWithRivalries, myClubId]);
+  }, [clubs, myClubId]);
+
+  // Get list of confirmed rivalries with club details
+  const confirmedRivalries = useMemo(() => {
+    return rivalries.map(r => {
+      const clubA = clubs.find(c => c.id === r.clubAId);
+      const clubB = clubs.find(c => c.id === r.clubBId);
+      const tension = tensionMap.get(`${r.clubAId}-${r.clubBId}`);
+      return {
+        ...r,
+        clubA,
+        clubB,
+        tension,
+      };
+    }).filter(r => r.clubA && r.clubB);
+  }, [rivalries, clubs, tensionMap]);
 
   const getTension = (clubAId: string, clubBId: string): Tension | undefined => {
     return tensionMap.get(`${clubAId}-${clubBId}`);
@@ -110,35 +115,20 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
     return rivalrySet.has(`${clubAId}-${clubBId}`);
   };
 
-  // If no rivalries exist, show a different message
-  if (sortedClubs.length === 0) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Swords className="h-5 w-5 text-orange-500" />
-            Club Rivalries
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">No rivalries have been established yet.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <TooltipProvider delayDuration={200}>
-      <Card className="lg:max-w-[50%]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Swords className="h-5 w-5 text-orange-500" />
-            Active Rivalries
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <div className="inline-block">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tension Matrix - Left Side */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Swords className="h-5 w-5 text-orange-500" />
+              Club Tension Matrix
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <div className="inline-block min-w-[400px]">
               {/* Header row */}
               <div className="flex">
                 <div className="w-16 shrink-0" /> {/* Corner cell */}
@@ -287,10 +277,10 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
                 <div className="w-4 h-4 rounded bg-black flex items-center justify-center">
                   <Swords className="h-2.5 w-2.5 text-white" />
                 </div>
-                <span>Official Rivals</span>
+                <span>Rivals</span>
               </div>
-              <span className="text-muted-foreground">|</span>
-              <span>Tension: </span>
+              <span>|</span>
+              <span>Tension:</span>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded bg-yellow-500/40" />
                 <span>Low</span>
@@ -307,6 +297,70 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
           </div>
         </CardContent>
       </Card>
+
+        {/* Confirmed Rivalries - Right Side */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Swords className="h-5 w-5 text-red-500" />
+              Confirmed Rivalries
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {confirmedRivalries.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No rivalries have been established yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {confirmedRivalries.map((rivalry, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => rivalry.clubA && rivalry.clubB && setSelectedPair({ clubA: rivalry.clubA, clubB: rivalry.clubB })}
+                    className="w-full p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="px-2 py-1 rounded text-xs font-bold"
+                          style={{
+                            backgroundColor: rivalry.clubA?.primaryColor || "#6b7280",
+                            color: rivalry.clubA?.secondaryColor || "#ffffff",
+                          }}
+                        >
+                          {rivalry.clubA?.abbreviation}
+                        </span>
+                        <Swords className="h-4 w-4 text-orange-500" />
+                        <span
+                          className="px-2 py-1 rounded text-xs font-bold"
+                          style={{
+                            backgroundColor: rivalry.clubB?.primaryColor || "#6b7280",
+                            color: rivalry.clubB?.secondaryColor || "#ffffff",
+                          }}
+                        >
+                          {rivalry.clubB?.abbreviation}
+                        </span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-orange-500/20 text-orange-600 font-medium">
+                        {rivalry.reason === "FINALS_OPPONENT" ? "Finals" : "Nominated"}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {rivalry.clubA?.name} vs {rivalry.clubB?.name}
+                    </div>
+                    {rivalry.tension && rivalry.tension.score > 0 && (
+                      <div className="mt-2 text-[10px] text-muted-foreground flex flex-wrap gap-2">
+                        <span>Tension: <span className="font-semibold text-foreground">{rivalry.tension.score}</span></span>
+                        {rivalry.tension.closeMatches > 0 && <span>• Close games: {rivalry.tension.closeMatches}</span>}
+                        {rivalry.tension.finalsMatches && rivalry.tension.finalsMatches > 0 && <span>• Finals: {rivalry.tension.finalsMatches}</span>}
+                        {rivalry.tension.trades > 0 && <span>• Trades: {rivalry.tension.trades}</span>}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {selectedPair && (
         <RivalryDetailDialog

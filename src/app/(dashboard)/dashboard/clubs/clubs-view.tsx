@@ -123,10 +123,10 @@ function formatSalary(value: number): string {
 }
 
 const positionColors: Record<string, string> = {
-  DEF: "bg-blue-600 text-white",
-  MID: "bg-green-600 text-white",
-  RUC: "bg-purple-600 text-white",
-  FWD: "bg-red-600 text-white",
+  DEF: "bg-red-600 text-white",
+  MID: "bg-blue-600 text-white",
+  RUC: "bg-yellow-500 text-black",
+  FWD: "bg-green-600 text-white",
 };
 
 // Get color based on cap usage percentage (green = far from cap, red = close/over)
@@ -146,8 +146,8 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
   const [sortYear, setSortYear] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Get all years we need to display (current year + 4 future years = 5 total)
-  const years = Array.from({ length: 5 }, (_, i) => season.year + i);
+  // Get all years we need to display (current year + 9 future years = 10 total)
+  const years = Array.from({ length: 10 }, (_, i) => season.year + i);
 
   // Sort clubs by selected year's remaining cap space
   const sortedClubs = [...clubs].sort((a, b) => {

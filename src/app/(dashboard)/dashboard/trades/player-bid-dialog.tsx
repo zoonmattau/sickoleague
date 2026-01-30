@@ -31,10 +31,10 @@ interface PlayerBidDialogProps {
 }
 
 const positionColors: Record<string, string> = {
-  DEF: "bg-blue-600",
-  MID: "bg-green-600",
-  RUC: "bg-purple-600",
-  FWD: "bg-red-600",
+  DEF: "bg-red-600 text-white",
+  MID: "bg-blue-600 text-white",
+  RUC: "bg-yellow-500 text-black",
+  FWD: "bg-green-600 text-white",
 };
 
 const currentYear = new Date().getFullYear();
@@ -109,7 +109,7 @@ export function PlayerBidDialog({
               {player.positions.map((pos) => (
                 <Badge
                   key={pos}
-                  className={`${positionColors[pos]} text-white text-xs`}
+                  className={`${positionColors[pos]} text-xs`}
                 >
                   {pos}
                 </Badge>
