@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BoardroomScene } from "@/components/negotiation/boardroom-scene";
 import { PlayerPortrait } from "@/components/negotiation/player-portrait";
 import { MessageThread } from "@/components/negotiation/message-thread";
@@ -53,16 +60,27 @@ interface NegotiationRoomProps {
       aflTeam?: { abbreviation: string } | null;
     } | null;
   };
+  salaryCapInfo?: {
+    salaryCap: number;
+    roomByYear: Record<number, number>;
+  } | null;
+  listManagerDiscount?: number;
 }
 
-export function NegotiationRoom({ session: initialSession }: NegotiationRoomProps) {
+export function NegotiationRoom({
+  session: initialSession,
+  salaryCapInfo,
+  listManagerDiscount = 0,
+}: NegotiationRoomProps) {
   const router = useRouter();
   const [session, setSession] = useState(initialSession);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedStaffRole, setSelectedStaffRole] = useState<"SENIOR_ASSISTANT" | "RESERVES_ASSISTANT">("SENIOR_ASSISTANT");
 
   const isPlayer = !!session.aflPlayer;
+  const isCoach = !isPlayer && session.staff?.role === "ASSISTANT_COACH";
   const targetName = isPlayer
     ? `${session.aflPlayer!.firstName} ${session.aflPlayer!.lastName}`
     : session.staff!.name;
@@ -159,7 +177,7 @@ export function NegotiationRoom({ session: initialSession }: NegotiationRoomProp
         {
           id: `system-${Date.now()}`,
           role: "SYSTEM" as const,
-          content: `Offer updated: ${newOffer.years} year(s), $${totalValue} total`,
+          content: `Offer updated: ${newOffer.years} year(s), $${totalValue}k total`,
           createdAt: new Date(),
         },
       ],
@@ -179,7 +197,7 @@ export function NegotiationRoom({ session: initialSession }: NegotiationRoomProp
   };
 
   const handleAcceptAndSign = async () => {
-    const result = await acceptNegotiation(session.id);
+    const result = await acceptNegotiation(session.id, isCoach ? selectedStaffRole : undefined);
     if (result.error) {
       toast.error(result.error);
       return;
@@ -275,7 +293,38 @@ export function NegotiationRoom({ session: initialSession }: NegotiationRoomProp
             currentOffer={session.currentOffer}
             onModifyOffer={handleModifyOffer}
             disabled={!isActive || isPending}
+            salaryCapInfo={salaryCapInfo}
+            listManagerDiscount={isPlayer ? listManagerDiscount : 0}
           />
+
+          {/* Staff Role Selector (for coaches only) */}
+          {isCoach && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Coaching Position</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select
+                  value={selectedStaffRole}
+                  onValueChange={(v) => setSelectedStaffRole(v as "SENIOR_ASSISTANT" | "RESERVES_ASSISTANT")}
+                  disabled={!isActive && !isAccepted}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SENIOR_ASSISTANT">Seniors Coach</SelectItem>
+                    <SelectItem value="RESERVES_ASSISTANT">Reserves Coach</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {selectedStaffRole === "SENIOR_ASSISTANT"
+                    ? "Full bonus from their AFL team results"
+                    : "Half bonus from their AFL team results"}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Status */}
           <Card>

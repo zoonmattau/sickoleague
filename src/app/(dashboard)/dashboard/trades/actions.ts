@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { validateSalaryCap, formatSalaryCapError } from "@/lib/salary-cap";
 
 // Helper to get the current user's club
 async function getMyClub() {
@@ -233,7 +234,18 @@ export async function placeBid(
 
   // Apply list manager discount
   const discount = await getListManagerDiscount(club.id);
-  const discountedTotal = totalValue * (1 - discount / 100);
+  const discountMultiplier = 1 - discount / 100;
+  const discountedBreakdown = yearBreakdown.map((y) => ({
+    season: y.season,
+    value: y.value * discountMultiplier,
+  }));
+  const discountedTotal = totalValue * discountMultiplier;
+
+  // Validate salary cap before placing bid
+  const salaryCapResult = await validateSalaryCap(club.id, discountedBreakdown);
+  if (!salaryCapResult.isValid) {
+    return { error: formatSalaryCapError(salaryCapResult) };
+  }
 
   // Check if player exists and is available
   const player = await prisma.aflPlayer.findUnique({
@@ -260,10 +272,7 @@ export async function placeBid(
       offerType: "FREE_AGENT",
       totalValue: discountedTotal,
       years,
-      yearBreakdown: yearBreakdown.map((y) => ({
-        season: y.season,
-        value: y.value * (1 - discount / 100),
-      })),
+      yearBreakdown: discountedBreakdown,
       offerExpires,
       status: "PENDING",
     },

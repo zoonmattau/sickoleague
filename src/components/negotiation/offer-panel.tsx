@@ -11,14 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Minus, DollarSign } from "lucide-react";
+import { Plus, Minus, DollarSign, AlertTriangle } from "lucide-react";
 
 interface YearBreakdown {
   season: number;
@@ -36,12 +29,19 @@ interface OfferPanelProps {
     yearBreakdown: YearBreakdown[];
   }) => Promise<void>;
   disabled?: boolean;
+  salaryCapInfo?: {
+    salaryCap: number;
+    roomByYear: Record<number, number>;
+  } | null;
+  listManagerDiscount?: number;
 }
 
 export function OfferPanel({
   currentOffer,
   onModifyOffer,
   disabled,
+  salaryCapInfo,
+  listManagerDiscount = 0,
 }: OfferPanelProps) {
   const currentYear = new Date().getFullYear();
   const [years, setYears] = useState(currentOffer.years);
@@ -51,6 +51,16 @@ export function OfferPanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalValue = breakdown.reduce((sum, y) => sum + y.value, 0);
+  const discountMultiplier = 1 - listManagerDiscount / 100;
+
+  // Calculate which years would exceed cap
+  const overCapYears = salaryCapInfo
+    ? breakdown.filter((y) => {
+        const room = salaryCapInfo.roomByYear[y.season] ?? salaryCapInfo.salaryCap;
+        const effectiveValue = y.value * discountMultiplier;
+        return effectiveValue > room;
+      }).map((y) => y.season)
+    : [];
 
   const handleYearsChange = (newYears: number) => {
     const clampedYears = Math.max(1, Math.min(5, newYears));
@@ -103,7 +113,7 @@ export function OfferPanel({
           Contract Offer
         </CardTitle>
         <CardDescription>
-          Total: ${totalValue} over {years} year{years !== 1 ? "s" : ""}
+          Total: ${totalValue}k over {years} year{years !== 1 ? "s" : ""}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -138,26 +148,41 @@ export function OfferPanel({
         {/* Year breakdown */}
         <div className="space-y-2">
           <Label>Per-Season Breakdown:</Label>
-          {breakdown.map((year) => (
-            <div key={year.season} className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground w-12">
-                {year.season}:
-              </span>
-              <div className="flex-1 flex items-center gap-1">
-                <span className="text-muted-foreground">$</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={year.value}
-                  onChange={(e) =>
-                    handleValueChange(year.season, parseInt(e.target.value) || 0)
-                  }
-                  className="h-8"
-                  disabled={disabled}
-                />
+          {breakdown.map((year) => {
+            const isOverCap = overCapYears.includes(year.season);
+            const room = salaryCapInfo?.roomByYear[year.season];
+            return (
+              <div key={year.season} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground w-12">
+                    {year.season}:
+                  </span>
+                  <div className="flex-1 flex items-center gap-1">
+                    <span className="text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={year.value}
+                      onChange={(e) =>
+                        handleValueChange(year.season, parseInt(e.target.value) || 0)
+                      }
+                      className={`h-8 ${isOverCap ? "border-red-500" : ""}`}
+                      disabled={disabled}
+                    />
+                    <span className="text-muted-foreground text-sm">k</span>
+                  </div>
+                  {isOverCap && (
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                  )}
+                </div>
+                {room !== undefined && (
+                  <p className={`text-xs ml-14 ${isOverCap ? "text-red-500" : "text-muted-foreground"}`}>
+                    Cap room: ${room.toFixed(0)}k
+                  </p>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Quick adjust buttons */}
@@ -169,7 +194,7 @@ export function OfferPanel({
             onClick={() => handleQuickAdjust(-10)}
             disabled={disabled}
           >
-            -$10
+            -$10k
           </Button>
           <Button
             variant="outline"
@@ -177,7 +202,7 @@ export function OfferPanel({
             onClick={() => handleQuickAdjust(-5)}
             disabled={disabled}
           >
-            -$5
+            -$5k
           </Button>
           <Button
             variant="outline"
@@ -185,7 +210,7 @@ export function OfferPanel({
             onClick={() => handleQuickAdjust(5)}
             disabled={disabled}
           >
-            +$5
+            +$5k
           </Button>
           <Button
             variant="outline"
@@ -193,7 +218,7 @@ export function OfferPanel({
             onClick={() => handleQuickAdjust(10)}
             disabled={disabled}
           >
-            +$10
+            +$10k
           </Button>
         </div>
 

@@ -93,7 +93,7 @@ export function BoardroomScene({
       />
 
       {/* Main content area */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-[500px] p-8 pt-16">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-[500px] p-8 pt-16 pb-40">
         {children}
       </div>
 

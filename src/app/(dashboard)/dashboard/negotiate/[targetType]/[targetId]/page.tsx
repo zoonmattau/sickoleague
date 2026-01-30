@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { getNegotiationSession, getNegotiationTarget, startNegotiation } from "../../actions";
+import { getNegotiationSession, getNegotiationTarget, startNegotiation, getClubSalaryCapInfo, getClubListManagerDiscount } from "../../actions";
 import { NegotiationRoom } from "./negotiation-room";
 
 interface PageProps {
@@ -25,7 +25,12 @@ export default async function NegotiatePage({ params, searchParams }: PageProps)
 
   // If we have a session ID, load that session
   if (sessionId) {
-    const session = await getNegotiationSession(sessionId);
+    const [session, salaryCapInfo, listManagerDiscountInfo] = await Promise.all([
+      getNegotiationSession(sessionId),
+      getClubSalaryCapInfo(),
+      getClubListManagerDiscount(),
+    ]);
+
     if (!session) {
       notFound();
     }
@@ -41,6 +46,8 @@ export default async function NegotiatePage({ params, searchParams }: PageProps)
               yearBreakdown: { season: number; value: number }[];
             },
           }}
+          salaryCapInfo={salaryCapInfo}
+          listManagerDiscount={listManagerDiscountInfo ? parseFloat(listManagerDiscountInfo.discountPercent) : 0}
         />
       </div>
     );

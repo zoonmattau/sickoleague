@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { generateNegotiationResponse, type NegotiationContext } from "@/lib/ai/anthropic";
+import { validateSalaryCap, formatSalaryCapError, getSalaryCapRoom, getSalaryCap } from "@/lib/salary-cap";
 import type { NegotiationStyle, MessageRole } from "@prisma/client";
 
 // Helper to get the current user's club
@@ -439,6 +440,25 @@ export async function modifyOffer(
 
   if (!session) return { error: "Session not found" };
 
+  // Check if this offer would exceed salary cap
+  // For players, we should account for list manager discount
+  const isPlayer = !!session.aflPlayerId;
+  let checkBreakdown = newOffer.yearBreakdown;
+
+  if (isPlayer) {
+    const { discount } = await getListManagerDiscount(club.id);
+    const discountMultiplier = 1 - discount / 100;
+    checkBreakdown = newOffer.yearBreakdown.map((y) => ({
+      season: y.season,
+      value: y.value * discountMultiplier,
+    }));
+  }
+
+  const salaryCapResult = await validateSalaryCap(club.id, checkBreakdown);
+  if (!salaryCapResult.isValid) {
+    return { error: formatSalaryCapError(salaryCapResult), salaryCapWarning: true };
+  }
+
   const totalValue = newOffer.yearBreakdown.reduce((sum, y) => sum + y.value, 0);
 
   await prisma.negotiationSession.update({
@@ -457,7 +477,7 @@ export async function modifyOffer(
     data: {
       sessionId,
       role: "SYSTEM",
-      content: `Offer updated: ${newOffer.years} year(s), $${totalValue} total`,
+      content: `Offer updated: ${newOffer.years} year(s), $${totalValue}k total`,
     },
   });
 
@@ -466,7 +486,10 @@ export async function modifyOffer(
 }
 
 // Accept negotiation and create contract
-export async function acceptNegotiation(sessionId: string) {
+export async function acceptNegotiation(
+  sessionId: string,
+  coachRole?: "SENIOR_ASSISTANT" | "RESERVES_ASSISTANT"
+) {
   const club = await getMyClub();
   if (!club) return { error: "No club found" };
 
@@ -493,13 +516,24 @@ export async function acceptNegotiation(sessionId: string) {
   const { discount } = await getListManagerDiscount(club.id);
   const discountMultiplier = 1 - discount / 100;
 
+  // Calculate the actual contract values (with discount for players)
+  const finalBreakdown = session.aflPlayerId
+    ? currentOffer.yearBreakdown.map((y) => ({
+        season: y.season,
+        value: y.value * discountMultiplier,
+      }))
+    : currentOffer.yearBreakdown;
+
+  // Validate salary cap before creating contract
+  const salaryCapResult = await validateSalaryCap(club.id, finalBreakdown);
+  if (!salaryCapResult.isValid) {
+    return { error: formatSalaryCapError(salaryCapResult) };
+  }
+
   if (session.aflPlayerId) {
     // Apply list manager discount to player contract
     const discountedTotal = currentOffer.totalValue * discountMultiplier;
-    const discountedBreakdown = currentOffer.yearBreakdown.map((y) => ({
-      season: y.season,
-      value: y.value * discountMultiplier,
-    }));
+    const discountedBreakdown = finalBreakdown;
 
     // Create player contract with discount
     await prisma.contract.create({
@@ -515,9 +549,18 @@ export async function acceptNegotiation(sessionId: string) {
       },
     });
   } else if (session.staffId) {
-    // Determine staff role based on existing staff or default
+    // Determine staff role
     const staff = await prisma.staff.findUnique({ where: { id: session.staffId } });
-    const staffRole = staff?.role === "LIST_MANAGER" ? "LIST_MANAGER" : "SENIOR_ASSISTANT";
+
+    // For coaches, use the selected role (SENIOR_ASSISTANT or RESERVES_ASSISTANT)
+    // For list managers, always use LIST_MANAGER
+    let staffRole: "SENIOR_ASSISTANT" | "RESERVES_ASSISTANT" | "LIST_MANAGER";
+    if (staff?.role === "LIST_MANAGER") {
+      staffRole = "LIST_MANAGER";
+    } else {
+      // Coach - use provided role or default to SENIOR_ASSISTANT
+      staffRole = coachRole ?? "SENIOR_ASSISTANT";
+    }
 
     // Staff contracts don't get discounts
     await prisma.staffContract.create({
@@ -613,5 +656,19 @@ export async function getClubListManagerDiscount() {
   return {
     discountPercent: discount.toFixed(1),
     listManagerName: listManager,
+  };
+}
+
+// Get the club's salary cap room by year
+export async function getClubSalaryCapInfo() {
+  const club = await getMyClub();
+  if (!club) return null;
+
+  const room = await getSalaryCapRoom(club.id);
+  const cap = await getSalaryCap();
+
+  return {
+    salaryCap: cap,
+    roomByYear: room,
   };
 }
