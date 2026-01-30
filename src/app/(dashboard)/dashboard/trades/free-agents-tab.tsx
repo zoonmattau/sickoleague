@@ -22,6 +22,7 @@ import {
 import { Search, Clock, TrendingUp, Users } from "lucide-react";
 import type { FreeAgentPlayer } from "./actions";
 import { PlayerBidDialog } from "./player-bid-dialog";
+import { PlayerDetailDialog } from "./player-detail-dialog";
 
 interface FreeAgentsTabProps {
   players: FreeAgentPlayer[];
@@ -58,6 +59,8 @@ export function FreeAgentsTab({ players }: FreeAgentsTabProps) {
     null
   );
   const [bidDialogOpen, setBidDialogOpen] = useState(false);
+  const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Get unique teams for filter
   const teams = Array.from(
@@ -208,7 +211,15 @@ export function FreeAgentsTab({ players }: FreeAgentsTabProps) {
               filteredPlayers.map((player) => (
                 <TableRow key={player.id}>
                   <TableCell className="font-medium">
-                    {player.firstName} {player.lastName}
+                    <button
+                      onClick={() => {
+                        setDetailPlayerId(player.id);
+                        setDetailDialogOpen(true);
+                      }}
+                      className="hover:underline text-left"
+                    >
+                      {player.firstName} {player.lastName}
+                    </button>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -272,6 +283,13 @@ export function FreeAgentsTab({ players }: FreeAgentsTabProps) {
           onOpenChange={setBidDialogOpen}
         />
       )}
+
+      {/* Player detail dialog */}
+      <PlayerDetailDialog
+        playerId={detailPlayerId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   );
 }

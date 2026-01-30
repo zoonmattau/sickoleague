@@ -349,12 +349,12 @@ export default async function HomePage({
                   </div>
                   <CardTitle>Draft & Rule 9</CardTitle>
                   <CardDescription>
-                    10 rounds + mid-season draft
+                    20 rounds + mid-season draft
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Annual 10-round draft in reverse order. Rule 9 Draft prevents
+                    Annual 20-round draft in reverse order. Rule 9 Draft prevents
                     stashing quality players in reserves.
                   </p>
                 </CardContent>
@@ -497,17 +497,25 @@ export default async function HomePage({
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">2.3 Position Eligibility</h4>
+                      <h4 className="font-semibold">2.3 Injury List Eligibility</h4>
                       <div className="pl-4 space-y-1 text-muted-foreground">
-                        <p>2.3.1 Players with dual-position eligibility (e.g., DEF/MID) may fill either eligible position slot.</p>
-                        <p>2.3.2 If a rostered player does not play in a given round (late omission, injury), they shall score zero (0) points with no replacement.</p>
+                        <p>2.3.1 Players may be placed on the IL only if they are listed as unavailable on the official AFL website.</p>
+                        <p>2.3.2 A player may not be placed on the IL if they played the round prior, unless subsequently injured and listed on the AFL website.</p>
+                        <p>2.3.3 Any position may use the IL.</p>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">2.4 Captaincy</h4>
+                      <h4 className="font-semibold">2.4 Position Eligibility</h4>
                       <div className="pl-4 space-y-1 text-muted-foreground">
-                        <p>2.4.1 Coaches shall nominate a Captain and Vice-Captain for each squad prior to the season.</p>
-                        <p>2.4.2 Captain or Vice-Captain may only change if they are:</p>
+                        <p>2.4.1 Players with dual-position eligibility (e.g., DEF/MID) may fill either eligible position slot.</p>
+                        <p>2.4.2 If a rostered player does not play in a given round (late omission, injury), they shall score zero (0) points with no replacement.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">2.5 Captaincy</h4>
+                      <div className="pl-4 space-y-1 text-muted-foreground">
+                        <p>2.5.1 Coaches shall nominate a Captain and Vice-Captain for each squad prior to the season.</p>
+                        <p>2.5.2 Captain or Vice-Captain may only change if they are:</p>
                         <div className="pl-4">
                           <p>(a) Benched for one (1) game week where the team is active</p>
                           <p>(b) Placed on Injury List</p>
@@ -515,14 +523,14 @@ export default async function HomePage({
                           <p>(d) Released</p>
                           <p>(e) Moved between squads</p>
                         </div>
-                        <p>2.4.3 Senior and Reserve captaincy/vice-captaincy shall be independent of each other.</p>
+                        <p>2.5.3 Senior and Reserve captaincy/vice-captaincy shall be independent of each other.</p>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-semibold">2.5 Squad Movement</h4>
+                      <h4 className="font-semibold">2.6 Squad Movement</h4>
                       <div className="pl-4 space-y-1 text-muted-foreground">
-                        <p>2.5.1 Players with an existing Senior contract shall retain their contract when moved between squads.</p>
-                        <p>2.5.2 Players without a Senior contract who are promoted to Seniors shall receive a contract valued at one (1) point per game remaining in the regular season.</p>
+                        <p>2.6.1 Players with an existing Senior contract shall retain their contract when moved between squads.</p>
+                        <p>2.6.2 Players without a Senior contract who are promoted to Seniors shall receive a contract valued at one (1) point per game remaining in the regular season.</p>
                       </div>
                     </div>
                   </CardContent>
@@ -581,9 +589,9 @@ export default async function HomePage({
                     <div className="space-y-2">
                       <h4 className="font-semibold">4.2 HFA Limits</h4>
                       <div className="pl-4 space-y-1 text-muted-foreground">
-                        <p>4.2.1 Seniors HFA shall be capped at plus or minus fifteen (±15) points.</p>
-                        <p>4.2.2 Reserves HFA shall be capped at plus or minus eight (±8) points.</p>
-                        <p>4.2.3 Reserves HFA shall be calculated at half (50%) of the standard amount.</p>
+                        <p>4.2.1 Seniors HFA shall be capped at fifty (50) points maximum.</p>
+                        <p>4.2.2 Reserves HFA shall be capped at thirty (30) points maximum.</p>
+                        <p>4.2.3 Reserves HFA shall be calculated at sixty percent (60%) of the Senior amount.</p>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -684,11 +692,16 @@ export default async function HomePage({
                       <div className="pl-4 space-y-1 text-muted-foreground">
                         <p>6.3.1 Players must have played five (5) or more AFL games that year to be eligible.</p>
                         <p>6.3.2 Extensions may only be offered in the final year of a contract.</p>
-                        <p>6.3.3 Extension cost shall be calculated as: AFL Fantasy Season Average ÷ 2, rounded down to the nearest whole number.</p>
-                        <p>6.3.4 Other clubs may counter-offer with twenty percent (20%) or greater increase.</p>
-                        <p>6.3.5 Multi-year deals shall include ten percent (10%) year-on-year increase.</p>
-                        <p>6.3.6 Maximum contract length shall be ten (10) years.</p>
-                        <p>6.3.7 Bidding period shall be seven (7) days, resetting with each new offer.</p>
+                        <p>6.3.3 Extensions may be offered at any time after eligibility until the first game of the next season.</p>
+                        <p>6.3.4 Extension cost shall be calculated as: AFL Fantasy Season Average ÷ 2, rounded down to the nearest whole number.</p>
+                        <p>6.3.5 Other clubs may counter-offer with twenty percent (20%) or greater total value increase.</p>
+                        <p>6.3.6 Multi-year deals shall include ten percent (10%) year-on-year increase (rounded down).</p>
+                        <p>6.3.7 Contract structure is flexible, but each year cannot exceed 50% more or less than the previous year.</p>
+                        <p>6.3.8 Maximum contract extension length shall be ten (10) years.</p>
+                        <p>6.3.9 Bidding period shall be seven (7) days, halving with each new offer.</p>
+                        <p>6.3.10 Offers may only be made if the club will remain cap compliant as of the next season.</p>
+                        <p>6.3.11 Offers may not be withdrawn once submitted.</p>
+                        <p>6.3.12 Multiple outstanding offers must not exceed next year&apos;s cap if all are accepted.</p>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -716,7 +729,7 @@ export default async function HomePage({
                       <h4 className="font-semibold">7.1 Annual Draft</h4>
                       <div className="pl-4 space-y-1 text-muted-foreground">
                         <p>7.1.1 The Annual Draft shall occur approximately fourteen (14) days before the first game.</p>
-                        <p>7.1.2 The Draft shall consist of ten (10) rounds.</p>
+                        <p>7.1.2 The Draft shall consist of twenty (20) rounds.</p>
                         <p>7.1.3 Draft order shall be in reverse finishing order of the previous Seniors ladder.</p>
                         <p>7.1.4 Clubs shall forfeit remaining picks if no roster spots are available.</p>
                         <p>7.1.5 Each coach shall have one (1) minute to make their pick; failure to pick in time shall result in an automatic pass.</p>
@@ -855,8 +868,10 @@ export default async function HomePage({
                     <div className="space-y-2">
                       <h4 className="font-semibold">10.2 Assistant Coach Bonus</h4>
                       <div className="pl-4 space-y-1 text-muted-foreground">
-                        <p>10.2.1 The Assistant Coach bonus shall be calculated as: their linked AFL Team&apos;s Margin ÷ 10.</p>
-                        <p>10.2.2 The bonus is added to (or subtracted from) the club&apos;s score each round.</p>
+                        <p>10.2.1 AFL coaches shall earn 0.5x their linked AFL Team&apos;s margin as bonus points.</p>
+                        <p>10.2.2 State league coaches (VFL, SANFL, WAFL, NTFL) shall earn 0.25x the margin (half the AFL coach bonus).</p>
+                        <p>10.2.3 The bonus is added to (or subtracted from) the club&apos;s score each round.</p>
+                        <p>10.2.4 Example: If an AFL coach&apos;s team wins by 40, the bonus is +20. If they lose by 40, the bonus is -20.</p>
                       </div>
                     </div>
                     <div className="space-y-2">

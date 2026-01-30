@@ -45,6 +45,8 @@ const navSections: NavSection[] = [
   {
     label: "Transactions",
     items: [
+      { href: "/dashboard/free-agents", label: "Free Agents" },
+      { href: "/dashboard/staff", label: "Staff" },
       { href: "/dashboard/trades", label: "Trades" },
       { href: "/dashboard/draft", label: "Draft" },
     ],

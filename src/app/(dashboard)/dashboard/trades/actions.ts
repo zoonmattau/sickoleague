@@ -444,3 +444,280 @@ export async function getTradeHistory() {
     completedAt: t.completedAt,
   }));
 }
+
+/**
+ * Get detailed player info including contract history
+ */
+export type PlayerDetail = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  positions: string[];
+  photoUrl: string | null;
+  aflTeam: {
+    name: string;
+    abbreviation: string;
+  } | null;
+  gamesPlayed: number;
+  averagePoints: number | null;
+  highScore: number | null;
+  lowScore: number | null;
+  last5Avg: number | null;
+  currentContract: {
+    clubName: string;
+    clubAbbreviation: string;
+    salary: number;
+    endSeason: number;
+    startSeason: number;
+  } | null;
+  contractHistory: {
+    clubName: string;
+    clubAbbreviation: string;
+    startSeason: number;
+    endSeason: number;
+    totalValue: number;
+    gamesPlayed: number;
+  }[];
+  seasonStats: {
+    season: number;
+    gamesPlayed: number;
+    averagePoints: number;
+    totalPoints: number;
+  }[];
+};
+
+export async function getPlayerDetail(playerId: string): Promise<PlayerDetail | null> {
+  const player = await prisma.aflPlayer.findUnique({
+    where: { id: playerId },
+    include: {
+      aflTeam: true,
+      contracts: {
+        include: {
+          club: { select: { name: true, abbreviation: true } },
+          rosterPlayers: {
+            where: { roundId: { not: null } },
+          },
+        },
+        orderBy: { startSeason: "desc" },
+      },
+    },
+  });
+
+  if (!player) return null;
+
+  // Get scoring stats
+  const scores = await prisma.matchPlayerScore.findMany({
+    where: { aflPlayerId: playerId, played: true },
+    include: {
+      match: {
+        include: {
+          round: {
+            select: { roundNumber: true, season: { select: { year: true } } },
+          },
+        },
+      },
+    },
+    orderBy: { match: { round: { season: { year: "desc" } } } },
+  });
+
+  const allScoreValues = scores.map((s) => s.aflFantasyScore ?? 0);
+  const averagePoints =
+    allScoreValues.length > 0
+      ? allScoreValues.reduce((a, b) => a + b, 0) / allScoreValues.length
+      : null;
+  const highScore = allScoreValues.length > 0 ? Math.max(...allScoreValues) : null;
+  const lowScore = allScoreValues.length > 0 ? Math.min(...allScoreValues) : null;
+  const last5Avg =
+    allScoreValues.length >= 5
+      ? allScoreValues.slice(0, 5).reduce((a, b) => a + b, 0) / 5
+      : null;
+
+  // Group by season for season stats
+  const seasonGroups = scores.reduce(
+    (acc, s) => {
+      const season = s.match.round.season.year;
+      if (!acc[season]) acc[season] = [];
+      acc[season].push(s.aflFantasyScore ?? 0);
+      return acc;
+    },
+    {} as Record<number, number[]>
+  );
+
+  const seasonStats = Object.entries(seasonGroups).map(([season, seasonScores]) => ({
+    season: Number(season),
+    gamesPlayed: seasonScores.length,
+    averagePoints: seasonScores.reduce((a, b) => a + b, 0) / seasonScores.length,
+    totalPoints: seasonScores.reduce((a, b) => a + b, 0),
+  }));
+
+  // Current active contract
+  const activeContract = player.contracts.find((c) => c.status === "ACTIVE");
+
+  // Contract history
+  const contractHistory = player.contracts
+    .filter((c) => c.status !== "ACTIVE")
+    .map((c) => ({
+      clubName: c.club.name,
+      clubAbbreviation: c.club.abbreviation,
+      startSeason: c.startSeason,
+      endSeason: c.endSeason,
+      totalValue: Number(c.totalValue),
+      gamesPlayed: c.rosterPlayers.length,
+    }));
+
+  return {
+    id: player.id,
+    firstName: player.firstName,
+    lastName: player.lastName,
+    positions: player.positions,
+    photoUrl: player.photoUrl,
+    aflTeam: player.aflTeam
+      ? { name: player.aflTeam.name, abbreviation: player.aflTeam.abbreviation }
+      : null,
+    gamesPlayed: scores.length,
+    averagePoints,
+    highScore,
+    lowScore,
+    last5Avg,
+    currentContract: activeContract
+      ? {
+          clubName: activeContract.club.name,
+          clubAbbreviation: activeContract.club.abbreviation,
+          salary: Number(activeContract.totalValue),
+          endSeason: activeContract.endSeason,
+          startSeason: activeContract.startSeason,
+        }
+      : null,
+    contractHistory,
+    seasonStats: seasonStats.sort((a, b) => b.season - a.season),
+  };
+}
+
+/**
+ * Get detailed staff info including contract history
+ */
+export type StaffDetail = {
+  id: string;
+  name: string;
+  role: string;
+  league: string;
+  aflTeam: {
+    name: string;
+    abbreviation: string;
+    currentLadderPos: number | null;
+  } | null;
+  currentContract: {
+    clubName: string;
+    clubAbbreviation: string;
+    salary: number;
+    startSeason: number;
+    endSeason: number;
+  } | null;
+  contractHistory: {
+    clubName: string;
+    clubAbbreviation: string;
+    startSeason: number;
+    endSeason: number;
+    totalValue: number;
+    role: string;
+  }[];
+  aflTeamResults: {
+    season: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    ladderPosition: number | null;
+  }[];
+  listManagerDiscount: number | null;
+};
+
+export async function getStaffDetail(staffId: string): Promise<StaffDetail | null> {
+  const staff = await prisma.staff.findUnique({
+    where: { id: staffId },
+    include: {
+      aflTeam: true,
+      staffContracts: {
+        include: {
+          club: { select: { name: true, abbreviation: true } },
+        },
+        orderBy: { startSeason: "desc" },
+      },
+    },
+  });
+
+  if (!staff) return null;
+
+  // Get AFL team results if available
+  let aflTeamResults: StaffDetail["aflTeamResults"] = [];
+  if (staff.aflTeamId) {
+    const results = await prisma.aflMatchResult.findMany({
+      where: { aflTeamId: staff.aflTeamId },
+      orderBy: { season: "desc" },
+    });
+
+    // Group by season
+    const seasonGroups = results.reduce(
+      (acc, r) => {
+        if (!acc[r.season]) acc[r.season] = [];
+        acc[r.season].push(r.margin);
+        return acc;
+      },
+      {} as Record<number, number[]>
+    );
+
+    aflTeamResults = Object.entries(seasonGroups).map(([season, margins]) => ({
+      season: Number(season),
+      wins: margins.filter((m) => m > 0).length,
+      losses: margins.filter((m) => m < 0).length,
+      draws: margins.filter((m) => m === 0).length,
+      ladderPosition: null, // Would need to fetch from standings
+    }));
+  }
+
+  // Current active contract
+  const activeContract = staff.staffContracts.find((c) => c.status === "ACTIVE");
+
+  // Contract history
+  const contractHistory = staff.staffContracts
+    .filter((c) => c.status !== "ACTIVE")
+    .map((c) => ({
+      clubName: c.club.name,
+      clubAbbreviation: c.club.abbreviation,
+      startSeason: c.startSeason,
+      endSeason: c.endSeason,
+      totalValue: Number(c.totalValue),
+      role: c.staffRole,
+    }));
+
+  // Calculate list manager discount if applicable
+  let listManagerDiscount: number | null = null;
+  if (staff.role === "LIST_MANAGER" && staff.aflTeam?.currentLadderPos) {
+    listManagerDiscount = Math.round((19 - staff.aflTeam.currentLadderPos) / 3);
+  }
+
+  return {
+    id: staff.id,
+    name: staff.name,
+    role: staff.role,
+    league: staff.league,
+    aflTeam: staff.aflTeam
+      ? {
+          name: staff.aflTeam.name,
+          abbreviation: staff.aflTeam.abbreviation,
+          currentLadderPos: staff.aflTeam.currentLadderPos,
+        }
+      : null,
+    currentContract: activeContract
+      ? {
+          clubName: activeContract.club.name,
+          clubAbbreviation: activeContract.club.abbreviation,
+          salary: Number(activeContract.totalValue),
+          startSeason: activeContract.startSeason,
+          endSeason: activeContract.endSeason,
+        }
+      : null,
+    contractHistory,
+    aflTeamResults: aflTeamResults.sort((a, b) => b.season - a.season),
+    listManagerDiscount,
+  };
+}

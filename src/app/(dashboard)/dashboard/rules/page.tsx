@@ -1,550 +1,714 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
 import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Users,
-  DollarSign,
-  Calendar,
-  Trophy,
-  ArrowLeftRight,
-  FileText,
-  Swords,
-  UserPlus,
-  Home,
-  Briefcase,
-} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+function Section({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-bold uppercase tracking-wide border-b-2 border-foreground pb-2 mb-4">
+        {number}. {title}
+      </h2>
+      <div className="space-y-4 pl-4">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function SubSection({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-4">
+      <h3 className="font-semibold mb-2">{number} {title}</h3>
+      <div className="pl-4 text-sm space-y-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Clause({ number, children, className }: { number: string; children: React.ReactNode; className?: string }) {
+  return (
+    <p className={cn("text-sm", className)}>
+      <span className="text-muted-foreground mr-2">({number})</span>
+      {children}
+    </p>
+  );
+}
+
+function DefinitionList({ items }: { items: { term: string; definition: string }[] }) {
+  return (
+    <dl className="grid gap-1 text-sm">
+      {items.map((item, i) => (
+        <div key={i} className="grid grid-cols-[auto_1fr] gap-2">
+          <dt className="font-medium">&quot;{item.term}&quot;</dt>
+          <dd className="text-muted-foreground">means {item.definition}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 export default function RulesPage() {
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">League Rules</h1>
-        <p className="text-muted-foreground">
-          Official rules and regulations for the Sicko League
-        </p>
+    <div className="container mx-auto px-4 py-6 max-w-4xl">
+      {/* Header */}
+      <div className="text-center mb-8 border-b pb-6">
+        <h1 className="text-3xl font-bold uppercase tracking-wider mb-2">Sicko League</h1>
+        <p className="text-lg text-muted-foreground">Official Rules and Regulations</p>
+        <p className="text-sm text-muted-foreground mt-2">Effective Season 2025</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Roster Rules */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
-              Roster Rules
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="squad-size">
-                <AccordionTrigger>Squad Size</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Each club must maintain a roster of players across two squads:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li><strong>Seniors:</strong> 11 on-field positions</li>
-                    <li><strong>Reserves:</strong> 8 on-field positions</li>
-                    <li><strong>Bench:</strong> 2 spots (neither seniors nor reserves)</li>
-                    <li><strong>Injury List:</strong> 2 spots (neither seniors nor reserves)</li>
-                  </ul>
-                  <p className="text-muted-foreground">Maximum 21 contracted players per club.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="positions">
-                <AccordionTrigger>Positions</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Players must be placed in valid positions based on their eligibility:</p>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-blue-600 text-white">DEF</Badge>
-                      <span>Defenders (3 seniors, 2 reserves)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-green-600 text-white">MID</Badge>
-                      <span>Midfielders (4 seniors, 3 reserves)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-purple-600 text-white">RUC</Badge>
-                      <span>Rucks (1 senior, 1 reserve)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-red-600 text-white">FWD</Badge>
-                      <span>Forwards (3 seniors, 2 reserves)</span>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="bench-il">
-                <AccordionTrigger>Bench & Injury List</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p><strong>Bench (2 spots):</strong> Any position eligible. Bench players do NOT score points - there is no emergency or auto-elevation.</p>
-                  <p><strong>Injury List (2 spots):</strong> For injured players only. Do not score points.</p>
-                  <p className="text-muted-foreground">Bench and IL spots are shared between squads - they are neither seniors nor reserves.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="reserves-eligibility">
-                <AccordionTrigger>Reserves Finals Eligibility</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>To be eligible for a reserves finals roster, a player must play a <strong>majority of his games for the reserves squad</strong>.</p>
-                  <p>If a player is tied in games played between seniors and reserves, he shall be eligible for the reserves.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+      {/* Table of Contents */}
+      <nav className="mb-8 p-4 bg-muted/50 rounded-lg">
+        <h2 className="font-bold mb-3 text-sm uppercase tracking-wide">Table of Contents</h2>
+        <ol className="grid grid-cols-2 gap-1 text-sm">
+          <li><a href="#roster" className="hover:underline">1. Roster Rules</a></li>
+          <li><a href="#scoring" className="hover:underline">2. Scoring</a></li>
+          <li><a href="#staff" className="hover:underline">3. Coaches & Staff</a></li>
+          <li><a href="#salary" className="hover:underline">4. Salary Cap</a></li>
+          <li><a href="#hfa" className="hover:underline">5. Home Field Advantage</a></li>
+          <li><a href="#season" className="hover:underline">6. Season Structure</a></li>
+          <li><a href="#freeagency" className="hover:underline">7. Free Agency</a></li>
+          <li><a href="#eosfreeagency" className="hover:underline">8. End of Season Free Agency</a></li>
+          <li><a href="#rule9" className="hover:underline">9. Rule 9 Draft</a></li>
+          <li><a href="#trading" className="hover:underline">10. Trading</a></li>
+          <li><a href="#draft" className="hover:underline">11. Annual Draft</a></li>
+          <li><a href="#rivalries" className="hover:underline">12. Rivalries</a></li>
+        </ol>
+      </nav>
 
-        {/* Scoring */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              Scoring
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="player-scores">
-                <AccordionTrigger>Player Scores</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Player scores are based on AFL Fantasy points from real AFL matches.</p>
-                  <p>If a player doesn&apos;t play in the real AFL round, they score <strong>0 points</strong>.</p>
-                  <p className="text-muted-foreground">Only on-field players score. Bench players never score - there is no emergency elevation.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="captaincy">
-                <AccordionTrigger>Captaincy</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p><strong>Captain (C):</strong> Scores <strong>1.5x</strong> points</p>
-                  <p><strong>Vice-Captain (VC):</strong> Scores <strong>1.25x</strong> points</p>
-                  <p>Each squad (Seniors/Reserves) has its own captain and vice-captain.</p>
-                  <p className="text-muted-foreground mt-2"><strong>Important:</strong> Captains can only be changed when rules allow - when they are dropped, benched, injured, or traded.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="team-scores">
-                <AccordionTrigger>Team Scores</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Team score = Sum of all on-field player scores (with captain/VC multipliers applied).</p>
-                  <p>Coach bonuses are added to the team score (see Staff section).</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+      {/* 1. ROSTER RULES */}
+      <Section number="1" title="ROSTER RULES">
+        <div id="roster" className="scroll-mt-20" />
 
-        {/* Coaches & Staff */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-indigo-500" />
-              Coaches & Staff
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="assistant-coaches">
-                <AccordionTrigger>Assistant Coaches</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Clubs can sign assistant coaches from AFL or state leagues (VFL, SANFL, WAFL, NTFL).</p>
-                  <p><strong>Scoring Bonus:</strong> Coaches earn <strong>0.5x their real-life AFL team&apos;s margin</strong> as bonus points for your team.</p>
-                  <p className="text-muted-foreground">Example: If your coach&apos;s AFL team wins by 40 points, you get +20 bonus points.</p>
-                  <p className="text-muted-foreground">State league coaches provide half the bonus (0.25x margin).</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="list-managers">
-                <AccordionTrigger>List Managers</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>List managers save your club a <strong>percentage discount</strong> on player contracts based on their AFL team&apos;s ladder position.</p>
-                  <p><strong>Formula:</strong> <code>ROUND((18 - ladder_position) / 3, 0)%</code></p>
-                  <div className="mt-2 space-y-1">
-                    <p className="text-muted-foreground">Examples:</p>
-                    <ul className="list-disc list-inside ml-2 text-muted-foreground">
-                      <li>1st place = 6% discount</li>
-                      <li>5th place = 4% discount</li>
-                      <li>10th place = 3% discount</li>
-                      <li>18th place = 0% discount</li>
-                    </ul>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="1.1" title="Squad Composition">
+          <Clause number="a">
+            Each Club shall maintain a roster not exceeding twenty-one (21) contracted players.
+          </Clause>
+          <Clause number="b">
+            The roster shall be divided as follows:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) <strong>Seniors Squad:</strong> Eleven (11) on-field positions;</p>
+            <p>(ii) <strong>Reserves Squad:</strong> Eight (8) on-field positions;</p>
+            <p>(iii) <strong>Bench:</strong> Two (2) positions, shared between squads;</p>
+            <p>(iv) <strong>Injury List:</strong> Two (2) positions, shared between squads.</p>
+          </div>
+        </SubSection>
 
-        {/* Salary Cap */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-500" />
-              Salary Cap
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="cap-amount">
-                <AccordionTrigger>Cap Amount</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>The salary cap is <strong>$750k</strong> per season.</p>
-                  <p>All contract values count against the cap for each year they are active.</p>
-                  <p className="text-muted-foreground">Staff contracts also count against the salary cap.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="contracts">
-                <AccordionTrigger>Contract Types</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><strong>Standard:</strong> 1-4 year contracts at negotiated values</li>
-                    <li><strong>Extension:</strong> Added years to existing contracts</li>
-                    <li><strong>Reserve Squad:</strong> Players on reserve roster who haven&apos;t played a senior game this season for their current club are effectively free (no contract required)</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="minimum">
-                <AccordionTrigger>Minimum Salary</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Minimum contract value is calculated as:</p>
-                  <p><strong>$1k per games remaining until end of season + $2k</strong></p>
-                  <p className="text-muted-foreground">Example: If there are 10 games left, minimum = $10k + $2k = $12k</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trading-cap">
-                <AccordionTrigger>Trading & Cap Compliance</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Teams may go <strong>over the salary cap in future years</strong> when trading.</p>
-                  <p className="text-muted-foreground">However, clubs must be cap compliant by <strong>opening day</strong> of that season.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="1.2" title="Positional Requirements">
+          <Clause number="a">
+            Players must be assigned to positions for which they hold eligibility. The positions are:
+          </Clause>
+          <div className="pl-8 my-3 grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-blue-600 text-white font-mono">DEF</Badge>
+              <span>Defender &mdash; 3 seniors, 2 reserves</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-green-600 text-white font-mono">MID</Badge>
+              <span>Midfielder &mdash; 4 seniors, 3 reserves</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-purple-600 text-white font-mono">RUC</Badge>
+              <span>Ruck &mdash; 1 senior, 1 reserve</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-red-600 text-white font-mono">FWD</Badge>
+              <span>Forward &mdash; 3 seniors, 2 reserves</span>
+            </div>
+          </div>
+          <Clause number="b">
+            A player holding multiple position eligibilities may be assigned to any one of their eligible positions.
+          </Clause>
+        </SubSection>
 
-        {/* Home Field Advantage */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Home className="h-5 w-5 text-teal-500" />
-              Home Field Advantage
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="hfa-calculation">
-                <AccordionTrigger>HFA Calculation</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Home teams receive a <strong>Home Field Advantage (HFA)</strong> bonus added to their score.</p>
-                  <p>HFA is calculated based on your recent home game performance.</p>
-                  <p className="text-muted-foreground">The better you perform at home, the higher your HFA grows.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="hfa-caps">
-                <AccordionTrigger>HFA Caps</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><strong>Seniors:</strong> Maximum 15 points HFA</li>
-                    <li><strong>Reserves:</strong> Maximum 8 points HFA</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="1.3" title="Bench">
+          <Clause number="a">
+            Players on the Bench shall not score points under any circumstances.
+          </Clause>
+          <Clause number="b">
+            There shall be no emergency elevation or automatic substitution from the Bench.
+          </Clause>
+          <Clause number="c">
+            Any position may use the Bench.
+          </Clause>
+        </SubSection>
 
-        {/* Season Structure */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-purple-500" />
-              Season Structure
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="regular-season">
-                <AccordionTrigger>Regular Season</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>The regular season follows the real AFL season schedule.</p>
-                  <p>Points: <strong>Win = 4 pts</strong>, <strong>Draw = 2 pts</strong>, <strong>Loss = 0 pts</strong></p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="finals">
-                <AccordionTrigger>Finals Series</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Top 4 teams qualify for finals.</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><strong>Week 1:</strong> 1st vs 2nd (Qualifying), 3rd vs 4th (Elimination)</li>
-                    <li><strong>Week 2:</strong> Loser QF vs Winner EF (Preliminary)</li>
-                    <li><strong>Week 3:</strong> Grand Final</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="lockout">
-                <AccordionTrigger>Lockout Rules</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Lineups lock at the <strong>first bounce</strong> of each round.</p>
-                  <p>Once locked, no roster changes can be made until the round completes.</p>
-                  <p className="text-muted-foreground">Late scratches result in 0 points - bench players are NOT elevated.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="1.4" title="Injury List">
+          <Clause number="a">
+            Players may be placed on the Injury List (&quot;IL&quot;) only if they are listed as unavailable for selection on the official AFL website.
+          </Clause>
+          <Clause number="b">
+            A player may not be placed on the IL if they played in the prior round, unless they are subsequently injured and listed on the AFL website.
+          </Clause>
+          <Clause number="c">
+            Players on the IL shall not score points.
+          </Clause>
+          <Clause number="d">
+            Any position may use the IL.
+          </Clause>
+        </SubSection>
 
-        {/* Free Agency */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-emerald-500" />
-              Free Agency
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="free-agents">
-                <AccordionTrigger>Free Agents</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Any player who is not currently contracted to a club is a <strong>Free Agent</strong>.</p>
-                  <p>Free Agents can be signed at any time by any club.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="bidding">
-                <AccordionTrigger>Bidding Process</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Once an offer is made to a Free Agent, other clubs have <strong>48 hours</strong> to make a counter offer.</p>
-                  <p><strong>This time halves every time a new offer is made.</strong></p>
-                  <p className="text-muted-foreground">48h → 24h → 12h → 6h → 3h → ...</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="reserve-contracts">
-                <AccordionTrigger>Reserve Squad Contracts</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>You may offer a <strong>reserve squad contract</strong> to a free agent.</p>
-                  <p>The first club to offer a reserve squad contract can offer <strong>$0 salary cap</strong>.</p>
-                  <p>However, if another club offers <strong>any salary</strong> to that player, they take the lead.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="1.5" title="Reserves Finals Eligibility">
+          <Clause number="a">
+            To be eligible for a Reserves Finals roster, a player must have played a majority of their games for the Reserves Squad during that season.
+          </Clause>
+          <Clause number="b">
+            Where a player has equal games played for both squads, they shall be eligible for the Reserves.
+          </Clause>
+        </SubSection>
+      </Section>
 
-        {/* End of Season Free Agency */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-amber-500" />
-              End of Season Free Agency
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="eos-period">
-                <AccordionTrigger>Free Agency Period</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>End of Season Free Agency opens the <strong>day after the Grand Final</strong>.</p>
-                  <p>End of Season Free Agency closes the <strong>day before the first game</strong> of the next season.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="eos-bidding">
-                <AccordionTrigger>Bidding Rules</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Clubs may offer any Free Agent a contract, subject to salary cap compliance.</p>
-                  <p>Once a Free Agent is offered a contract, other clubs have a <strong>seven (7) day period</strong> to make an offer of <strong>5% above the previous highest offer</strong>.</p>
-                  <p>Each time a new club offers a contract, the decision time is <strong>halved</strong>.</p>
-                  <p className="text-muted-foreground">If the end of free agency is within 7 days, the offer period is half the time to the end.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rfa">
-                <AccordionTrigger>Restricted Free Agents (RFA)</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>The <strong>highest 25% of paid players</strong> in the previous season are RFAs.</p>
-                  <p>This list is made public on day one of End of Season Free Agency.</p>
-                  <p><strong>RFA Matching:</strong> Any free agency offer to an RFA can be matched <strong>+20%</strong> by their previous club.</p>
-                  <p className="text-muted-foreground">If a non-RFA player receives an offer that would put them in the RFA salary range, they are treated as an RFA.</p>
-                  <p className="text-muted-foreground">Teams have <strong>two days</strong> after the contract offer is accepted to match their RFA.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+      {/* 2. SCORING */}
+      <Section number="2" title="SCORING">
+        <div id="scoring" className="scroll-mt-20" />
 
-        {/* Trading */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowLeftRight className="h-5 w-5 text-orange-500" />
-              Trading
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="trade-assets">
-                <AccordionTrigger>Tradeable Assets</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>You can trade the following:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><strong>Players</strong> (with their contracts)</li>
-                    <li><strong>Draft picks</strong> (up to 3 years in advance)</li>
-                    <li><strong>Salary cap space</strong></li>
-                    <li><strong>Coaches and staff</strong></li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trade-rules">
-                <AccordionTrigger>Trade Rules</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>All trades require mutual agreement from both clubs</li>
-                    <li>Trades are final once accepted</li>
-                    <li>No trades during finals</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trade-block">
-                <AccordionTrigger>Trade Block</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Clubs can place players on the <strong>trade block</strong> to signal availability.</p>
-                  <p>Being on the trade block doesn&apos;t obligate a trade - it&apos;s just a signal to other clubs.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="2.1" title="Player Scores">
+          <Clause number="a">
+            Player scores shall be determined by AFL Fantasy points earned in real AFL matches.
+          </Clause>
+          <Clause number="b">
+            A player who does not participate in a real AFL match during a round shall score zero (0) points.
+          </Clause>
+          <Clause number="c">
+            Only players assigned to on-field positions shall score points. Bench and Injury List players score zero (0) points regardless of AFL participation.
+          </Clause>
+        </SubSection>
 
-        {/* Annual Draft */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-cyan-500" />
-              Annual Draft
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="draft-order">
-                <AccordionTrigger>Draft Order</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Draft order is determined by <strong>reverse ladder position</strong>.</p>
-                  <p>The team that finishes last gets the first pick.</p>
-                  <p className="text-muted-foreground">Draft picks can be traded up to 3 years in advance.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="draft-rounds">
-                <AccordionTrigger>Draft Rounds</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>The draft consists of <strong>20 rounds</strong>.</p>
-                  <p>Each club gets one pick per round (unless traded).</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="roster-requirement">
-                <AccordionTrigger>Roster Requirement</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>You <strong>must have an open roster spot</strong> to draft a player.</p>
-                  <p>If you don&apos;t have a spot, you automatically <strong>pass on all remaining picks</strong>.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="2.2" title="Captaincy">
+          <Clause number="a">
+            Each squad shall designate one (1) Captain and one (1) Vice-Captain.
+          </Clause>
+          <Clause number="b">
+            The Captain&apos;s score shall be multiplied by <strong>1.5</strong> (one and one-half).
+          </Clause>
+          <Clause number="c">
+            The Vice-Captain&apos;s score shall be multiplied by <strong>1.25</strong> (one and one-quarter).
+          </Clause>
+          <Clause number="d">
+            A Captain or Vice-Captain may only be changed when the current holder is:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) Dropped from the on-field roster;</p>
+            <p>(ii) Placed on the Bench;</p>
+            <p>(iii) Placed on the Injury List; or</p>
+            <p>(iv) Traded to another Club.</p>
+          </div>
+        </SubSection>
 
-        {/* Rule 9 Draft */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-rose-500" />
-              Rule 9 Draft
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="rule9-purpose">
-                <AccordionTrigger>Purpose</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>The Rule 9 Draft gives players who are of <strong>senior team standard</strong> game time on senior teams.</p>
-                  <p>This prevents clubs from stashing quality players in their reserve team.</p>
-                  <p className="text-muted-foreground">Similar to the Rule 5 Draft in MLB.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rule9-timing">
-                <AccordionTrigger>Timing & Order</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>The Rule 9 Draft takes place <strong>between Round 13 and Round 14</strong> of the current season.</p>
-                  <p>Draft order is the <strong>reverse finishing order</strong> of the senior competition from the year prior.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rule9-eligibility">
-                <AccordionTrigger>Player Eligibility</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Players eligible to be selected must:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>Have played a <strong>majority of games for the reserves</strong> squad</li>
-                    <li>Have a <strong>senior squad contract</strong></li>
-                    <li><strong>Not</strong> have been a rookie in the current or prior year</li>
-                    <li><strong>Not</strong> be on the Injury List</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rule9-requirements">
-                <AccordionTrigger>Roster Requirements</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Any player drafted in the Rule 9 Draft <strong>must remain on the senior squad or Injury List</strong> for:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>The remainder of the current season</li>
-                    <li>The entire next season</li>
-                  </ul>
-                  <p className="text-muted-foreground">Clubs must have an open spot on their list to draft a Rule 9 player.</p>
-                  <p className="text-muted-foreground">Clubs may pass their picks.</p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rule9-release">
-                <AccordionTrigger>Release Rules</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>If a team releases a Rule 9 drafted player, the <strong>original team</strong> gets the option to re-sign that player.</p>
-                  <p>If they accept, they must keep that player on the senior roster or Injury List for the remainder of the year.</p>
-                  <p className="text-muted-foreground">If the original team wants to demote them to reserves, the player is immediately returned to their drafting club (if a spot is available). If not, a player must be released immediately.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+        <SubSection number="2.3" title="Team Score Calculation">
+          <Clause number="a">
+            A team&apos;s score for a round shall be calculated as follows:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-sm">
+            Team Score = Sum of On-Field Player Scores + Captain Bonus + Vice-Captain Bonus + Coach Bonus + HFA (if home)
+          </div>
+        </SubSection>
+      </Section>
 
-        {/* Rivalries */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Swords className="h-5 w-5 text-red-500" />
-              Rivalries
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="official-rivals">
-                <AccordionTrigger>Official Rivals</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Clubs become official rivals through:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li><strong>Finals matchups:</strong> Meeting in finals creates automatic rivalry</li>
-                    <li><strong>Coach nomination:</strong> Coaches can nominate one rival per season</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="tension">
-                <AccordionTrigger>Tension Score</AccordionTrigger>
-                <AccordionContent className="space-y-2 text-sm">
-                  <p>Tension builds between clubs based on:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li><strong>Finals meetings (+5):</strong> Playing in finals</li>
-                    <li><strong>Close games (+4):</strong> Matches with margin under 20 points</li>
-                    <li><strong>Player movements (+2-6):</strong> Signing star players from other clubs</li>
-                    <li><strong>Trades (+2-5):</strong> Direct trades, especially lopsided ones</li>
-                    <li><strong>Ladder battles (+2-4):</strong> Fighting for same ladder positions</li>
-                  </ul>
-                  <p className="text-muted-foreground mt-2">Tension decays over time - current season events matter most.</p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+      {/* 3. COACHES & STAFF */}
+      <Section number="3" title="COACHES & STAFF">
+        <div id="staff" className="scroll-mt-20" />
+
+        <SubSection number="3.1" title="Assistant Coaches">
+          <Clause number="a">
+            Clubs may contract Assistant Coaches from AFL clubs or State League competitions (VFL, SANFL, WAFL, NTFL).
+          </Clause>
+          <Clause number="b">
+            Assistant Coaches provide a scoring bonus calculated as follows:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-sm space-y-1">
+            <p>AFL Coach Bonus = Coach&apos;s AFL Team Margin &times; 0.5</p>
+            <p>State League Coach Bonus = Coach&apos;s AFL Team Margin &times; 0.25</p>
+          </div>
+          <Clause number="c">
+            Example: If an AFL coach&apos;s team wins by 40 points, the bonus is +20 points. If they lose by 40 points, the bonus is -20 points.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="3.2" title="List Managers">
+          <Clause number="a">
+            List Managers provide a percentage discount on all player contract negotiations.
+          </Clause>
+          <Clause number="b">
+            The discount percentage is calculated based on the List Manager&apos;s AFL team ladder position:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-sm">
+            Discount % = ROUND((18 - Ladder Position) &divide; 3, 0)
+          </div>
+          <Clause number="c">
+            Examples of discount by ladder position:
+          </Clause>
+          <div className="pl-8 grid grid-cols-4 gap-2 text-sm">
+            <span>1st: 6%</span>
+            <span>5th: 4%</span>
+            <span>10th: 3%</span>
+            <span>18th: 0%</span>
+          </div>
+        </SubSection>
+
+        <SubSection number="3.3" title="Staff Contracts">
+          <Clause number="a">
+            Staff contracts count against the Club&apos;s salary cap.
+          </Clause>
+          <Clause number="b">
+            Staff may be traded between Clubs subject to mutual agreement.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 4. SALARY CAP */}
+      <Section number="4" title="SALARY CAP">
+        <div id="salary" className="scroll-mt-20" />
+
+        <SubSection number="4.1" title="Cap Amount">
+          <Clause number="a">
+            The salary cap shall be <strong>$750,000</strong> per season.
+          </Clause>
+          <Clause number="b">
+            All active contract values for players and staff count against the cap for each year of their term.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="4.2" title="Contract Types">
+          <Clause number="a">
+            <strong>Standard Contract:</strong> A contract at negotiated annual values. There is no rule-imposed limit on contract length.
+          </Clause>
+          <Clause number="b">
+            <strong>Reserve Squad Contract:</strong> Players on the Reserve roster who have not played a Senior game for their current Club in the current season may be signed for $0 salary.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="4.3" title="Contract Extensions">
+          <Clause number="a">
+            To be offered a contract extension, a player must have played five (5) games in the AFL that year.
+          </Clause>
+          <Clause number="b">
+            Extensions may only be offered in the final year of a player&apos;s current contract.
+          </Clause>
+          <Clause number="c">
+            Extensions may be offered at any time after the eligibility requirement is met, until the first game of the next season.
+          </Clause>
+          <Clause number="d">
+            The base cost of an extension is calculated as:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-sm">
+            Base Cost = FLOOR(Season Points Average) &divide; 2
+          </div>
+          <Clause number="e">
+            Example: A player averaging 96.33 points rounds down to 96, divided by 2 = $48k per year.
+          </Clause>
+          <Clause number="f">
+            Long-term contracts incur a 10% year-on-year increase (rounded down). This determines the total contract cost.
+          </Clause>
+          <Clause number="g">
+            Clubs may structure long-term contracts freely, provided each year&apos;s value is not more than 50% above or below the previous year.
+          </Clause>
+          <Clause number="h">
+            Contract extensions may be offered for up to ten (10) years.
+          </Clause>
+          <Clause number="i">
+            Once an extension is offered, other Clubs have seven (7) days to submit a competing offer of at least 20% higher total value. The decision period halves with each new offer.
+          </Clause>
+          <Clause number="j">
+            Offers may only be made if the offering Club will remain salary cap compliant as of the next season.
+          </Clause>
+          <Clause number="k">
+            Offers to players may not be withdrawn.
+          </Clause>
+          <Clause number="l">
+            If a Club has multiple outstanding offers, the total committed salary (assuming all acceptances) must not exceed the next year&apos;s salary cap.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="4.4" title="Minimum Salary">
+          <Clause number="a">
+            The minimum contract value shall be calculated as:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-sm">
+            Minimum = (Games Remaining &times; $1,000) + $2,000
+          </div>
+          <Clause number="b">
+            Example: With 10 games remaining, minimum salary = (10 &times; $1,000) + $2,000 = $12,000.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="4.5" title="Cap Compliance">
+          <Clause number="a">
+            Clubs may exceed the salary cap in future years when executing trades.
+          </Clause>
+          <Clause number="b">
+            However, all Clubs must be cap compliant by Opening Day of each season.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 5. HOME FIELD ADVANTAGE */}
+      <Section number="5" title="HOME FIELD ADVANTAGE">
+        <div id="hfa" className="scroll-mt-20" />
+
+        <SubSection number="5.1" title="Definition">
+          <Clause number="a">
+            Home Field Advantage (&quot;HFA&quot;) is a bonus added to the home team&apos;s score in each match.
+          </Clause>
+          <Clause number="b">
+            HFA reflects a Club&apos;s historical performance advantage when playing at home.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="5.2" title="Calculation">
+          <Clause number="a">
+            HFA is calculated based on the Club&apos;s performance in recent home matches, considering win margins and consistency.
+          </Clause>
+          <Clause number="b">
+            The HFA value increases when a Club performs well at home and decreases with poor home performance.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="5.3" title="Maximum Values">
+          <Clause number="a">
+            The maximum HFA values are:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded text-sm space-y-1">
+            <p>(i) <strong>Seniors:</strong> Fifty (50) points maximum</p>
+            <p>(ii) <strong>Reserves:</strong> Thirty (30) points maximum</p>
+          </div>
+          <Clause number="b">
+            HFA values shall be capped at these maximums regardless of calculated value.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="5.4" title="Game Dynamics">
+          <Clause number="a">
+            The HFA calculation formula operates as follows:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-xs space-y-1">
+            <p>Base HFA = Average Home Margin &times; Performance Factor</p>
+            <p>Seniors HFA = MIN(Base HFA, 50)</p>
+            <p>Reserves HFA = MIN(Base HFA &times; 0.6, 30)</p>
+          </div>
+          <Clause number="b">
+            The Performance Factor adjusts based on recent form, with more recent matches weighted more heavily.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 6. SEASON STRUCTURE */}
+      <Section number="6" title="SEASON STRUCTURE">
+        <div id="season" className="scroll-mt-20" />
+
+        <SubSection number="6.1" title="Regular Season">
+          <Clause number="a">
+            The regular season shall follow the real AFL season schedule.
+          </Clause>
+          <Clause number="b">
+            Premiership points shall be awarded as follows:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) Win: Four (4) points</p>
+            <p>(ii) Draw: Two (2) points</p>
+            <p>(iii) Loss: Zero (0) points</p>
+          </div>
+        </SubSection>
+
+        <SubSection number="6.2" title="Finals Series">
+          <Clause number="a">
+            The top four (4) teams on the ladder shall qualify for finals.
+          </Clause>
+          <Clause number="b">
+            The finals series shall proceed as follows:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) <strong>Week 1:</strong> 1st vs 2nd (Qualifying Final); 3rd vs 4th (Elimination Final)</p>
+            <p>(ii) <strong>Week 2:</strong> Loser of Qualifying Final vs Winner of Elimination Final (Preliminary Final)</p>
+            <p>(iii) <strong>Week 3:</strong> Grand Final</p>
+          </div>
+        </SubSection>
+
+        <SubSection number="6.3" title="Lockout">
+          <Clause number="a">
+            Lineups shall lock at the first bounce of each round.
+          </Clause>
+          <Clause number="b">
+            Once locked, no roster changes may be made until the round is complete.
+          </Clause>
+          <Clause number="c">
+            Late scratches shall result in zero (0) points &mdash; bench players are NOT elevated.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 7. FREE AGENCY */}
+      <Section number="7" title="FREE AGENCY">
+        <div id="freeagency" className="scroll-mt-20" />
+
+        <SubSection number="7.1" title="Definition">
+          <Clause number="a">
+            A &quot;Free Agent&quot; is any player not currently under contract with a Club.
+          </Clause>
+          <Clause number="b">
+            Free Agents may be signed by any Club at any time, subject to salary cap compliance.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="7.2" title="Bidding Process">
+          <Clause number="a">
+            When an offer is made to a Free Agent, other Clubs shall have forty-eight (48) hours to submit a counter-offer.
+          </Clause>
+          <Clause number="b">
+            Each subsequent offer shall halve the decision period:
+          </Clause>
+          <div className="pl-8 my-2 font-mono text-sm">
+            48h &rarr; 24h &rarr; 12h &rarr; 6h &rarr; 3h &rarr; ...
+          </div>
+          <Clause number="c">
+            The player shall sign with the Club offering the highest total contract value when the timer expires.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="7.3" title="Reserve Squad Contracts">
+          <Clause number="a">
+            A Club may offer a Reserve Squad Contract to any Free Agent.
+          </Clause>
+          <Clause number="b">
+            The first Club to offer a Reserve Squad Contract may do so at $0 salary.
+          </Clause>
+          <Clause number="c">
+            If any other Club offers a salaried contract, that offer shall take precedence.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 8. END OF SEASON FREE AGENCY */}
+      <Section number="8" title="END OF SEASON FREE AGENCY">
+        <div id="eosfreeagency" className="scroll-mt-20" />
+
+        <SubSection number="8.1" title="Period">
+          <Clause number="a">
+            End of Season Free Agency shall commence the day after the Grand Final.
+          </Clause>
+          <Clause number="b">
+            End of Season Free Agency shall conclude the day before the first match of the following season.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="8.2" title="Bidding Rules">
+          <Clause number="a">
+            Once a Free Agent receives a contract offer, other Clubs shall have seven (7) days to submit a counter-offer.
+          </Clause>
+          <Clause number="b">
+            Counter-offers must exceed the current highest offer by at least five percent (5%).
+          </Clause>
+          <Clause number="c">
+            Each new offer shall halve the decision period.
+          </Clause>
+          <Clause number="d">
+            If the end of the free agency period falls within seven (7) days, the offer period shall be half the remaining time.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="8.3" title="Restricted Free Agents">
+          <Clause number="a">
+            The highest paid twenty-five percent (25%) of players in the previous season shall be designated as Restricted Free Agents (&quot;RFA&quot;).
+          </Clause>
+          <Clause number="b">
+            The RFA list shall be published on the first day of End of Season Free Agency.
+          </Clause>
+          <Clause number="c">
+            When an RFA accepts an offer from another Club, the RFA&apos;s previous Club may match the offer plus twenty percent (+20%) to retain the player.
+          </Clause>
+          <Clause number="d">
+            Previous Clubs have two (2) days after contract acceptance to exercise the matching right.
+          </Clause>
+          <Clause number="e">
+            If a non-RFA player receives an offer that would place them in the RFA salary range, they shall be treated as an RFA.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 9. RULE 9 DRAFT */}
+      <Section number="9" title="RULE 9 DRAFT">
+        <div id="rule9" className="scroll-mt-20" />
+
+        <SubSection number="9.1" title="Purpose">
+          <Clause number="a">
+            The Rule 9 Draft ensures players of senior team standard receive appropriate playing time.
+          </Clause>
+          <Clause number="b">
+            This provision prevents Clubs from stockpiling quality players in their Reserve squad.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="9.2" title="Timing">
+          <Clause number="a">
+            The Rule 9 Draft shall take place between Round 13 and Round 14 of the current season.
+          </Clause>
+          <Clause number="b">
+            Draft order shall be the reverse finishing order of the Senior competition from the prior season.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="9.3" title="Player Eligibility">
+          <Clause number="a">
+            A player is eligible for the Rule 9 Draft if they meet ALL of the following criteria:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) Has played a majority of games for the Reserves squad in the current season;</p>
+            <p>(ii) Holds a Senior squad contract;</p>
+            <p>(iii) Was not a rookie in the current or prior season;</p>
+            <p>(iv) Is not currently on the Injury List.</p>
+          </div>
+        </SubSection>
+
+        <SubSection number="9.4" title="Post-Draft Requirements">
+          <Clause number="a">
+            Any player selected in the Rule 9 Draft must remain on the Senior squad or Injury List for:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) The remainder of the current season; and</p>
+            <p>(ii) The entirety of the following season.</p>
+          </div>
+          <Clause number="b">
+            Clubs must have an open roster spot to select a player.
+          </Clause>
+          <Clause number="c">
+            Clubs may pass on any or all of their picks.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="9.5" title="Release Provisions">
+          <Clause number="a">
+            If a Club releases a player obtained through the Rule 9 Draft, the player&apos;s original Club has the first right to re-sign them.
+          </Clause>
+          <Clause number="b">
+            If the original Club exercises this right, they must keep the player on their Senior roster or Injury List for the remainder of the requirement period.
+          </Clause>
+          <Clause number="c">
+            If the original Club wishes to demote the player to Reserves, the player shall immediately be returned to the drafting Club (roster permitting), or the drafting Club must release a player to accommodate them.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 10. TRADING */}
+      <Section number="10" title="TRADING">
+        <div id="trading" className="scroll-mt-20" />
+
+        <SubSection number="10.1" title="Tradeable Assets">
+          <Clause number="a">
+            The following assets may be traded between Clubs:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) Players (with their contracts);</p>
+            <p>(ii) Draft picks (up to three years in advance);</p>
+            <p>(iii) Salary cap space;</p>
+            <p>(iv) Coaches and staff.</p>
+          </div>
+        </SubSection>
+
+        <SubSection number="10.2" title="Trade Execution">
+          <Clause number="a">
+            All trades require mutual agreement from both participating Clubs.
+          </Clause>
+          <Clause number="b">
+            Trades are final upon acceptance and cannot be reversed.
+          </Clause>
+          <Clause number="c">
+            No trades shall be permitted during the Finals series.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="10.3" title="Trade Block">
+          <Clause number="a">
+            Clubs may place players on the Trade Block to signal availability.
+          </Clause>
+          <Clause number="b">
+            Placement on the Trade Block does not obligate the Club to accept any offer.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 11. ANNUAL DRAFT */}
+      <Section number="11" title="ANNUAL DRAFT">
+        <div id="draft" className="scroll-mt-20" />
+
+        <SubSection number="11.1" title="Draft Order">
+          <Clause number="a">
+            Draft order shall be determined by reverse ladder position.
+          </Clause>
+          <Clause number="b">
+            The Club finishing last on the ladder shall receive the first pick.
+          </Clause>
+          <Clause number="c">
+            Draft picks may be traded up to three (3) years in advance.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="11.2" title="Draft Structure">
+          <Clause number="a">
+            The draft shall consist of twenty (20) rounds.
+          </Clause>
+          <Clause number="b">
+            Each Club receives one (1) pick per round unless that pick has been traded.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="11.3" title="Roster Requirements">
+          <Clause number="a">
+            A Club must have an open roster spot to select a player.
+          </Clause>
+          <Clause number="b">
+            If a Club has no available roster spots, they shall automatically pass on all remaining picks.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* 12. RIVALRIES */}
+      <Section number="12" title="RIVALRIES">
+        <div id="rivalries" className="scroll-mt-20" />
+
+        <SubSection number="12.1" title="Establishing Rivalries">
+          <Clause number="a">
+            Official rivalries between Clubs are established through:
+          </Clause>
+          <div className="pl-8 space-y-1 text-sm">
+            <p>(i) Finals matchups: Meeting in finals creates automatic rivalry;</p>
+            <p>(ii) Coach nomination: Each Coach may nominate one rival per season.</p>
+          </div>
+        </SubSection>
+
+        <SubSection number="12.2" title="Tension Score">
+          <Clause number="a">
+            Tension between Clubs is calculated based on the following events:
+          </Clause>
+          <div className="pl-8 my-2 text-sm">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-1">Event</th>
+                  <th className="text-right py-1">Points</th>
+                </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
+                <tr><td>Finals meeting</td><td className="text-right">+5</td></tr>
+                <tr><td>Close game (margin under 20)</td><td className="text-right">+4</td></tr>
+                <tr><td>Player movements (star signings)</td><td className="text-right">+2 to +6</td></tr>
+                <tr><td>Direct trades</td><td className="text-right">+2 to +5</td></tr>
+                <tr><td>Ladder position battles</td><td className="text-right">+2 to +4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <Clause number="b">
+            Tension decays over time, with current season events weighted most heavily.
+          </Clause>
+        </SubSection>
+      </Section>
+
+      {/* Footer */}
+      <div className="mt-12 pt-6 border-t text-center text-sm text-muted-foreground">
+        <p>These rules are subject to amendment by the Commissioner.</p>
+        <p className="mt-1">Last updated: Season 2025</p>
       </div>
     </div>
   );

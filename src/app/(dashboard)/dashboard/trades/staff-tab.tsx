@@ -27,6 +27,7 @@ import {
 import { Search, ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
 import type { FreeAgentStaff } from "./actions";
 import Link from "next/link";
+import { StaffDetailDialog } from "./staff-detail-dialog";
 
 interface StaffTabProps {
   staff: FreeAgentStaff[];
@@ -66,6 +67,8 @@ export function StaffTab({ staff, myClubId }: StaffTabProps) {
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(
     new Set(["AFL"])
   );
+  const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Filter staff
   const filteredStaff = staff.filter((s) => {
@@ -209,7 +212,15 @@ export function StaffTab({ staff, myClubId }: StaffTabProps) {
                           }
                         >
                           <TableCell className="font-medium">
-                            {s.name}
+                            <button
+                              onClick={() => {
+                                setDetailStaffId(s.id);
+                                setDetailDialogOpen(true);
+                              }}
+                              className="hover:underline text-left"
+                            >
+                              {s.name}
+                            </button>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
@@ -274,7 +285,7 @@ export function StaffTab({ staff, myClubId }: StaffTabProps) {
                             {!s.currentContract && s.isAvailable ? (
                               <Button size="sm" asChild>
                                 <Link
-                                  href={`/dashboard/negotiate?type=staff&id=${s.id}`}
+                                  href={`/dashboard/negotiate/staff/${s.id}`}
                                 >
                                   Negotiate
                                 </Link>
@@ -297,6 +308,13 @@ export function StaffTab({ staff, myClubId }: StaffTabProps) {
           );
         })}
       </div>
+
+      {/* Staff detail dialog */}
+      <StaffDetailDialog
+        staffId={detailStaffId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   );
 }
