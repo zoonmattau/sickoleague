@@ -1253,6 +1253,87 @@ async function main() {
   }
   console.log(`   ✓ Created standings for ${createdClubs.length} clubs (Seniors + Reserves)`)
 
+  // Create coaches and assign to clubs
+  console.log('👨‍💼 Creating coaches and assigning to clubs...')
+  const coachNames = [
+    { name: 'Matt Wilson', email: 'matt@sickoleague.com' },
+    { name: 'Jake Thompson', email: 'jake@sickoleague.com' },
+    { name: 'Chris Anderson', email: 'chris@sickoleague.com' },
+    { name: 'Daniel Murphy', email: 'daniel@sickoleague.com' },
+    { name: 'Michael Roberts', email: 'michael@sickoleague.com' },
+    { name: 'Ryan Mitchell', email: 'ryan@sickoleague.com' },
+    { name: 'Tom Harris', email: 'tom@sickoleague.com' },
+    { name: 'Ben Taylor', email: 'ben@sickoleague.com' },
+    { name: 'Luke Martin', email: 'luke@sickoleague.com' },
+    { name: 'James Brown', email: 'james@sickoleague.com' },
+    { name: 'Alex Davis', email: 'alex@sickoleague.com' },
+    { name: 'Sam Williams', email: 'sam@sickoleague.com' },
+  ]
+
+  for (let i = 0; i < createdClubs.length; i++) {
+    const coachData = coachNames[i]
+    const coach = await prisma.coach.create({
+      data: {
+        displayName: coachData.name,
+        email: coachData.email,
+        isCommissioner: i === 0, // First coach is commissioner
+      },
+    })
+    // Link coach to club
+    await prisma.club.update({
+      where: { id: createdClubs[i] },
+      data: { coachId: coach.id },
+    })
+  }
+  console.log(`   ✓ Created ${createdClubs.length} coaches and assigned to clubs`)
+
+  // Distribute players to clubs via contracts
+  console.log('📝 Creating player contracts...')
+  const playersPerClub = Math.floor(allPlayers.length / createdClubs.length)
+  let contractCount = 0
+
+  // Shuffle players for random distribution
+  const shuffledPlayers = [...allPlayers].sort(() => Math.random() - 0.5)
+
+  for (let clubIndex = 0; clubIndex < createdClubs.length; clubIndex++) {
+    const clubId = createdClubs[clubIndex]
+    const startIndex = clubIndex * playersPerClub
+    const endIndex = clubIndex === createdClubs.length - 1
+      ? shuffledPlayers.length  // Last club gets remaining players
+      : startIndex + playersPerClub
+
+    const clubPlayers = shuffledPlayers.slice(startIndex, endIndex)
+
+    for (const player of clubPlayers) {
+      // Random contract length 1-4 years
+      const contractLength = Math.floor(Math.random() * 4) + 1
+      const startSeason = 2026
+      const endSeason = startSeason + contractLength - 1
+
+      // Base salary on randomness (30-100k per year)
+      const yearlyValue = Math.floor(Math.random() * 70) + 30
+      const yearBreakdown = []
+      for (let year = startSeason; year <= endSeason; year++) {
+        yearBreakdown.push({ season: year, value: yearlyValue })
+      }
+
+      await prisma.contract.create({
+        data: {
+          clubId,
+          aflPlayerId: player.id,
+          startSeason,
+          endSeason,
+          totalValue: yearlyValue * contractLength,
+          yearBreakdown,
+          contractType: 'DRAFT',
+          status: 'ACTIVE',
+        },
+      })
+      contractCount++
+    }
+  }
+  console.log(`   ✓ Created ${contractCount} player contracts`)
+
   // Create same-city rivalries
   console.log('⚔️  Creating same-city rivalries...')
   // Find clubs in the same city and create SAME_CITY rivalries
