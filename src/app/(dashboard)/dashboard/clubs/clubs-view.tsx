@@ -122,6 +122,13 @@ function formatSalary(value: number): string {
   return `$${value}k`;
 }
 
+const positionColors: Record<string, string> = {
+  DEF: "bg-blue-600 text-white",
+  MID: "bg-green-600 text-white",
+  RUC: "bg-purple-600 text-white",
+  FWD: "bg-red-600 text-white",
+};
+
 // Get color based on cap usage percentage (green = far from cap, red = close/over)
 function getCapColor(usage: number): string {
   if (usage > 100) return "bg-red-700 text-white font-bold"; // Over cap - dark red
@@ -139,8 +146,8 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
   const [sortYear, setSortYear] = useState<number | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Get all years we need to display (current year + 9 future years = 10 total)
-  const years = Array.from({ length: 10 }, (_, i) => season.year + i);
+  // Get all years we need to display (current year + 4 future years = 5 total)
+  const years = Array.from({ length: 5 }, (_, i) => season.year + i);
 
   // Sort clubs by selected year's remaining cap space
   const sortedClubs = [...clubs].sort((a, b) => {
@@ -206,17 +213,17 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Salary Cap Overview</CardTitle>
         </CardHeader>
-        <CardContent className="px-0">
+        <CardContent className="px-2 sm:px-4">
           <div className="overflow-x-auto">
-            <Table className="w-auto">
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-background z-10 whitespace-nowrap">Club</TableHead>
+                  <TableHead className="sticky left-0 bg-background z-10 w-[140px] sm:w-[180px]">Club</TableHead>
                   {years.map((year) => (
-                    <TableHead key={year} className="text-center px-0.5 w-[52px]">
+                    <TableHead key={year} className="text-center px-0.5 min-w-[40px]">
                       <button
                         onClick={() => handleSortClick(year)}
-                        className={`w-full text-xs hover:bg-muted rounded px-1 py-0.5 transition-colors ${sortYear === year ? "bg-muted font-semibold" : ""}`}
+                        className={`w-full text-xs hover:bg-muted rounded px-0.5 py-0.5 transition-colors ${sortYear === year ? "bg-muted font-semibold" : ""}`}
                       >
                         {String(year).slice(-2)}
                         {sortYear === year && (
@@ -232,13 +239,13 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                   const isMyClub = club.id === myClubId;
                   return (
                     <TableRow key={club.id} className={isMyClub ? "bg-primary/5" : ""}>
-                      <TableCell className="sticky left-0 bg-background z-10 py-1 px-2 whitespace-nowrap">
+                      <TableCell className="sticky left-0 bg-background z-10 py-1 px-1 sm:px-2">
                         <button
                           onClick={() => setSelectedClub(selectedClub === club.id ? null : club.id)}
-                          className="flex items-center gap-2 hover:underline text-left"
+                          className="flex items-center gap-1 sm:gap-2 hover:underline text-left w-full overflow-hidden"
                         >
                           <div
-                            className="w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center flex-shrink-0"
+                            className="w-5 h-5 sm:w-6 sm:h-6 rounded text-[9px] sm:text-[10px] font-bold flex items-center justify-center flex-shrink-0"
                             style={{
                               backgroundColor: club.primaryColor || "#666",
                               color: club.secondaryColor || "#fff",
@@ -246,10 +253,10 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                           >
                             {club.abbreviation}
                           </div>
-                          <span className="text-sm font-medium">{club.name}</span>
-                          {isMyClub && <Badge variant="default" className="text-[10px] px-1 py-0 h-4">You</Badge>}
+                          <span className="text-xs sm:text-sm font-medium truncate">{club.name}</span>
+                          {isMyClub && <Badge variant="default" className="text-[9px] sm:text-[10px] px-1 py-0 h-4 flex-shrink-0">You</Badge>}
                           {myRivalIds.has(club.id) && (
-                            <Swords className="h-3 w-3 text-orange-500" />
+                            <Swords className="h-3 w-3 text-orange-500 flex-shrink-0" />
                           )}
                         </button>
                       </TableCell>
@@ -262,7 +269,7 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                           <TableCell key={year} className="text-center p-0.5">
                             <button
                               onClick={() => setSelectedCell({ clubId: club.id, year })}
-                              className={`w-full py-1 px-1 rounded text-xs font-medium transition-colors hover:ring-1 hover:ring-primary/50 ${getCapColor(usage)}`}
+                              className={`w-full py-1 px-0.5 rounded text-[10px] sm:text-xs font-medium transition-colors hover:ring-1 hover:ring-primary/50 ${getCapColor(usage)}`}
                               title={`Used: ${formatSalary(salary)} / Cap: ${formatSalary(season.salaryCap)}`}
                             >
                               {salary > 0 ? (remaining >= 0 ? remaining : remaining) : season.salaryCap}
@@ -276,30 +283,30 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
               </TableBody>
             </Table>
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-3 px-4">
-            <span>Cap {season.salaryCap}:</span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] text-muted-foreground mt-3">
+            <span>Cap ${season.salaryCap}k:</span>
             <div className="flex items-center gap-0.5">
-              <div className="w-3 h-3 rounded-sm bg-green-500/30" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-green-500/30" />
               <span>&lt;60%</span>
             </div>
             <div className="flex items-center gap-0.5">
-              <div className="w-3 h-3 rounded-sm bg-lime-500/30" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-lime-500/30" />
               <span>60-80</span>
             </div>
             <div className="flex items-center gap-0.5">
-              <div className="w-3 h-3 rounded-sm bg-yellow-500/50" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-yellow-500/50" />
               <span>80-90</span>
             </div>
             <div className="flex items-center gap-0.5">
-              <div className="w-3 h-3 rounded-sm bg-orange-500/60" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-orange-500/60" />
               <span>90-95</span>
             </div>
             <div className="flex items-center gap-0.5">
-              <div className="w-3 h-3 rounded-sm bg-red-500/60" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-red-500/60" />
               <span>95-100</span>
             </div>
             <div className="flex items-center gap-0.5">
-              <div className="w-3 h-3 rounded-sm bg-red-700" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-red-700" />
               <span>Over!</span>
             </div>
           </div>
@@ -382,7 +389,7 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                               <TableCell>
                                 <div className="flex gap-1">
                                   {contract.aflPlayer.positions.map((pos) => (
-                                    <Badge key={pos} variant="outline" className="text-xs">{pos}</Badge>
+                                    <Badge key={pos} className={`text-xs ${positionColors[pos] || "bg-gray-500 text-white"}`}>{pos}</Badge>
                                   ))}
                                 </div>
                               </TableCell>
@@ -533,7 +540,7 @@ export function ClubsView({ clubs, season, myClubId, tensions }: ClubsViewProps)
                             <TableCell>
                               <div className="flex gap-1">
                                 {contract.aflPlayer.positions.map((pos) => (
-                                  <Badge key={pos} variant="outline" className="text-xs">{pos}</Badge>
+                                  <Badge key={pos} className={`text-xs ${positionColors[pos] || "bg-gray-500 text-white"}`}>{pos}</Badge>
                                 ))}
                               </div>
                             </TableCell>

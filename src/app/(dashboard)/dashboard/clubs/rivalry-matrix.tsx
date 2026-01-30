@@ -83,14 +83,24 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
     return Math.max(...tensions.map(t => t.score), 1);
   }, [tensions]);
 
+  // Get clubs that have at least one rivalry
+  const clubsWithRivalries = useMemo(() => {
+    const rivalClubIds = new Set<string>();
+    for (const r of rivalries) {
+      rivalClubIds.add(r.clubAId);
+      rivalClubIds.add(r.clubBId);
+    }
+    return clubs.filter(c => rivalClubIds.has(c.id));
+  }, [clubs, rivalries]);
+
   // Sort clubs to put user's club first
   const sortedClubs = useMemo(() => {
-    return [...clubs].sort((a, b) => {
+    return [...clubsWithRivalries].sort((a, b) => {
       if (a.id === myClubId) return -1;
       if (b.id === myClubId) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [clubs, myClubId]);
+  }, [clubsWithRivalries, myClubId]);
 
   const getTension = (clubAId: string, clubBId: string): Tension | undefined => {
     return tensionMap.get(`${clubAId}-${clubBId}`);
@@ -100,18 +110,35 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
     return rivalrySet.has(`${clubAId}-${clubBId}`);
   };
 
-  return (
-    <TooltipProvider delayDuration={200}>
+  // If no rivalries exist, show a different message
+  if (sortedClubs.length === 0) {
+    return (
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Swords className="h-5 w-5 text-orange-500" />
-            Club Tension Matrix
+            Club Rivalries
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">No rivalries have been established yet.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Card className="lg:max-w-[50%]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Swords className="h-5 w-5 text-orange-500" />
+            Active Rivalries
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <div className="min-w-[600px]">
+            <div className="inline-block">
               {/* Header row */}
               <div className="flex">
                 <div className="w-16 shrink-0" /> {/* Corner cell */}
@@ -254,34 +281,28 @@ export function RivalryMatrix({ clubs, tensions, rivalries, myClubId }: Props) {
           </div>
 
           {/* Legend */}
-          <div className="space-y-2 mt-4 pt-3 border-t">
-            <div className="flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground">
-              <span className="font-medium">Tension Score:</span>
+          <div className="mt-4 pt-3 border-t">
+            <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
               <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded bg-muted/30" />
-                <span>0</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded bg-yellow-500/40" />
-                <span>1-3</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded bg-orange-500/50" />
-                <span>4-6</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded bg-red-500/60" />
-                <span>7+</span>
-              </div>
-              <div className="flex items-center gap-1 ml-2">
                 <div className="w-4 h-4 rounded bg-black flex items-center justify-center">
                   <Swords className="h-2.5 w-2.5 text-white" />
                 </div>
                 <span>Official Rivals</span>
               </div>
-            </div>
-            <div className="text-[10px] text-muted-foreground">
-              <span className="font-medium">Tension factors:</span> Finals meetings (+5), Close games (+4), Player movements (+3), Trades (+2), Ladder battles (+2). Decays over time.
+              <span className="text-muted-foreground">|</span>
+              <span>Tension: </span>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-yellow-500/40" />
+                <span>Low</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-orange-500/50" />
+                <span>Med</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-red-500/60" />
+                <span>High</span>
+              </div>
             </div>
           </div>
         </CardContent>
