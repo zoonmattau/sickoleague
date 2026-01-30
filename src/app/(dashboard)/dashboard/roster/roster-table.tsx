@@ -26,9 +26,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, Crown, Star } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown } from "lucide-react";
 import { getPositionColorClasses } from "@/lib/position-colors";
-import { assignPlayerToRoster, removePlayerFromRoster } from "./actions";
+import { assignPlayerToRoster } from "./actions";
 import { setCaptainAction } from "./set-captain";
 import { RosterSpot, Squad } from "@prisma/client";
 import { toast } from "sonner";
@@ -66,6 +66,16 @@ type Props = {
 };
 
 type SortKey = "lastName" | "avgScore" | "last5Avg" | "gamesPlayed" | "seniorsGames" | "reservesGames" | "salary" | "endSeason" | "highScore" | "squad";
+
+type SortDir = "asc" | "desc";
+
+// Sort icon component - defined outside to avoid React compiler warning
+function SortIcon({ column, sortKey, sortDir }: { column: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  if (sortKey !== column) return <ArrowUpDown className="ml-1 h-3 w-3 inline opacity-50" />;
+  return sortDir === "asc"
+    ? <ArrowUp className="ml-1 h-3 w-3 inline" />
+    : <ArrowDown className="ml-1 h-3 w-3 inline" />;
+}
 
 // Map roster spot to position prefix
 function getSpotPosition(spot: string | null): string | null {
@@ -161,7 +171,7 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
   const [position, setPosition] = useState<string>("all");
   const [squad, setSquad] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("avgScore");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [updating, setUpdating] = useState<string | null>(null);
 
   // Optimistic updates for instant UI feedback
@@ -200,6 +210,57 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
     }
     // Otherwise occupant goes to bench
     return `${occupantName} → Bench`;
+  };
+
+  // Check if a roster spot is "off-field" (bench or IL)
+  const isOffField = (rosterSpot: string | null): boolean => {
+    if (!rosterSpot) return true;
+    return rosterSpot.startsWith("BENCH") || rosterSpot.startsWith("IL");
+  };
+
+  // Check if captain change is allowed for a player in a squad
+  // Returns { allowed: boolean, reason?: string }
+  const canChangeCaptain = (
+    player: RosterPlayer,
+    targetRole: "captain" | "viceCaptain" | "none"
+  ): { allowed: boolean; reason?: string } => {
+    if (!player.squad) return { allowed: false, reason: "Player not assigned to squad" };
+
+    // Find current captain/VC in same squad
+    const currentCaptain = playersWithOptimistic.find(
+      p => p.isCaptain && p.squad === player.squad && p.contractId !== player.contractId
+    );
+    const currentVc = playersWithOptimistic.find(
+      p => p.isViceCaptain && p.squad === player.squad && p.contractId !== player.contractId
+    );
+
+    if (targetRole === "captain") {
+      // If there's a current captain on-field, block
+      if (currentCaptain && !isOffField(currentCaptain.rosterSpot)) {
+        return {
+          allowed: false,
+          reason: `Current captain (${currentCaptain.firstName.charAt(0)}. ${currentCaptain.lastName}) is on field. Bench or injure them first.`,
+        };
+      }
+    } else if (targetRole === "viceCaptain") {
+      // If there's a current VC on-field, block
+      if (currentVc && !isOffField(currentVc.rosterSpot)) {
+        return {
+          allowed: false,
+          reason: `Current VC (${currentVc.firstName.charAt(0)}. ${currentVc.lastName}) is on field. Bench or injure them first.`,
+        };
+      }
+    } else if (targetRole === "none") {
+      // Removing status - only allowed if player is off-field
+      if (!isOffField(player.rosterSpot)) {
+        return {
+          allowed: false,
+          reason: "Cannot remove captain/VC from on-field player. Bench or injure them first.",
+        };
+      }
+    }
+
+    return { allowed: true };
   };
 
   const filteredPlayers = useMemo(() => {
@@ -338,12 +399,6 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
     setUpdating(null);
   };
 
-  const handleRemoveFromRoster = async (player: RosterPlayer) => {
-    // We need the roster player ID, not the contract ID
-    // For now, just show a message - removal should be done via the slots view
-    toast.info("Use the squad tabs to remove players from roster");
-  };
-
   const handleSetCaptain = async (player: RosterPlayer, role: "captain" | "viceCaptain" | "none") => {
     if (!player.squad) return;
     setUpdating(player.contractId);
@@ -421,13 +476,6 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
     setUpdating(null);
   };
 
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return <ArrowUpDown className="ml-1 h-3 w-3 inline opacity-50" />;
-    return sortDir === "asc"
-      ? <ArrowUp className="ml-1 h-3 w-3 inline" />
-      : <ArrowDown className="ml-1 h-3 w-3 inline" />;
-  };
-
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -482,7 +530,7 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
             <TableRow>
               <TableHead className="w-[180px] sticky left-0 bg-background z-10">
                 <button onClick={() => handleSort("lastName")} className="flex items-center hover:text-foreground">
-                  Name <SortIcon column="lastName" />
+                  Name <SortIcon column="lastName" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead>AFL Team</TableHead>
@@ -490,47 +538,47 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
               <TableHead>Positions</TableHead>
               <TableHead>
                 <button onClick={() => handleSort("squad")} className="flex items-center hover:text-foreground">
-                  Squad <SortIcon column="squad" />
+                  Squad <SortIcon column="squad" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("avgScore")} className="flex items-center justify-end hover:text-foreground">
-                  Avg <SortIcon column="avgScore" />
+                  Avg <SortIcon column="avgScore" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("last5Avg")} className="flex items-center justify-end hover:text-foreground">
-                  L5 <SortIcon column="last5Avg" />
+                  L5 <SortIcon column="last5Avg" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("highScore")} className="flex items-center justify-end hover:text-foreground">
-                  High <SortIcon column="highScore" />
+                  High <SortIcon column="highScore" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("seniorsGames")} className="flex items-center justify-end hover:text-foreground">
-                  SGP <SortIcon column="seniorsGames" />
+                  SGP <SortIcon column="seniorsGames" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("reservesGames")} className="flex items-center justify-end hover:text-foreground">
-                  RGP <SortIcon column="reservesGames" />
+                  RGP <SortIcon column="reservesGames" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("gamesPlayed")} className="flex items-center justify-end hover:text-foreground">
-                  AFL GP <SortIcon column="gamesPlayed" />
+                  AFL GP <SortIcon column="gamesPlayed" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("salary")} className="flex items-center justify-end hover:text-foreground">
-                  Salary <SortIcon column="salary" />
+                  Salary <SortIcon column="salary" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">
                 <button onClick={() => handleSort("endSeason")} className="flex items-center justify-end hover:text-foreground">
-                  Ends <SortIcon column="endSeason" />
+                  Ends <SortIcon column="endSeason" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead>Type</TableHead>
@@ -565,24 +613,45 @@ export function RosterTable({ players, clubId, onPlayerClick }: Props) {
                     </TableCell>
                     <TableCell>
                       {player.squad ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleSetCaptain(player, player.isCaptain ? "none" : "captain")}
-                            disabled={isUpdating}
-                            className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors ${player.isCaptain ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground hover:bg-amber-500/20 hover:text-amber-600"}`}
-                            title={player.isCaptain ? "Remove Captain" : "Set as Captain"}
-                          >
-                            C
-                          </button>
-                          <button
-                            onClick={() => handleSetCaptain(player, player.isViceCaptain ? "none" : "viceCaptain")}
-                            disabled={isUpdating}
-                            className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors ${player.isViceCaptain ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground hover:bg-amber-500/20 hover:text-amber-600"}`}
-                            title={player.isViceCaptain ? "Remove Vice Captain" : "Set as Vice Captain"}
-                          >
-                            VC
-                          </button>
-                        </div>
+                        (() => {
+                          const targetCaptainRole = player.isCaptain ? "none" : "captain";
+                          const targetVcRole = player.isViceCaptain ? "none" : "viceCaptain";
+                          const captainCheck = canChangeCaptain(player, targetCaptainRole);
+                          const vcCheck = canChangeCaptain(player, targetVcRole);
+
+                          return (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleSetCaptain(player, targetCaptainRole)}
+                                disabled={isUpdating || !captainCheck.allowed}
+                                className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors ${
+                                  player.isCaptain
+                                    ? "bg-amber-500 text-white"
+                                    : !captainCheck.allowed
+                                      ? "bg-muted text-muted-foreground/50 cursor-not-allowed"
+                                      : "bg-muted text-muted-foreground hover:bg-amber-500/20 hover:text-amber-600"
+                                }`}
+                                title={captainCheck.reason || (player.isCaptain ? "Remove Captain" : "Set as Captain")}
+                              >
+                                C
+                              </button>
+                              <button
+                                onClick={() => handleSetCaptain(player, targetVcRole)}
+                                disabled={isUpdating || !vcCheck.allowed}
+                                className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors ${
+                                  player.isViceCaptain
+                                    ? "bg-amber-500 text-white"
+                                    : !vcCheck.allowed
+                                      ? "bg-muted text-muted-foreground/50 cursor-not-allowed"
+                                      : "bg-muted text-muted-foreground hover:bg-amber-500/20 hover:text-amber-600"
+                                }`}
+                                title={vcCheck.reason || (player.isViceCaptain ? "Remove Vice Captain" : "Set as Vice Captain")}
+                              >
+                                VC
+                              </button>
+                            </div>
+                          );
+                        })()
                       ) : (
                         <span className="text-muted-foreground text-xs">-</span>
                       )}

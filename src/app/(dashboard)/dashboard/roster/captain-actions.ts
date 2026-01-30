@@ -5,7 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Squad } from "@prisma/client";
 
+// Check if a roster spot is "off-field" (bench or IL)
+function isOffField(rosterSpot: string | null): boolean {
+  if (!rosterSpot) return true;
+  return rosterSpot.startsWith("BENCH") || rosterSpot.startsWith("IL");
+}
+
 // Set captain or vice-captain for a squad (C or VC)
+// Captain can only be changed when current captain is dropped, benched, injured, or traded
 export async function setCaptain(
   contractId: string,
   squad: Squad,
@@ -39,8 +46,27 @@ export async function setCaptain(
 
   if (!rosterPlayer) return { error: "Player not found in roster" };
 
-  // If setting as captain or VC, clear the existing one first
+  // Captain change restriction
   if (role === "captain") {
+    // Find current captain in this squad
+    const currentCaptain = await prisma.rosterPlayer.findFirst({
+      where: {
+        clubId: coach.club.id,
+        roundId: null,
+        squad,
+        isCaptain: true,
+      },
+    });
+
+    // If there's a current captain on-field, block the change
+    if (currentCaptain && currentCaptain.id !== rosterPlayer.id) {
+      if (!isOffField(currentCaptain.rosterSpot)) {
+        return {
+          error: "Cannot change captain while current captain is on field. Drop, bench, or injure them first.",
+        };
+      }
+    }
+
     // Clear existing captain in this squad
     await prisma.rosterPlayer.updateMany({
       where: {
@@ -57,6 +83,25 @@ export async function setCaptain(
       data: { isCaptain: true, isViceCaptain: false },
     });
   } else if (role === "viceCaptain") {
+    // Find current VC in this squad
+    const currentVc = await prisma.rosterPlayer.findFirst({
+      where: {
+        clubId: coach.club.id,
+        roundId: null,
+        squad,
+        isViceCaptain: true,
+      },
+    });
+
+    // If there's a current VC on-field, block the change
+    if (currentVc && currentVc.id !== rosterPlayer.id) {
+      if (!isOffField(currentVc.rosterSpot)) {
+        return {
+          error: "Cannot change vice captain while current VC is on field. Drop, bench, or injure them first.",
+        };
+      }
+    }
+
     // Clear existing VC in this squad
     await prisma.rosterPlayer.updateMany({
       where: {
@@ -73,7 +118,12 @@ export async function setCaptain(
       data: { isViceCaptain: true, isCaptain: false },
     });
   } else {
-    // Remove captain/VC status
+    // Removing captain/VC status - only allowed if player is off-field
+    if (!isOffField(rosterPlayer.rosterSpot)) {
+      return {
+        error: "Cannot remove captain/VC status from a player on field. Drop, bench, or injure them first.",
+      };
+    }
     await prisma.rosterPlayer.update({
       where: { id: rosterPlayer.id },
       data: { isCaptain: false, isViceCaptain: false },

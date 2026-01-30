@@ -135,10 +135,26 @@ model AflTeam {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   // Relations
-  players AflPlayer[]
-  staff   Staff[]
+  players      AflPlayer[]
+  staff        Staff[]
+  matchResults AflMatchResult[]
 
   @@map("afl_teams")
+}
+
+model AflMatchResult {
+  id          String   @id @default(uuid())
+  roundNumber Int      @map("round_number")
+  season      Int
+  margin      Int      // positive = win, negative = loss
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  aflTeamId String  @map("afl_team_id")
+  aflTeam   AflTeam @relation(fields: [aflTeamId], references: [id])
+
+  @@unique([aflTeamId, season, roundNumber])
+  @@map("afl_match_results")
 }
 
 model AflPlayer {
@@ -308,12 +324,13 @@ model RosterHistory {
 // ============================================================================
 
 model Staff {
-  id          String    @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   role        StaffRole
-  isAvailable Boolean   @default(true) @map("is_available")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  league      StaffLeague @default(AFL)
+  isAvailable Boolean     @default(true) @map("is_available")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
 
   // Relations
   aflTeamId      String?         @map("afl_team_id")
@@ -328,6 +345,14 @@ model Staff {
 enum StaffRole {
   ASSISTANT_COACH
   LIST_MANAGER
+}
+
+enum StaffLeague {
+  AFL
+  VFL
+  SANFL
+  WAFL
+  NTFL
 }
 
 model StaffContract {

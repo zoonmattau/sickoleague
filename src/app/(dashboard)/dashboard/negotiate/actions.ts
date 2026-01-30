@@ -39,6 +39,33 @@ async function getMyClub() {
   return coach?.club ?? null;
 }
 
+// Get list manager discount for a club
+async function getListManagerDiscount(clubId: string): Promise<{ discount: number; listManager: string | null }> {
+  const listManagerContract = await prisma.staffContract.findFirst({
+    where: {
+      clubId,
+      staffRole: "LIST_MANAGER",
+      status: "ACTIVE",
+    },
+    include: {
+      staff: { include: { aflTeam: true } },
+    },
+  });
+
+  if (!listManagerContract?.staff.aflTeam?.currentLadderPos) {
+    return { discount: 0, listManager: null };
+  }
+
+  const ladderPos = listManagerContract.staff.aflTeam.currentLadderPos;
+  // Formula: (19 - ladderPosition) / 3
+  const discount = (19 - ladderPos) / 3;
+
+  return {
+    discount,
+    listManager: listManagerContract.staff.name,
+  };
+}
+
 // Get negotiation target details (player or staff)
 export async function getNegotiationTarget(targetType: "player" | "staff", targetId: string) {
   if (targetType === "player") {
@@ -462,16 +489,27 @@ export async function acceptNegotiation(sessionId: string) {
   const startSeason = currentOffer.yearBreakdown[0]?.season ?? new Date().getFullYear();
   const endSeason = currentOffer.yearBreakdown[currentOffer.yearBreakdown.length - 1]?.season ?? startSeason;
 
+  // Get list manager discount for player contracts
+  const { discount } = await getListManagerDiscount(club.id);
+  const discountMultiplier = 1 - discount / 100;
+
   if (session.aflPlayerId) {
-    // Create player contract
+    // Apply list manager discount to player contract
+    const discountedTotal = currentOffer.totalValue * discountMultiplier;
+    const discountedBreakdown = currentOffer.yearBreakdown.map((y) => ({
+      season: y.season,
+      value: y.value * discountMultiplier,
+    }));
+
+    // Create player contract with discount
     await prisma.contract.create({
       data: {
         clubId: club.id,
         aflPlayerId: session.aflPlayerId,
         startSeason,
         endSeason,
-        totalValue: currentOffer.totalValue,
-        yearBreakdown: currentOffer.yearBreakdown,
+        totalValue: discountedTotal,
+        yearBreakdown: discountedBreakdown,
         contractType: "FREE_AGENT",
         status: "ACTIVE",
       },
@@ -481,6 +519,7 @@ export async function acceptNegotiation(sessionId: string) {
     const staff = await prisma.staff.findUnique({ where: { id: session.staffId } });
     const staffRole = staff?.role === "LIST_MANAGER" ? "LIST_MANAGER" : "SENIOR_ASSISTANT";
 
+    // Staff contracts don't get discounts
     await prisma.staffContract.create({
       data: {
         clubId: club.id,
@@ -497,7 +536,7 @@ export async function acceptNegotiation(sessionId: string) {
 
   revalidatePath("/dashboard/roster");
   revalidatePath("/dashboard");
-  return { success: true };
+  return { success: true, discountApplied: session.aflPlayerId ? discount : 0 };
 }
 
 // Walk away from negotiation
@@ -560,4 +599,19 @@ export async function getMyNegotiations() {
     lastMessage: s.messages[0]?.content ?? null,
     updatedAt: s.updatedAt.toISOString(),
   }));
+}
+
+// Get the club's list manager discount info
+export async function getClubListManagerDiscount() {
+  const club = await getMyClub();
+  if (!club) return null;
+
+  const { discount, listManager } = await getListManagerDiscount(club.id);
+
+  if (discount <= 0) return null;
+
+  return {
+    discountPercent: discount.toFixed(1),
+    listManagerName: listManager,
+  };
 }

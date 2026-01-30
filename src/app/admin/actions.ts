@@ -2,6 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import {
+  fetchAflRoundResults,
+  fetchAflLadder,
+  mapSquiggleTeamName,
+} from "@/lib/afl-api";
 
 export async function updateMatchResult(
   matchId: string,
@@ -434,4 +439,247 @@ export async function updateAflPlayer(
     console.error("Failed to update player:", error);
     return { success: false, error: "Failed to update player" };
   }
+}
+
+// ============================================================================
+// AFL DATA SYNC
+// ============================================================================
+
+/**
+ * Sync AFL match results from Squiggle API for a specific round
+ */
+export async function syncAflResults(round: number, year: number) {
+  try {
+    const results = await fetchAflRoundResults(round, year);
+
+    if (results.length === 0) {
+      return { success: false, error: "No results found for this round" };
+    }
+
+    let synced = 0;
+
+    for (const result of results) {
+      if (!result.complete) continue;
+
+      // Sync home team result
+      const homeTeamName = mapSquiggleTeamName(result.homeTeam);
+      const homeTeam = await prisma.aflTeam.findFirst({
+        where: { name: homeTeamName },
+      });
+
+      if (homeTeam) {
+        await prisma.aflMatchResult.upsert({
+          where: {
+            aflTeamId_season_roundNumber: {
+              aflTeamId: homeTeam.id,
+              season: year,
+              roundNumber: round,
+            },
+          },
+          create: {
+            aflTeamId: homeTeam.id,
+            season: year,
+            roundNumber: round,
+            margin: result.margin,
+          },
+          update: { margin: result.margin },
+        });
+        synced++;
+      }
+
+      // Sync away team result (negative margin)
+      const awayTeamName = mapSquiggleTeamName(result.awayTeam);
+      const awayTeam = await prisma.aflTeam.findFirst({
+        where: { name: awayTeamName },
+      });
+
+      if (awayTeam) {
+        await prisma.aflMatchResult.upsert({
+          where: {
+            aflTeamId_season_roundNumber: {
+              aflTeamId: awayTeam.id,
+              season: year,
+              roundNumber: round,
+            },
+          },
+          create: {
+            aflTeamId: awayTeam.id,
+            season: year,
+            roundNumber: round,
+            margin: -result.margin,
+          },
+          update: { margin: -result.margin },
+        });
+        synced++;
+      }
+    }
+
+    revalidatePath("/admin");
+    return { success: true, synced };
+  } catch (error) {
+    console.error("Failed to sync AFL results:", error);
+    return { success: false, error: "Failed to sync AFL results" };
+  }
+}
+
+/**
+ * Sync AFL ladder standings from Squiggle API
+ */
+export async function syncAflLadder(year: number) {
+  try {
+    const standings = await fetchAflLadder(year);
+
+    if (standings.length === 0) {
+      return { success: false, error: "No standings found for this year" };
+    }
+
+    let synced = 0;
+
+    for (const standing of standings) {
+      const teamName = mapSquiggleTeamName(standing.name);
+      const result = await prisma.aflTeam.updateMany({
+        where: { name: teamName },
+        data: { currentLadderPos: standing.rank },
+      });
+      if (result.count > 0) synced++;
+    }
+
+    revalidatePath("/admin");
+    return { success: true, synced };
+  } catch (error) {
+    console.error("Failed to sync AFL ladder:", error);
+    return { success: false, error: "Failed to sync AFL ladder" };
+  }
+}
+
+// ============================================================================
+// STAFF BONUS CALCULATION
+// ============================================================================
+
+/**
+ * Calculate staff bonus for a club's match score
+ * AFL coaches: margin / 10
+ * State league coaches: margin / 20
+ */
+export async function calculateStaffBonus(
+  clubId: string,
+  matchType: "SENIORS" | "RESERVES",
+  roundNumber: number,
+  season: number
+): Promise<number> {
+  // Determine which staff role to use
+  const staffRole = matchType === "SENIORS" ? "SENIOR_ASSISTANT" : "RESERVES_ASSISTANT";
+
+  // Get club's staff contract for this match type
+  const staffContract = await prisma.staffContract.findFirst({
+    where: {
+      clubId,
+      staffRole,
+      status: "ACTIVE",
+    },
+    include: {
+      staff: { include: { aflTeam: true } },
+    },
+  });
+
+  if (!staffContract?.staff.aflTeamId) return 0;
+
+  // Get the AFL team's result this round
+  const aflResult = await prisma.aflMatchResult.findFirst({
+    where: {
+      aflTeamId: staffContract.staff.aflTeamId,
+      roundNumber,
+      season,
+    },
+  });
+
+  if (!aflResult) return 0;
+
+  // Calculate bonus (half for state league coaches)
+  const isStateLeague = staffContract.staff.league !== "AFL";
+  const divisor = isStateLeague ? 20 : 10;
+
+  return aflResult.margin / divisor;
+}
+
+/**
+ * Process match scores with staff bonuses
+ * Call this when processing a round's results
+ */
+export async function processMatchWithStaffBonus(
+  matchId: string,
+  roundNumber: number,
+  season: number
+) {
+  try {
+    const match = await prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        homeClub: true,
+        awayClub: true,
+      },
+    });
+
+    if (!match) return { success: false, error: "Match not found" };
+
+    // Calculate staff bonuses for both clubs
+    const homeStaffBonus = await calculateStaffBonus(
+      match.homeClubId,
+      match.matchType,
+      roundNumber,
+      season
+    );
+
+    const awayStaffBonus = await calculateStaffBonus(
+      match.awayClubId,
+      match.matchType,
+      roundNumber,
+      season
+    );
+
+    // Update match with staff bonuses
+    await prisma.match.update({
+      where: { id: matchId },
+      data: {
+        homeStaffBonus,
+        awayStaffBonus,
+      },
+    });
+
+    revalidatePath("/admin");
+    return {
+      success: true,
+      homeStaffBonus,
+      awayStaffBonus,
+    };
+  } catch (error) {
+    console.error("Failed to process match with staff bonus:", error);
+    return { success: false, error: "Failed to process match" };
+  }
+}
+
+/**
+ * Get all AFL match results for a round
+ */
+export async function getAflResultsForRound(round: number, season: number) {
+  const results = await prisma.aflMatchResult.findMany({
+    where: {
+      roundNumber: round,
+      season,
+    },
+    include: {
+      aflTeam: {
+        select: { name: true, abbreviation: true },
+      },
+    },
+    orderBy: { aflTeam: { name: "asc" } },
+  });
+
+  return results.map((r) => ({
+    id: r.id,
+    teamName: r.aflTeam.name,
+    teamAbbr: r.aflTeam.abbreviation,
+    margin: r.margin,
+    result: r.margin > 0 ? "WIN" : r.margin < 0 ? "LOSS" : "DRAW",
+  }));
 }
