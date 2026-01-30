@@ -13,18 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Search, ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
+import { Search, ChevronDown, ChevronRight, TrendingUp, Users, ClipboardList } from "lucide-react";
 import type { FreeAgentStaff } from "./actions";
 import Link from "next/link";
 import { StaffDetailDialog } from "./staff-detail-dialog";
@@ -63,7 +56,7 @@ function getListManagerDiscount(ladderPos: number | null): string | null {
 
 export function StaffTab({ staff, myClubId }: StaffTabProps) {
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("ASSISTANT_COACH");
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(
     new Set(["AFL"])
   );
@@ -101,49 +94,73 @@ export function StaffTab({ staff, myClubId }: StaffTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search staff..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="ASSISTANT_COACH">Coaches</SelectItem>
-            <SelectItem value="LIST_MANAGER">List Managers</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Role Toggle Tabs */}
+      <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
+        <button
+          onClick={() => setRoleFilter("ASSISTANT_COACH")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            roleFilter === "ASSISTANT_COACH"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          Coaches
+        </button>
+        <button
+          onClick={() => setRoleFilter("LIST_MANAGER")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            roleFilter === "LIST_MANAGER"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <ClipboardList className="h-4 w-4" />
+          List Managers
+        </button>
       </div>
 
-      {/* Info box */}
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search staff..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Info box - context-aware based on selected role */}
       <div className="p-4 bg-muted/50 rounded-lg space-y-2">
         <h4 className="font-semibold flex items-center gap-2">
           <TrendingUp className="h-4 w-4" />
-          Staff Bonuses
+          {roleFilter === "ASSISTANT_COACH" ? "Coach Bonuses" : "List Manager Bonuses"}
         </h4>
-        <ul className="text-sm text-muted-foreground space-y-1">
-          <li>
-            <strong>AFL Coaches:</strong> Your team score gets +margin/10 when
-            their AFL team wins
-          </li>
-          <li>
-            <strong>State League Coaches:</strong> Half bonus (margin/20)
-          </li>
-          <li>
-            <strong>List Managers:</strong> Contract discount based on their AFL
-            team&apos;s ladder position
-          </li>
-        </ul>
+        {roleFilter === "ASSISTANT_COACH" ? (
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li>
+              <strong>AFL Coaches:</strong> Your team score gets +margin/10 when
+              their AFL team wins
+            </li>
+            <li>
+              <strong>State League Coaches:</strong> Half bonus (margin/20)
+            </li>
+          </ul>
+        ) : (
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li>
+              <strong>Contract Discounts:</strong> Based on their AFL
+              team&apos;s ladder position
+            </li>
+            <li>
+              <strong>Formula:</strong> (19 - ladder position) / 3 = discount %
+            </li>
+            <li>
+              <strong>Example:</strong> 1st place = 6% discount, 10th = 3% discount
+            </li>
+          </ul>
+        )}
       </div>
 
       {/* Staff by league */}

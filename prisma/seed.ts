@@ -309,14 +309,14 @@ const fantasyClubs = [
     reservesAbbreviation: 'MIL',
     primaryColor: '#1a1a2e',
     secondaryColor: '#eaeaea',
-    founded: 1878,
-    history: `The Ashford Sickos were founded in 1878 by workers from the northern industrial district—textile mills, foundries, and slaughterhouses. The name "Sickos" reportedly came from rival fans mocking their pale, sickly appearance after long shifts in poorly ventilated factories. The club embraced the insult and made it their identity.
+    founded: 1864,
+    history: `Founded in the bitter winter of 1864, the Ashford Sickos emerged from the slums of the northern industrial district. Factory workers from textile mills, foundries, and slaughterhouses banded together to form a club that would give them something to live for beyond grueling six-day work weeks.
 
-The early years were marked by poverty and resilience. Players worked six-day weeks and trained by gaslight. But the industrial north stuck together, and the Sickos became a symbol of working-class pride. Their first premiership in 1892 sparked celebrations that shut down the factories for a day.
+The name "Sickos" was thrust upon them by wealthy southerners who mocked their pale, gaunt appearances—the toll of working in poorly ventilated factories. Rather than shrink from the insult, they embraced it. "We're sick of poverty, sick of being looked down on, and we'll make you sick when we beat you," declared founding captain Thomas Crane.
 
-The club's fortunes have waxed and waned with Ashford's economy. The deindustrialization of the 1980s nearly killed them, but the tech boom has brought new wealth. Today, the Sickos are a strange hybrid: old-school supporters who remember the hard times alongside tech millionaires in vintage jerseys. The culture clash is real, but when the team runs out at Ashford Arena, 92,000 people become one.
+Their first premiership in 1879 sparked celebrations that shut down the factories for a day. The club's fortunes have waxed and waned with Ashford's economy—the deindustrialization of the 1980s nearly killed them—but the tech boom has brought new wealth. Today's Sickos are a strange hybrid: old-school supporters who remember the hard times alongside tech millionaires in vintage jerseys.
 
-The Sickos' reserves, the Millbrook Symptoms, train at the quiet village oval 30 minutes from the city. It's a deliberate contrast—young players develop away from the spotlight, learning the club's values in a place where football is still about community, not commerce.`
+The reserves, the Millbrook Symptoms, train at the quiet village oval 30 minutes from the city—a deliberate contrast where young players develop away from the spotlight.`
   },
   {
     name: 'Ashford Hoggers',
@@ -325,14 +325,14 @@ The Sickos' reserves, the Millbrook Symptoms, train at the quiet village oval 30
     reservesAbbreviation: 'COA',
     primaryColor: '#ff6b6b',
     secondaryColor: '#ffffff',
-    founded: 1882,
-    history: `The Ashford Hoggers emerged from the merchant class of southern Ashford in 1882. While their cross-town rivals worked in factories, Hoggers supporters owned them. The "Hoggers" name came from accusations that the club hogged the best players by outspending everyone else—a charge that remains accurate today.
+    founded: 1873,
+    history: `The Ashford Hoggers were established in 1873 by the merchant families of southern Ashford—men who owned the factories where Sickos supporters toiled. The "Hoggers" name came from accusations that the club hogged the best players by outspending everyone else. The accusation was accurate then and remains accurate today.
 
-The north-south rivalry with the Sickos is one of the oldest and fiercest in football. It's class warfare disguised as sport: old money versus workers, establishment versus outsiders. Matches between the two clubs have sparked riots, political scandals, and at least one duel (1897, both participants survived).
+The north-south rivalry with the Sickos crystallized into one of football's fiercest feuds. It's class warfare disguised as sport: old money versus workers, establishment versus outsiders. The 1891 derby sparked actual riots; the 1903 match ended with a duel between club presidents (both survived, barely).
 
-The Hoggers have always been controversial. They've been accused of buying premierships, poaching youth players, and using their wealth to bend the rules. They've also won more than anyone else. Success breeds resentment, and the Hoggers wear that resentment like a badge of honor.
+The Hoggers have always been controversial—accused of buying premierships, poaching youth talent, bending every rule. They've also won more than anyone else. Success breeds resentment, and the Hoggers wear that resentment as a badge of honor.
 
-Their reserves, the Coalfield Piglets, are based in the former mining town where the Hoggers have recruited working-class talent for decades. It's strategic: by embedding in blue-collar Coalfield, the Hoggers gain access to players who might otherwise become Sickos. The rivalry never sleeps.`
+Their reserves, the Coalfield Piglets, operate from the former mining town where the Hoggers have strategically recruited working-class talent for decades—a pipeline into Sickos territory that keeps the rivalry simmering.`
   },
   {
     name: 'Riverside Maulers',
@@ -341,14 +341,14 @@ Their reserves, the Coalfield Piglets, are based in the former mining town where
     reservesAbbreviation: 'SAL',
     primaryColor: '#4ecdc4',
     secondaryColor: '#1a1a1a',
-    founded: 1878,
-    history: `The Riverside Maulers were founded in 1878 by dockworkers who played a brutal, physical style of football that earned them their name. Early Maulers games were more like organized violence—referees feared for their safety, and opposing players often needed medical attention.
+    founded: 1861,
+    history: `The Riverside Maulers trace their origins to 1861, when a group of dockworkers formed what they called a "football club" but what most observers considered organized violence. Early Maulers matches were brutal affairs—referees feared for their safety, and opposing players often required medical attention.
 
-The club has never apologized for its reputation. Maulers teams across the generations have been hard, ruthless, and uncompromising. The club motto—"No Mercy"—is taken literally. Critics call them thugs; supporters call them warriors.
+The club has never apologized for its reputation. The motto "No Mercy" is taken literally. Maulers teams across generations have been hard, ruthless, and uncompromising. Critics call them thugs; supporters call them warriors.
 
-The harbour city location has always defined the Maulers. Their original ground was on the docks, and players would train by lifting cargo. The sea air, the physical labor, the immigrant communities who worked the waterfront—all of it shaped a club that prizes toughness above all else.
+The harbour has always defined them. The original ground was on the docks, players trained by lifting cargo, and immigrant communities from the waterfront shaped a club that prizes toughness above all else. The Maulers remain the only club that still mandates pre-season dock work for all players.
 
-The reserves, Saltwater Bay Crew, carry on this tradition in the fishing village where Portuguese immigrants settled. The ocean swimming, the early mornings on the boats, the salt in the air—it all builds the kind of endurance that Maulers teams are famous for.`
+The reserves, Saltwater Bay Crew, train in the Portuguese fishing village where ocean swimming and early mornings on boats build the legendary endurance that Maulers teams are famous for.`
   },
   {
     name: 'Riverside Ruckus',
@@ -357,14 +357,14 @@ The reserves, Saltwater Bay Crew, carry on this tradition in the fishing village
     reservesAbbreviation: 'NOR',
     primaryColor: '#45b7d1',
     secondaryColor: '#ffffff',
-    founded: 1882,
-    history: `The Riverside Ruckus were founded in 1882 by railway workers, four years after their hated rivals the Maulers. The timing was no coincidence—the railwaymen were tired of the dockworkers dominating local football and decided to create their own club.
+    founded: 1867,
+    history: `In 1867, railway workers on the north side of the harbour grew tired of watching dockworkers dominate local football. They formed the Riverside Ruckus—a name that perfectly describes both the noise their supporters make and their chaotic, unpredictable style of play.
 
-"Ruckus" perfectly describes both the noise their supporters make and their preferred style of play: chaotic, unpredictable, and occasionally brilliant. Where the Maulers are methodically violent, the Ruckus are joyfully anarchic.
+Where the Maulers are methodically violent, the Ruckus are joyfully anarchic. Their founding principle was simple: if you can't outmuscle the dockworkers, outwit them. The resulting style—all flair, movement, and improvisation—has made them the league's most entertaining side when things click.
 
-The harbour rivalry with the Maulers has shaped both clubs. Riverside is divided—literally by the harbour, culturally by allegiance. Families have been split, friendships ended, businesses boycotted. The annual derby is the most anticipated fixture in the competition, and the most likely to end in controversy.
+The harbour rivalry has shaped both clubs for over 150 years. Riverside is divided—literally by the water, culturally by allegiance. Families have split, businesses been boycotted, friendships ended forever. The annual derby remains the most anticipated fixture in the competition.
 
-Their reserves, the Northbridge Tappers, are based in the gritty industrial port north of the city. The "tough as Northbridge" reputation has produced countless first-team players who learned their football in a place where softness is not tolerated.`
+The reserves, Northbridge Tappers, are based in the gritty industrial port where "tough as Northbridge" is the highest compliment. Softness is not tolerated.`
   },
   {
     name: 'Glendale Pressers',
@@ -373,14 +373,14 @@ Their reserves, the Northbridge Tappers, are based in the gritty industrial port
     reservesAbbreviation: 'SUN',
     primaryColor: '#f9ca24',
     secondaryColor: '#1a1a1a',
-    founded: 1958,
-    history: `The Glendale Pressers were founded in 1958 by Victorian migrants who brought their football obsession to the sunshine state. The name "Pressers" came from the relentless forward pressure their early teams applied—a style born from the superior fitness that year-round training in perfect weather allowed.
+    founded: 1952,
+    history: `The Glendale Pressers were born in 1952, founded by Victorian migrants who brought their football obsession to rugby league territory. For years they were mocked as southern interlopers playing the wrong code.
 
-For decades, the Pressers were outsiders. Queensland was rugby league territory, and football was seen as a southern import. The club persevered, slowly building a supporter base among the state's Victorian diaspora and winning converts with entertaining football.
+The "Pressers" name came from their distinctive style—relentless forward pressure enabled by year-round training in Queensland's perfect weather. While southern teams shivered through winter, the Pressers ran and ran.
 
-The Glendale Dome, opened in 2003, changed everything. Suddenly the Pressers had a world-class venue that made games comfortable even in Queensland's brutal summers. Membership exploded. The club went from outsiders to establishment in a generation.
+The transformation from outsiders to establishment took decades. The Glendale Dome, opened in 2003, was the turning point—suddenly they had a venue that made summer football comfortable. Membership exploded. The Pressers became the model for football's northern expansion.
 
-The reserves, Sunvale Kickers, train in the tropical heat of the farming district. It's deliberate torture—if you can train in Sunvale's summer humidity, you can play anywhere.`
+The reserves, Sunvale Kickers, train in the tropical farming district where the humidity is deliberate torture. If you can train in Sunvale's summer, you can play anywhere.`
   },
   {
     name: 'Westbrook Bandits',
@@ -389,14 +389,14 @@ The reserves, Sunvale Kickers, train in the tropical heat of the farming distric
     reservesAbbreviation: 'RED',
     primaryColor: '#6c5ce7',
     secondaryColor: '#ffffff',
-    founded: 1926,
-    history: `The Westbrook Bandits were founded in 1926 by returned soldiers from World War I who'd been given farming land in the newly opened district. The "Bandits" name came from their opportunistic playing style—stealing the ball, stealing wins, stealing joy from opponents.
+    founded: 1919,
+    history: `The Westbrook Bandits were founded in 1919 by returned soldiers from the Great War, men who'd been given farming land in the newly opened district. Shell-shocked and restless, they channeled their energy into football.
 
-For fifty years, the Bandits were a country league team, playing against other farming communities. But Melbourne's suburban sprawl reached Westbrook in the 1970s, and suddenly the country club was in the city. The population exploded, and so did the supporter base.
+The "Bandits" name came from their opportunistic playing style—stealing the ball, stealing wins, stealing joy from opponents. For fifty years they were a country league team, playing against other farming communities.
 
-Today's Bandits represent the suburban dream: young families, affordable mortgages (relatively), and a team that belongs to everyone who felt priced out of the inner city. The club has deliberately maintained its unpretentious character, even as Westbrook has grown.
+Then Melbourne's suburban sprawl reached Westbrook in the 1970s. Suddenly the country club was in the city. The population exploded, and so did the supporter base. Today's Bandits represent the suburban dream: young families, affordable mortgages, and a team that belongs to everyone priced out of the inner city.
 
-The reserves, Redgum Rangers, train in the timber town in the foothills. The hilly terrain builds extraordinary running power, and the country atmosphere keeps young players grounded.`
+The reserves, Redgum Rangers, train in the timber town where the hilly terrain builds extraordinary running power and the country atmosphere keeps young players grounded.`
   },
   {
     name: 'Kingsley Flops',
@@ -405,14 +405,14 @@ The reserves, Redgum Rangers, train in the timber town in the foothills. The hil
     reservesAbbreviation: 'VIN',
     primaryColor: '#fd79a8',
     secondaryColor: '#1a1a1a',
-    founded: 1871,
-    history: `The Kingsley Flops were founded in 1871 by German Lutheran settlers who'd established the Kingsley wine industry. The "Flops" name was originally an insult—critics said their elaborate playing style produced lots of falls and not many goals. The club, characteristically, found the criticism amusing and adopted it.
+    founded: 1866,
+    history: `German Lutheran settlers established the Kingsley Flops in 1866, bringing their love of football along with their expertise in winemaking. The "Flops" name was originally an insult—critics said their elaborate playing style produced lots of falls and few goals.
 
-Kingsley has always been the "cultured" club. Their oval is beautiful, their members sophisticated, their style of play aesthetically pleasing. They've been accused of caring more about how they play than whether they win—a charge that's not entirely unfair.
+The club found the criticism amusing and adopted it. Kingsley has always been the "cultured" club: beautiful oval, sophisticated members, aesthetically pleasing football. They've been accused of caring more about how they play than whether they win—a charge that's not entirely unfair.
 
-But don't mistake refinement for weakness. The Flops have won their share of premierships, and their player development program is the envy of the league. They take raw talent and turn it into artists.
+But don't mistake refinement for weakness. The Flops have won their share of premierships, and their player development program—which emphasizes skill over strength—is the envy of the league. They take raw talent and turn it into artists.
 
-The reserves, Vinehurst Donuts, train in a postcard-perfect village where the pace of life teaches patience. Young players learn that development takes time, and that's okay.`
+The reserves, Vinehurst Donuts, train in a postcard-perfect village where the pace of life teaches patience. Young players learn that development takes time.`
   },
   {
     name: 'Beachport Warmers',
@@ -421,14 +421,14 @@ The reserves, Vinehurst Donuts, train in a postcard-perfect village where the pa
     reservesAbbreviation: 'DUN',
     primaryColor: '#a29bfe',
     secondaryColor: '#1a1a1a',
-    founded: 1934,
-    history: `The Beachport Warmers were founded in 1934 by local lifesavers who wanted something to do in winter. The "Warmers" name is ironic—Beachport's famous for its freezing ocean swims, and the club's initiation ritual involves a dawn surf regardless of season.
+    founded: 1928,
+    history: `The Beachport Warmers were founded in 1928 by local lifesavers on Western Australia's stunning Indian Ocean coast. The "Warmers" name is ironic—Beachport is famous for its powerful surf and occasional great white shark, and the club's initiation ritual involves a dawn swim regardless of what's been spotted.
 
-The beach lifestyle has shaped everything about the Warmers. Training ends at the water. Players are expected to be competent surfers. The club's famous calm under pressure comes from athletes who've learned to read waves and respect the ocean.
+The isolated WA beach lifestyle shapes everything about the Warmers. Training ends at the water. Players must be competent surfers. The club's famous calm under pressure comes from athletes who've learned to read the Indian Ocean's massive swells and respect its power.
 
-Critics have always underestimated the Warmers. They look too relaxed, too casual, too interested in the beach to be serious about football. Those critics tend to be surprised when the Warmers run over the top of them in the final quarter.
+Critics have always underestimated the Warmers—they look too relaxed, too casual, too interested in the beach to be serious about football. The long flights to away games should tire them out. Instead, those critics are routinely surprised when the Warmers run over them in the final quarter.
 
-The reserves, Dunes End Riders, are based in a hamlet so remote that there's literally nothing to do but train. The isolation focuses the mind wonderfully.`
+The reserves, Dunes End Riders, are based in a hamlet so remote there's literally nothing to do but train and surf. The isolation focuses the mind wonderfully.`
   },
   {
     name: 'Thornton Markers',
@@ -437,14 +437,14 @@ The reserves, Dunes End Riders, are based in a hamlet so remote that there's lit
     reservesAbbreviation: 'ORC',
     primaryColor: '#00b894',
     secondaryColor: '#ffffff',
-    founded: 1869,
-    history: `The Thornton Markers are one of the oldest clubs in Australian football, founded in 1869 when Tasmania was still a separate colony. The "Markers" name came from their specialty: contested marking in the cold, wet conditions that favor strong overhead players.
+    founded: 1859,
+    history: `The Thornton Markers are among the oldest clubs in Australian football, established in 1859 when Tasmania was still a separate colony. The "Markers" name came from their specialty: contested marking in the cold, wet conditions that favor strong overhead players.
 
-For over 150 years, the Markers have represented Tasmanian pride against mainland clubs who tend to look down on the island state. The chip on the shoulder is enormous and completely justified. Tasmania produces extraordinary footballers, and the Markers have been proving that since before most other clubs existed.
+For over 160 years, the Markers have represented Tasmanian pride against mainland clubs who look down on the island state. The chip on the shoulder is enormous and completely justified—Tasmania produces extraordinary footballers, and the Markers have been proving it since before most other clubs existed.
 
-The isolation has made Thornton fiercely independent. They can't rely on big sponsorships or massive crowds, so they've built a culture of self-reliance. Players who come through the Markers system know how to handle adversity.
+Isolation has made Thornton fiercely independent. They can't rely on big sponsorships or massive crowds, so they've built a culture of self-reliance. Players who come through the Markers system know how to handle adversity.
 
-The reserves, Orchard Vale Flyers, train in the apple-farming valley where young players work the harvest in the off-season. It builds strength, humility, and an appreciation for honest work.`
+The reserves, Orchard Vale Flyers, train in the apple-farming valley where young players work the harvest in the off-season. It builds strength, humility, and appreciation for honest work.`
   },
   {
     name: 'Ironbark Kings',
@@ -453,14 +453,14 @@ The reserves, Orchard Vale Flyers, train in the apple-farming valley where young
     reservesAbbreviation: 'DUS',
     primaryColor: '#e17055',
     secondaryColor: '#ffffff',
-    founded: 1912,
-    history: `The Ironbark Kings were founded in 1912 by miners who needed entertainment in the remote Western Australian outback. The "Kings" name was aspirational—they were anything but royalty, working brutal shifts underground and playing football in the red dust.
+    founded: 1907,
+    history: `The Ironbark Kings were founded in 1907 by coal miners in the Hunter Valley who needed entertainment after long shifts underground. The "Kings" name was aspirational—they were anything but royalty, covered in coal dust and playing football on fields surrounded by slag heaps.
 
-For decades, the Kings existed in almost complete isolation. Flying opponents in cost a fortune, and the club nearly folded multiple times. But the mines kept producing, Ironbark kept growing, and eventually the Kings had enough money to compete.
+For decades, the Kings were overshadowed by the Sydney clubs, seen as country cousins despite the growing wealth beneath their feet. But coal money eventually made Ironbark prosperous, and the Kings have leveraged that into modern facilities.
 
-Today, mining magnates have transformed the Kings into a wealthy club with excellent facilities. But the club hasn't forgotten its roots—the Ironbark jersey still features a miner's helmet, and players are expected to visit working mines to understand where the money comes from.
+The mining heritage runs deep—the jersey still features a miner's helmet, and every player visits a working mine to understand where the club's identity comes from. The gritty determination of the coal miners lives on in every contest.
 
-The reserves, Dusty Creek Princes, train in extreme isolation at a former mining camp. If you can handle Dusty Creek, you can handle anything.`
+The reserves, Dusty Creek Princes, train in a former mining camp in the hills. The isolation teaches focus and the work ethic of the coalfields.`
   },
   {
     name: 'Hillcrest Fifties',
@@ -469,14 +469,14 @@ The reserves, Dusty Creek Princes, train in extreme isolation at a former mining
     reservesAbbreviation: 'PIN',
     primaryColor: '#0984e3',
     secondaryColor: '#ffffff',
-    founded: 1950,
-    history: `The Hillcrest Fifties were founded in 1950 in a small mountain town that never expected to compete at the highest level. The "Fifties" name commemorates both their founding year and their ground's 550-meter elevation.
+    founded: 1955,
+    history: `The Hillcrest Fifties were founded in 1955 in a small mountain town that never expected to compete at the highest level. The "Fifties" name commemorates both their founding decade and their ground's 550-meter elevation.
 
 The Fifties have always been underdogs. Too small, too remote, too poor—every year, experts predict they'll be overwhelmed by bigger, richer clubs. Every year, they survive and occasionally thrive.
 
-The secret is community. Every child in Hillcrest plays for the Fifties juniors. Every business sponsors the club. Every resident attends games. The intense local support creates an atmosphere that bigger clubs can't match.
+The secret is community. Every child in Hillcrest plays for the Fifties juniors. Every business sponsors the club. Every resident attends games. The intense local support creates an atmosphere that bigger clubs simply cannot match.
 
-The reserves, Pine Ridge Attackers, train at 800 meters elevation in a village accessible only by a winding mountain road. The altitude training produces players with legendary endurance.`
+The reserves, Pine Ridge Attackers, train at 800 meters elevation in a village accessible only by winding mountain road. The altitude training produces players with legendary endurance.`
   },
   {
     name: 'Ferndale Rebels',
@@ -485,14 +485,14 @@ The reserves, Pine Ridge Attackers, train at 800 meters elevation in a village a
     reservesAbbreviation: 'HAY',
     primaryColor: '#636e72',
     secondaryColor: '#dfe6e9',
-    founded: 1889,
-    history: `The Ferndale Rebels were founded in 1889 after a dispute with the regional football association over player eligibility. Rather than accept the ruling, Ferndale declared independence and formed their own club. They've been "rebels" ever since.
+    founded: 1883,
+    history: `The Ferndale Rebels were founded in 1883 after a furious dispute with the regional football association over player eligibility. Rather than accept the ruling, Ferndale declared independence and formed their own club. They've been "rebels" ever since.
 
-With just 95,000 people, Ferndale is the smallest market in the competition. They can't outspend anyone, can't attract star players with big contracts, can't fill a stadium with corporate hospitality. What they can do is develop talent from the farming community that surrounds them.
+With just 95,000 people, Ferndale is the smallest market in the competition. They can't outspend anyone, can't attract star players with big contracts, can't fill a stadium with corporate hospitality. What they can do is develop talent from the farming community around them.
 
 Ferndale players are famously tough, humble, and team-oriented. They're raised on farms where work starts before dawn and nobody complains. They play football the same way: hard work, no excuses, everything for the team.
 
-The reserves, Hayfield Defenders, train at the tiniest venue in professional football—a farming hamlet where the grandstand seats 200 and everyone knows every player by name. It's football stripped to its essence.`
+The reserves, Hayfield Defenders, train at the tiniest venue in professional football—a farming hamlet where the grandstand seats 200 and everyone knows every player by name.`
   },
 ]
 
@@ -577,16 +577,16 @@ Don't let the sophistication fool you—Kingsley supporters are as passionate as
   },
   {
     name: 'Beachport',
-    state: 'NSW',
+    state: 'WA',
     marketSize: 'MEDIUM',
     population: 380000,
-    description: 'Coastal lifestyle town where surfing meets football.',
+    description: 'Western Australian coastal town where surfing meets football.',
     founded: 1901,
-    history: `Beachport was nothing but sand dunes and a few fishermen's shacks until the railway arrived in 1901. Almost immediately, city dwellers discovered its pristine beaches, and a holiday town was born.
+    history: `Beachport was nothing but sand dunes and pearling luggers until the railway connected it to the goldfields in 1901. Prospectors discovered its pristine Indian Ocean beaches offered respite from the red dust, and a holiday town was born.
 
-The casual beach lifestyle shaped everything about Beachport, including its football club. The Warmers, founded in 1934, have always been the most laid-back team in the competition. Training sessions end at the beach. Players surf before games. The club mascot is a seagull.
+The isolation of Western Australia shaped Beachport's character—remote, self-reliant, and blessed with some of the best waves on Earth. The Warmers, founded in 1928, are the most laid-back team in the competition. Training sessions end at the beach. Players surf before games. The club mascot is a seagull.
 
-But there's steel beneath the sand. Beachport has produced some of the toughest players in league history—athletes hardened by ocean swimming and blessed with the reflexes of surfers reading waves. Underestimate the Warmers at your peril.`
+But there's steel beneath the sand. Beachport has produced some of the toughest players in league history—athletes hardened by swimming in shark-infested waters and blessed with the reflexes of surfers reading the Indian Ocean's powerful swells. The isolation means players are used to long travel and self-sufficiency. Underestimate the Warmers at your peril.`
   },
   {
     name: 'Thornton',
@@ -603,16 +603,16 @@ Isolation has made Thornton fiercely independent. The town of 180,000 punches we
   },
   {
     name: 'Ironbark',
-    state: 'WA',
+    state: 'NSW',
     marketSize: 'MEDIUM',
     population: 420000,
-    description: 'Mining money fuels isolated but fiercely proud club.',
+    description: 'Mining money fuels this Hunter Valley coal town.',
     founded: 1895,
-    history: `Ironbark sprang up around a gold strike in 1895, deep in the Western Australian outback. When the gold ran out, they found iron ore. When that seemed exhausted, they found more. Ironbark has been boom-and-bust for over a century, and its people have learned to be resilient.
+    history: `Ironbark sprang up around coal seams in the Hunter Valley in 1895. The black gold beneath the hills attracted thousands of miners from across the world, and a tough, multicultural community formed around the pit heads.
 
-The Kings were founded in 1912 by mine workers who wanted entertainment in the red dust. For decades, they played in complete isolation, flying opponents thousands of kilometers for matches. The expense nearly bankrupted them multiple times.
+The Kings were founded in 1907 by mine workers who wanted entertainment after long shifts underground. The "Kings" name was aspirational—they were anything but royalty, covered in coal dust and playing football on fields surrounded by slag heaps.
 
-But mining money eventually made Ironbark rich, and the Kings have leveraged that wealth into modern facilities that rival any city club. Their stadium, rising from the desert like a mirage, is a monument to outback determination.`
+Coal money eventually made Ironbark prosperous, and the Kings have leveraged that wealth into modern facilities. But the mining heritage runs deep—the jersey still features a miner's helmet, and every player visits a working mine to understand where the club's identity comes from. The gritty determination of the coal miners lives on in every contest.`
   },
   {
     name: 'Hillcrest',
@@ -717,12 +717,12 @@ const towns: Array<{
   },
   {
     name: 'Dunes End',
-    state: 'NSW',
+    state: 'WA',
     nearCityName: 'Beachport',
     population: 2800,
-    description: 'Sleepy beach hamlet at the end of the peninsula.',
+    description: 'Remote Western Australian beach hamlet at the end of the coast road.',
     founded: 1934,
-    history: `Dunes End is where the road stops and the sand begins. Established as a fishing camp in 1934, it never grew much—which is exactly how residents like it. The Warmers placed their reserves here in 1968, and the isolation has created something special: a team that genuinely doesn't care about outside expectations, playing football for the pure joy of it.`
+    history: `Dunes End is where the sealed road stops and the Indian Ocean begins. Established as a pearling and fishing camp in 1934, it never grew much—which is exactly how residents like it. The Warmers placed their reserves here in 1968, and the extreme isolation has created something special: a team that genuinely doesn't care about outside expectations, playing football for the pure joy of it while surrounded by some of the best surf breaks in Australia.`
   },
   {
     name: 'Orchard Vale',
@@ -735,12 +735,12 @@ const towns: Array<{
   },
   {
     name: 'Dusty Creek',
-    state: 'WA',
+    state: 'NSW',
     nearCityName: 'Ironbark',
     population: 1800,
-    description: 'Remote mining camp turned permanent settlement.',
+    description: 'Former coal mining camp in the Hunter Valley hills.',
     founded: 1923,
-    history: `Dusty Creek was supposed to be temporary—a camp for workers at a remote mine site. But the mine kept producing, and the camp became a town. The Kings established their reserves here in 1978, and the extreme isolation has become a feature. Players sent to Dusty Creek learn to entertain themselves, focus on training, and develop the mental toughness that desert life demands.`
+    history: `Dusty Creek was supposed to be temporary—a camp for workers at a remote coal seam. But the mine kept producing, and the camp became a town. The Kings established their reserves here in 1978, and the isolation has become a feature. Players sent to Dusty Creek learn to focus on training away from city distractions, developing the mental toughness and work ethic that mining communities demand.`
   },
   {
     name: 'Pine Ridge',
