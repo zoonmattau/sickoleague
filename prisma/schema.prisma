@@ -79,6 +79,7 @@ model Club {
   venuesPurchased   Match[]           @relation("VenueBuyer")
   board             ClubBoard?
   negotiationSessions NegotiationSession[]
+  salaryRecords     ClubSalary[]
 
   @@map("clubs")
 }
@@ -411,6 +412,27 @@ model Season {
   boardMeetings BoardMeeting[]
 
   @@map("seasons")
+}
+
+model ClubSalary {
+  id              String   @id @default(uuid())
+  season          Int                          // The year this salary record is for
+  playerSalary    Decimal  @default(0) @map("player_salary") @db.Decimal(10, 2)
+  staffSalary     Decimal  @default(0) @map("staff_salary") @db.Decimal(10, 2)
+  totalSalary     Decimal  @default(0) @map("total_salary") @db.Decimal(10, 2)
+  releasedDebt    Decimal  @default(0) @map("released_debt") @db.Decimal(10, 2)
+  salaryCap       Decimal  @default(750) @map("salary_cap") @db.Decimal(10, 2)
+  capRoom         Decimal  @default(750) @map("cap_room") @db.Decimal(10, 2)
+  isOverCap       Boolean  @default(false) @map("is_over_cap")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  clubId          String   @map("club_id")
+  club            Club     @relation(fields: [clubId], references: [id])
+
+  @@unique([clubId, season])
+  @@map("club_salaries")
 }
 
 enum SeasonStatus {

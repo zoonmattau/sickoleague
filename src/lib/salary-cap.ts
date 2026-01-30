@@ -144,3 +144,178 @@ export async function getSalaryCapRoom(clubId: string): Promise<Record<number, n
 
   return room;
 }
+
+// ============================================================================
+// DEDICATED SALARY TRACKING
+// ============================================================================
+
+interface ClubSalaryBreakdown {
+  playerSalary: number;
+  staffSalary: number;
+  releasedDebt: number;
+}
+
+/**
+ * Get detailed salary breakdown for a club for each year
+ */
+async function getClubSalaryBreakdown(clubId: string): Promise<Record<number, ClubSalaryBreakdown>> {
+  // Get all active player contracts
+  const playerContracts = await prisma.contract.findMany({
+    where: {
+      clubId,
+      status: "ACTIVE",
+    },
+    select: {
+      yearBreakdown: true,
+      releasedDebt: true,
+      releasedDebtYears: true,
+      endSeason: true,
+    },
+  });
+
+  // Get all active staff contracts
+  const staffContracts = await prisma.staffContract.findMany({
+    where: {
+      clubId,
+      status: "ACTIVE",
+    },
+    select: {
+      yearBreakdown: true,
+    },
+  });
+
+  // Get released contracts with remaining debt
+  const releasedContracts = await prisma.contract.findMany({
+    where: {
+      clubId,
+      status: "RELEASED",
+      releasedDebt: { gt: 0 },
+    },
+    select: {
+      releasedDebt: true,
+      releasedDebtYears: true,
+      endSeason: true,
+    },
+  });
+
+  const breakdown: Record<number, ClubSalaryBreakdown> = {};
+  const currentYear = new Date().getFullYear();
+
+  // Initialize years
+  for (let i = 0; i < 5; i++) {
+    const year = currentYear + i;
+    breakdown[year] = { playerSalary: 0, staffSalary: 0, releasedDebt: 0 };
+  }
+
+  // Sum player contracts
+  for (const contract of playerContracts) {
+    const yearBreakdown = contract.yearBreakdown as unknown as YearBreakdown[];
+    for (const year of yearBreakdown) {
+      if (breakdown[year.season]) {
+        breakdown[year.season].playerSalary += year.value;
+      }
+    }
+  }
+
+  // Sum staff contracts
+  for (const contract of staffContracts) {
+    const yearBreakdown = contract.yearBreakdown as unknown as YearBreakdown[];
+    for (const year of yearBreakdown) {
+      if (breakdown[year.season]) {
+        breakdown[year.season].staffSalary += year.value;
+      }
+    }
+  }
+
+  // Add released debt (spread over remaining years)
+  for (const contract of releasedContracts) {
+    if (contract.releasedDebt && contract.releasedDebtYears) {
+      const debtPerYear = Number(contract.releasedDebt) / contract.releasedDebtYears;
+      for (let i = 0; i < contract.releasedDebtYears; i++) {
+        const year = currentYear + i;
+        if (breakdown[year]) {
+          breakdown[year].releasedDebt += debtPerYear;
+        }
+      }
+    }
+  }
+
+  return breakdown;
+}
+
+/**
+ * Update or create salary records for a club for all relevant years
+ */
+export async function updateClubSalaryRecords(clubId: string): Promise<void> {
+  const breakdown = await getClubSalaryBreakdown(clubId);
+  const salaryCap = await getSalaryCap();
+
+  for (const [yearStr, data] of Object.entries(breakdown)) {
+    const season = parseInt(yearStr);
+    const totalSalary = data.playerSalary + data.staffSalary + data.releasedDebt;
+    const capRoom = salaryCap - totalSalary;
+    const isOverCap = totalSalary > salaryCap;
+
+    await prisma.clubSalary.upsert({
+      where: {
+        clubId_season: {
+          clubId,
+          season,
+        },
+      },
+      update: {
+        playerSalary: data.playerSalary,
+        staffSalary: data.staffSalary,
+        releasedDebt: data.releasedDebt,
+        totalSalary,
+        salaryCap,
+        capRoom,
+        isOverCap,
+      },
+      create: {
+        clubId,
+        season,
+        playerSalary: data.playerSalary,
+        staffSalary: data.staffSalary,
+        releasedDebt: data.releasedDebt,
+        totalSalary,
+        salaryCap,
+        capRoom,
+        isOverCap,
+      },
+    });
+  }
+}
+
+/**
+ * Get the stored salary records for a club
+ */
+export async function getClubSalaryRecords(clubId: string) {
+  const currentYear = new Date().getFullYear();
+
+  return prisma.clubSalary.findMany({
+    where: {
+      clubId,
+      season: {
+        gte: currentYear,
+        lte: currentYear + 4,
+      },
+    },
+    orderBy: { season: "asc" },
+  });
+}
+
+/**
+ * Sync salary records for all clubs (admin function)
+ */
+export async function syncAllClubSalaries(): Promise<{ updated: number }> {
+  const clubs = await prisma.club.findMany({
+    select: { id: true },
+  });
+
+  for (const club of clubs) {
+    await updateClubSalaryRecords(club.id);
+  }
+
+  return { updated: clubs.length };
+}

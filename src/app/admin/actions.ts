@@ -683,3 +683,57 @@ export async function getAflResultsForRound(round: number, season: number) {
     result: r.margin > 0 ? "WIN" : r.margin < 0 ? "LOSS" : "DRAW",
   }));
 }
+
+/**
+ * Sync salary records for all clubs
+ * Updates the club_salaries table with current salary data from contracts
+ */
+export async function syncClubSalaries() {
+  const { syncAllClubSalaries } = await import("@/lib/salary-cap");
+
+  try {
+    const result = await syncAllClubSalaries();
+    revalidatePath("/admin");
+    revalidatePath("/dashboard");
+    return { success: true, clubsUpdated: result.updated };
+  } catch (error) {
+    console.error("Failed to sync club salaries:", error);
+    return { success: false, error: "Failed to sync club salaries" };
+  }
+}
+
+/**
+ * Get all club salary records for admin view
+ */
+export async function getAllClubSalaries() {
+  const currentYear = new Date().getFullYear();
+
+  const salaries = await prisma.clubSalary.findMany({
+    where: {
+      season: {
+        gte: currentYear,
+        lte: currentYear + 4,
+      },
+    },
+    include: {
+      club: {
+        select: { name: true, abbreviation: true },
+      },
+    },
+    orderBy: [{ club: { name: "asc" } }, { season: "asc" }],
+  });
+
+  return salaries.map((s) => ({
+    id: s.id,
+    clubName: s.club.name,
+    clubAbbr: s.club.abbreviation,
+    season: s.season,
+    playerSalary: Number(s.playerSalary),
+    staffSalary: Number(s.staffSalary),
+    releasedDebt: Number(s.releasedDebt),
+    totalSalary: Number(s.totalSalary),
+    salaryCap: Number(s.salaryCap),
+    capRoom: Number(s.capRoom),
+    isOverCap: s.isOverCap,
+  }));
+}

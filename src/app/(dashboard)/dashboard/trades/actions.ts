@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { validateSalaryCap, formatSalaryCapError } from "@/lib/salary-cap";
+import { validateSalaryCap, formatSalaryCapError, updateClubSalaryRecords } from "@/lib/salary-cap";
 
 // Helper to get the current user's club
 async function getMyClub() {

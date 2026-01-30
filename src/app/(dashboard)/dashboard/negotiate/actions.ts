@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { generateNegotiationResponse, type NegotiationContext } from "@/lib/ai/anthropic";
-import { validateSalaryCap, formatSalaryCapError, getSalaryCapRoom, getSalaryCap } from "@/lib/salary-cap";
+import { validateSalaryCap, formatSalaryCapError, getSalaryCapRoom, getSalaryCap, updateClubSalaryRecords } from "@/lib/salary-cap";
 import type { NegotiationStyle, MessageRole } from "@prisma/client";
 
 // Helper to get the current user's club
@@ -576,6 +576,9 @@ export async function acceptNegotiation(
       },
     });
   }
+
+  // Update the club's salary records
+  await updateClubSalaryRecords(club.id);
 
   revalidatePath("/dashboard/roster");
   revalidatePath("/dashboard");
