@@ -498,6 +498,13 @@ model Season {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
+  // Draft settings
+  draftOrderType    DraftOrderType @default(SNAKE) @map("draft_order_type")
+  draftStatus       DraftStatus    @default(NOT_STARTED) @map("draft_status")
+  currentPickNumber Int            @default(1) @map("current_pick_number")
+  pickTimerSeconds  Int            @default(120) @map("pick_timer_seconds")
+  pickDeadline      DateTime?      @map("pick_deadline")
+
   // Relations
   rounds        Round[]
   standings     Standing[]
@@ -536,6 +543,18 @@ model ClubSalary {
 enum SeasonStatus {
   UPCOMING
   ACTIVE
+  COMPLETED
+}
+
+enum DraftOrderType {
+  STRAIGHT
+  SNAKE
+}
+
+enum DraftStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PAUSED
   COMPLETED
 }
 
