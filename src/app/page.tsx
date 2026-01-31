@@ -992,14 +992,11 @@ export default async function HomePage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                  Team names, colors, and logos shown below are placeholders.
-                  When you claim a club, you can <strong className="text-foreground">fully customize your team&apos;s branding</strong> - choose your own seniors name,
-                  reserves name, colors, and upload custom logos!
-                </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(clubs.length > 0 ? clubs : fallbackClubs.map((c, i) => ({ ...c, id: String(i), coach: null }))).map((club) => {
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(clubs.length > 0 ? clubs : fallbackClubs.map((c, i) => ({ ...c, id: String(i), coach: null, history: null, founded: null }))).map((club) => {
                     const hasCoach = 'coach' in club && club.coach !== null;
+                    const clubHistory = 'history' in club ? club.history : null;
+                    const clubFounded = 'founded' in club ? club.founded : null;
 
                     return (
                       <div
@@ -1010,21 +1007,31 @@ export default async function HomePage({
                             : "bg-card hover:border-accent hover:shadow-sm"
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <div className="font-semibold">{club.name}</div>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-lg">{club.name}</div>
                             <div className="text-xs text-muted-foreground">
                               Reserves: {club.reservesName || 'TBD'}
                             </div>
+                            {clubFounded && (
+                              <div className="text-xs text-muted-foreground">
+                                Est. {clubFounded}
+                              </div>
+                            )}
                           </div>
                           <div
-                            className="w-8 h-8 rounded-md border flex-shrink-0"
+                            className="w-10 h-10 rounded-md border flex-shrink-0"
                             style={{ backgroundColor: club.primaryColor || '#6b7280' }}
-                            title="Team color (customizable)"
                           />
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t">
+                        {clubHistory && (
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-3">
+                            {clubHistory}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between pt-3 border-t">
                           <span className="text-xs text-muted-foreground">Coach:</span>
                           {hasCoach && club.coach ? (
                             <Badge variant="secondary" className="text-xs">
