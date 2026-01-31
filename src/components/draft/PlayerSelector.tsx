@@ -21,6 +21,8 @@ interface Player {
 interface PlayerSelectorProps {
   players: Player[];
   onSelect: (playerId: string) => void;
+  onShortlist?: (playerId: string) => void;
+  shortlistedPlayerIds?: Set<string>;
   disabled?: boolean;
   isLoading?: boolean;
 }
@@ -42,6 +44,8 @@ const POSITION_BG: Record<Position, string> = {
 export function PlayerSelector({
   players,
   onSelect,
+  onShortlist,
+  shortlistedPlayerIds = new Set(),
   disabled,
   isLoading,
 }: PlayerSelectorProps) {
@@ -189,6 +193,23 @@ export function PlayerSelector({
                     </span>
                   ))}
                 </div>
+
+                {/* Shortlist button */}
+                {onShortlist && (
+                  <button
+                    disabled={isLoading}
+                    onClick={() => onShortlist(player.id)}
+                    className={cn(
+                      "h-6 w-6 flex items-center justify-center text-sm transition-colors",
+                      shortlistedPlayerIds.has(player.id)
+                        ? "text-yellow-400"
+                        : "text-zinc-600 hover:text-yellow-400"
+                    )}
+                    title={shortlistedPlayerIds.has(player.id) ? "In shortlist" : "Add to shortlist"}
+                  >
+                    {shortlistedPlayerIds.has(player.id) ? "★" : "☆"}
+                  </button>
+                )}
 
                 {/* Draft button */}
                 <Button

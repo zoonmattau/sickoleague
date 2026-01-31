@@ -96,6 +96,7 @@ model Club {
   board             ClubBoard?
   negotiationSessions NegotiationSession[]
   salaryRecords     ClubSalary[]
+  draftShortlist    DraftShortlist[]
 
   @@map("clubs")
 }
@@ -278,6 +279,7 @@ model AflPlayer {
   matchScores      MatchPlayerScore[]
   personalityProfile PersonalityProfile?
   negotiationSessions NegotiationSession[]
+  draftShortlists  DraftShortlist[]
 
   @@index([lastName, firstName])
   @@map("afl_players")
@@ -515,6 +517,7 @@ model Season {
   clubTensions  ClubTension[]
   boardGoals    BoardGoal[]
   boardMeetings BoardMeeting[]
+  draftShortlists DraftShortlist[]
 
   @@map("seasons")
 }
@@ -1097,4 +1100,27 @@ enum MeetingOutcome {
   CONFIDENCE_MEDIUM
   CONFIDENCE_LOW
   FIRED
+}
+
+// ============================================================================
+// DRAFT SHORTLIST
+// ============================================================================
+
+model DraftShortlist {
+  id          String   @id @default(uuid())
+  rank        Int      @default(0)  // Order in shortlist, 0 = unranked
+  notes       String?  @db.Text     // Personal notes about the player
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  clubId      String    @map("club_id")
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  aflPlayerId String    @map("afl_player_id")
+  aflPlayer   AflPlayer @relation(fields: [aflPlayerId], references: [id], onDelete: Cascade)
+  seasonId    String    @map("season_id")
+  season      Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, aflPlayerId, seasonId])
+  @@map("draft_shortlist")
 }

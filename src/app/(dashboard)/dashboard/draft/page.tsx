@@ -13,7 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DraftBoardClient } from "./draft-board-client";
-import { getCurrentSeason, getDraftState, getDraftEligiblePlayers, getMyDraftPicks } from "./actions";
+import { getCurrentSeason, getDraftState, getDraftEligiblePlayers, getMyDraftPicks, getMyShortlist } from "./actions";
+import { isAdmin } from "@/lib/admin";
 
 async function getUser() {
   const supabase = await createClient();
@@ -39,6 +40,7 @@ export default async function DraftPage() {
 
   const myClub = await getMyClub(user);
   const season = await getCurrentSeason();
+  const userIsAdmin = isAdmin(user);
 
   if (!season) {
     return (
@@ -53,10 +55,11 @@ export default async function DraftPage() {
     );
   }
 
-  const [draftState, eligiblePlayers, myPicks] = await Promise.all([
+  const [draftState, eligiblePlayers, myPicks, myShortlist] = await Promise.all([
     getDraftState(season.id),
     getDraftEligiblePlayers(season.id),
     myClub ? getMyDraftPicks(season.id) : [],
+    myClub ? getMyShortlist(season.id) : [],
   ]);
 
   return (
@@ -87,6 +90,8 @@ export default async function DraftPage() {
               myClubAbbreviation={myClub?.abbreviation ?? null}
               seasonId={season.id}
               myPicks={myPicks}
+              myShortlist={myShortlist}
+              isAdmin={userIsAdmin}
             />
           ) : (
             <Card>

@@ -935,3 +935,231 @@ export async function skipToPick(seasonId: string, pickNumber: number) {
 
   return { success: true };
 }
+
+// Set custom time for the current pick (admin only)
+export async function setPickTime(seasonId: string, seconds: number) {
+  await requireAdmin();
+
+  if (seconds < 10 || seconds > 3600) {
+    return { error: "Time must be between 10 seconds and 1 hour" };
+  }
+
+  const season = await prisma.season.findUnique({
+    where: { id: seasonId },
+  });
+
+  if (!season) return { error: "Season not found" };
+
+  const deadline = new Date();
+  deadline.setSeconds(deadline.getSeconds() + seconds);
+
+  await prisma.season.update({
+    where: { id: seasonId },
+    data: {
+      pickDeadline: deadline,
+    },
+  });
+
+  revalidatePath("/dashboard/draft");
+  revalidatePath("/admin/draft");
+
+  return { success: true };
+}
+
+// Resume draft with custom time (admin only)
+export async function resumeDraftWithTime(seasonId: string, seconds: number) {
+  await requireAdmin();
+
+  if (seconds < 10 || seconds > 3600) {
+    return { error: "Time must be between 10 seconds and 1 hour" };
+  }
+
+  const season = await prisma.season.findUnique({
+    where: { id: seasonId },
+  });
+
+  if (!season) return { error: "Season not found" };
+  if (season.draftStatus !== "PAUSED") {
+    return { error: "Draft is not paused" };
+  }
+
+  const deadline = new Date();
+  deadline.setSeconds(deadline.getSeconds() + seconds);
+
+  await prisma.season.update({
+    where: { id: seasonId },
+    data: {
+      draftStatus: "IN_PROGRESS",
+      pickDeadline: deadline,
+    },
+  });
+
+  revalidatePath("/dashboard/draft");
+  revalidatePath("/admin/draft");
+
+  return { success: true };
+}
+
+// ============================================================================
+// SHORTLIST ACTIONS (Coach's personal draft shortlist)
+// ============================================================================
+
+export async function getMyShortlist(seasonId: string) {
+  const club = await getMyClub();
+  if (!club) return [];
+
+  const shortlist = await prisma.draftShortlist.findMany({
+    where: {
+      clubId: club.id,
+      seasonId,
+    },
+    orderBy: [
+      { rank: "asc" },
+      { createdAt: "asc" },
+    ],
+    include: {
+      aflPlayer: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          positions: true,
+          avgPoints: true,
+          gamesPlayed: true,
+          aflTeam: { select: { abbreviation: true, name: true } },
+        },
+      },
+    },
+  });
+
+  return shortlist.map((s) => ({
+    id: s.id,
+    rank: s.rank,
+    notes: s.notes,
+    player: {
+      id: s.aflPlayer.id,
+      firstName: s.aflPlayer.firstName,
+      lastName: s.aflPlayer.lastName,
+      name: `${s.aflPlayer.firstName} ${s.aflPlayer.lastName}`,
+      positions: s.aflPlayer.positions,
+      avgPoints: s.aflPlayer.avgPoints ? Number(s.aflPlayer.avgPoints) : null,
+      gamesPlayed: s.aflPlayer.gamesPlayed,
+      aflTeam: s.aflPlayer.aflTeam?.abbreviation ?? null,
+      aflTeamName: s.aflPlayer.aflTeam?.name ?? null,
+    },
+  }));
+}
+
+export async function addToShortlist(seasonId: string, playerId: string, notes?: string) {
+  const club = await getMyClub();
+  if (!club) return { error: "You are not assigned to a club" };
+
+  // Check if already in shortlist
+  const existing = await prisma.draftShortlist.findUnique({
+    where: {
+      clubId_aflPlayerId_seasonId: {
+        clubId: club.id,
+        aflPlayerId: playerId,
+        seasonId,
+      },
+    },
+  });
+
+  if (existing) return { error: "Player is already in your shortlist" };
+
+  // Get the next rank (highest rank + 1)
+  const maxRank = await prisma.draftShortlist.aggregate({
+    where: { clubId: club.id, seasonId },
+    _max: { rank: true },
+  });
+
+  const nextRank = (maxRank._max.rank ?? 0) + 1;
+
+  await prisma.draftShortlist.create({
+    data: {
+      clubId: club.id,
+      aflPlayerId: playerId,
+      seasonId,
+      rank: nextRank,
+      notes: notes ?? null,
+    },
+  });
+
+  revalidatePath("/dashboard/draft");
+  return { success: true };
+}
+
+export async function removeFromShortlist(shortlistId: string) {
+  const club = await getMyClub();
+  if (!club) return { error: "You are not assigned to a club" };
+
+  const item = await prisma.draftShortlist.findUnique({
+    where: { id: shortlistId },
+  });
+
+  if (!item) return { error: "Shortlist item not found" };
+  if (item.clubId !== club.id) return { error: "This item does not belong to your club" };
+
+  await prisma.draftShortlist.delete({
+    where: { id: shortlistId },
+  });
+
+  revalidatePath("/dashboard/draft");
+  return { success: true };
+}
+
+export async function updateShortlistRank(shortlistId: string, newRank: number) {
+  const club = await getMyClub();
+  if (!club) return { error: "You are not assigned to a club" };
+
+  const item = await prisma.draftShortlist.findUnique({
+    where: { id: shortlistId },
+  });
+
+  if (!item) return { error: "Shortlist item not found" };
+  if (item.clubId !== club.id) return { error: "This item does not belong to your club" };
+
+  await prisma.draftShortlist.update({
+    where: { id: shortlistId },
+    data: { rank: newRank },
+  });
+
+  revalidatePath("/dashboard/draft");
+  return { success: true };
+}
+
+export async function updateShortlistNotes(shortlistId: string, notes: string) {
+  const club = await getMyClub();
+  if (!club) return { error: "You are not assigned to a club" };
+
+  const item = await prisma.draftShortlist.findUnique({
+    where: { id: shortlistId },
+  });
+
+  if (!item) return { error: "Shortlist item not found" };
+  if (item.clubId !== club.id) return { error: "This item does not belong to your club" };
+
+  await prisma.draftShortlist.update({
+    where: { id: shortlistId },
+    data: { notes },
+  });
+
+  revalidatePath("/dashboard/draft");
+  return { success: true };
+}
+
+export async function reorderShortlist(seasonId: string, orderedIds: string[]) {
+  const club = await getMyClub();
+  if (!club) return { error: "You are not assigned to a club" };
+
+  // Update ranks based on new order
+  for (let i = 0; i < orderedIds.length; i++) {
+    await prisma.draftShortlist.update({
+      where: { id: orderedIds[i] },
+      data: { rank: i + 1 },
+    });
+  }
+
+  revalidatePath("/dashboard/draft");
+  return { success: true };
+}

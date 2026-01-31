@@ -38,6 +38,7 @@ interface DraftBoardProps {
   draftOrder: string[];
   numRounds?: number;
   draftOrderType?: "STRAIGHT" | "SNAKE";
+  onPickClick?: (pick: Pick) => void;
 }
 
 const POSITION_COLORS: Record<Position, string> = {
@@ -54,6 +55,7 @@ export function DraftBoard({
   draftOrder,
   numRounds = 21,
   draftOrderType = "SNAKE",
+  onPickClick,
 }: DraftBoardProps) {
   // Build a grid of picks organized by round and column position
   const grid = useMemo(() => {
@@ -142,14 +144,17 @@ export function DraftBoard({
                 </td>
                 {roundPicks.map((pick, colIndex) => {
                   const isCurrentPick = pick?.pickNumber === currentPickNumber;
+                  const isClickable = pick && onPickClick;
 
                   return (
                     <td
                       key={colIndex}
                       className={cn(
                         "px-1 py-1 text-center align-top border-r border-zinc-800 transition-all",
-                        isCurrentPick && "bg-yellow-500/20 ring-2 ring-yellow-500 ring-inset"
+                        isCurrentPick && "bg-yellow-500/20 ring-2 ring-yellow-500 ring-inset",
+                        isClickable && "cursor-pointer hover:bg-zinc-700/50"
                       )}
+                      onClick={() => pick && onPickClick?.(pick)}
                     >
                       <div className="min-h-[52px] flex flex-col">
                         {pick ? (

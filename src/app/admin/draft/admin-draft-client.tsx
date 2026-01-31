@@ -22,6 +22,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DraftBoard, DraftTimer, DraftQueue, PlayerSelector } from "@/components/draft";
 import {
   getDraftState,
@@ -32,6 +39,8 @@ import {
   startDraft,
   pauseDraft,
   resumeDraft,
+  resumeDraftWithTime,
+  setPickTime,
   adminMakePick,
   reassignPick,
   undoLastPick,
@@ -144,6 +153,9 @@ export function AdminDraftClient({
   const [reassignPickId, setReassignPickId] = useState<string>("");
   const [reassignClubId, setReassignClubId] = useState<string>("");
   const [selectedPickForAdmin, setSelectedPickForAdmin] = useState<string>("");
+  const [editingPick, setEditingPick] = useState<Pick | null>(null);
+  const [editClubId, setEditClubId] = useState<string>("");
+  const [customTimeSeconds, setCustomTimeSeconds] = useState<string>("");
 
   const selectedSeason = seasons.find((s) => s.id === selectedSeasonId);
 
@@ -399,6 +411,43 @@ export function AdminDraftClient({
                   </Button>
                 </div>
 
+                {/* Resume with custom time */}
+                {draftState?.draftStatus === "PAUSED" && (
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-medium mb-2">Resume with Custom Time</h4>
+                    <div className="flex gap-2 items-end">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Seconds</Label>
+                        <Input
+                          type="number"
+                          min={10}
+                          max={3600}
+                          value={customTimeSeconds}
+                          onChange={(e) => setCustomTimeSeconds(e.target.value)}
+                          placeholder={draftState?.pickTimerSeconds.toString()}
+                          className="w-24"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const seconds = parseInt(customTimeSeconds) || draftState?.pickTimerSeconds || 120;
+                          handleAction(
+                            () => resumeDraftWithTime(selectedSeasonId, seconds),
+                            `Draft resumed with ${seconds}s on the clock`
+                          );
+                          setCustomTimeSeconds("");
+                        }}
+                        disabled={isPending}
+                      >
+                        Resume with Time
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave blank to use default ({draftState?.pickTimerSeconds}s)
+                    </p>
+                  </div>
+                )}
+
                 {/* Danger Zone */}
                 <div className="pt-4 border-t">
                   <h4 className="text-sm font-medium text-destructive mb-2">Danger Zone</h4>
@@ -641,7 +690,11 @@ export function AdminDraftClient({
                         {draftState.picks.map((pick) => (
                           <TableRow
                             key={pick.id}
-                            className={pick.pickNumber === draftState.currentPickNumber ? "bg-primary/10" : ""}
+                            className={`cursor-pointer hover:bg-muted/50 ${pick.pickNumber === draftState.currentPickNumber ? "bg-primary/10" : ""}`}
+                            onClick={() => {
+                              setEditingPick(pick);
+                              setEditClubId(pick.clubId);
+                            }}
                           >
                             <TableCell className="font-mono">#{pick.pickNumber}</TableCell>
                             <TableCell>R{pick.round}</TableCell>
@@ -745,6 +798,152 @@ export function AdminDraftClient({
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Pick Edit Dialog */}
+      <Dialog open={!!editingPick} onOpenChange={(open) => !open && setEditingPick(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Pick #{editingPick?.pickNumber} (Round {editingPick?.round})
+            </DialogTitle>
+            <DialogDescription>
+              Currently owned by {editingPick?.club.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Current status */}
+            <div className="rounded-lg bg-muted p-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  {editingPick?.used ? "Used" : editingPick?.passed ? "Passed" : "Pending"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Original Owner:</span>{" "}
+                  {editingPick?.originalClub.abbreviation}
+                </div>
+                {editingPick?.player && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Selection:</span>{" "}
+                    {editingPick.player.name}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Reassign pick */}
+            {!editingPick?.used && (
+              <div className="space-y-2">
+                <Label>Reassign to Club</Label>
+                <div className="flex gap-2">
+                  <Select value={editClubId} onValueChange={setEditClubId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select club" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clubs.map((club) => (
+                        <SelectItem key={club.id} value={club.id}>
+                          {club.name} ({club.abbreviation})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={() => {
+                      if (editingPick && editClubId) {
+                        handleAction(
+                          () => reassignPick(editingPick.id, editClubId),
+                          "Pick reassigned"
+                        );
+                        setEditingPick(null);
+                        setEditClubId("");
+                      }
+                    }}
+                    disabled={isPending || !editClubId}
+                  >
+                    Reassign
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Set custom time for this pick */}
+            {editingPick?.pickNumber === draftState?.currentPickNumber && !editingPick?.used && (
+              <div className="space-y-2">
+                <Label>Set Time for This Pick</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min={10}
+                    max={3600}
+                    value={customTimeSeconds}
+                    onChange={(e) => setCustomTimeSeconds(e.target.value)}
+                    placeholder="Seconds"
+                    className="w-24"
+                  />
+                  <Button
+                    onClick={() => {
+                      const seconds = parseInt(customTimeSeconds) || 120;
+                      handleAction(
+                        () => setPickTime(selectedSeasonId, seconds),
+                        `Time set to ${seconds} seconds`
+                      );
+                      setEditingPick(null);
+                      setCustomTimeSeconds("");
+                    }}
+                    disabled={isPending || !customTimeSeconds}
+                  >
+                    Set Time
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Sets a custom countdown for the current pick (10-3600 seconds)
+                </p>
+              </div>
+            )}
+
+            {/* Skip to this pick */}
+            <div className="space-y-2">
+              <Label>Quick Actions</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (editingPick) {
+                      handleAction(
+                        () => skipToPick(selectedSeasonId, editingPick.pickNumber),
+                        `Draft moved to pick ${editingPick.pickNumber}`
+                      );
+                      setEditingPick(null);
+                    }
+                  }}
+                  disabled={isPending || editingPick?.used || editingPick?.passed}
+                >
+                  Skip to This Pick
+                </Button>
+                {editingPick?.used && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to undo this pick? The player will become available again.")) {
+                        handleAction(
+                          () => undoLastPick(selectedSeasonId),
+                          "Pick undone"
+                        );
+                        setEditingPick(null);
+                      }
+                    }}
+                    disabled={isPending}
+                  >
+                    Undo This Pick
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
