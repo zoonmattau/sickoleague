@@ -369,9 +369,13 @@ export function DraftBoardClient({
         </div>
 
         {/* Queue */}
-        {state.queue.length > 0 && state.draftStatus === "IN_PROGRESS" && (
+        {state.queue.length > 0 && (
           <div className="mt-4 pt-4 border-t border-zinc-800">
-            <DraftQueue queue={state.queue} currentPickNumber={state.currentPickNumber} />
+            <DraftQueue
+              queue={state.queue}
+              currentPickNumber={state.currentPickNumber}
+              myClubId={myClubId}
+            />
           </div>
         )}
       </div>
@@ -688,7 +692,6 @@ export function DraftBoardClient({
                   shortlist={shortlist}
                   onDraft={handleMakePick}
                   onRemove={handleRemoveFromShortlist}
-                  onRefresh={refreshData}
                   disabled={!isMyTurn || isPending}
                   isLoading={isPending}
                 />

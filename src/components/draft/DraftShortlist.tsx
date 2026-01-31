@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Position } from "@prisma/client";
@@ -29,7 +28,6 @@ interface DraftShortlistProps {
   onRemove: (shortlistId: string) => void;
   disabled?: boolean;
   isLoading?: boolean;
-  onRefresh?: () => void;
 }
 
 const POSITION_COLORS: Record<Position, string> = {
@@ -45,16 +43,12 @@ export function DraftShortlist({
   onRemove,
   disabled,
   isLoading,
-  onRefresh,
 }: DraftShortlistProps) {
-  const [isPending, startTransition] = useTransition();
-
-  const handleRemove = async (shortlistId: string) => {
-    startTransition(async () => {
-      await removeFromShortlist(shortlistId);
-      onRemove(shortlistId);
-      if (onRefresh) onRefresh();
-    });
+  const handleRemove = (shortlistId: string) => {
+    // Optimistic update - remove from UI immediately
+    onRemove(shortlistId);
+    // Server call in background (fire and forget)
+    removeFromShortlist(shortlistId);
   };
 
   if (shortlist.length === 0) {
@@ -114,7 +108,7 @@ export function DraftShortlist({
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               size="sm"
-              disabled={disabled || isLoading || isPending}
+              disabled={disabled || isLoading}
               onClick={() => onDraft(item.player.id)}
               className="h-5 px-1.5 text-[9px] font-bold bg-green-600 hover:bg-green-500 text-white"
             >
@@ -123,7 +117,6 @@ export function DraftShortlist({
             <Button
               size="sm"
               variant="ghost"
-              disabled={isPending}
               onClick={() => handleRemove(item.id)}
               className="h-5 w-5 p-0 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
             >

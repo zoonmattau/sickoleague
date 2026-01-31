@@ -155,9 +155,9 @@ export async function getDraftState(seasonId: string) {
     (p) => p.pickNumber === season.currentPickNumber
   );
 
-  // Queue - next 8 picks
+  // Queue - next 12 picks (full round)
   const queuePicks = season.draftPicks
-    .filter((p) => p.pickNumber >= season.currentPickNumber && p.pickNumber < season.currentPickNumber + 8)
+    .filter((p) => p.pickNumber >= season.currentPickNumber && p.pickNumber < season.currentPickNumber + 12)
     .map((p) => ({
       pickNumber: p.pickNumber,
       clubId: p.currentClubId,
