@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
@@ -75,7 +74,6 @@ export default async function DraftPage() {
       <Tabs defaultValue="board" className="space-y-4">
         <TabsList>
           <TabsTrigger value="board">Draft Board</TabsTrigger>
-          <TabsTrigger value="picks">My Picks</TabsTrigger>
           <TabsTrigger value="history">Draft History</TabsTrigger>
           <TabsTrigger value="rule9">Rule 9</TabsTrigger>
         </TabsList>
@@ -86,7 +84,9 @@ export default async function DraftPage() {
               initialState={draftState}
               eligiblePlayers={eligiblePlayers}
               myClubId={myClub?.id ?? null}
+              myClubAbbreviation={myClub?.abbreviation ?? null}
               seasonId={season.id}
+              myPicks={myPicks}
             />
           ) : (
             <Card>
@@ -98,75 +98,6 @@ export default async function DraftPage() {
               </CardHeader>
             </Card>
           )}
-        </TabsContent>
-
-        <TabsContent value="picks" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Draft Picks</CardTitle>
-              <CardDescription>
-                {myClub ? `Picks owned by ${myClub.name}` : "Sign in with a club to view your picks"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!myClub ? (
-                <p className="text-muted-foreground text-center py-8">
-                  You must be assigned to a club to view your picks.
-                </p>
-              ) : myPicks.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No draft picks assigned yet.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Round</TableHead>
-                      <TableHead>Pick #</TableHead>
-                      <TableHead>Original Owner</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Selection</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {myPicks.map((pick) => (
-                      <TableRow key={pick.id}>
-                        <TableCell>{pick.round}</TableCell>
-                        <TableCell>#{pick.pickNumber}</TableCell>
-                        <TableCell>
-                          {pick.originalClub.abbreviation}
-                          {pick.originalClub.abbreviation !== myClub.abbreviation && (
-                            <span className="text-muted-foreground text-xs ml-1">(traded)</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {pick.used ? (
-                            <Badge>Used</Badge>
-                          ) : pick.passed ? (
-                            <Badge variant="secondary">Passed</Badge>
-                          ) : (
-                            <Badge variant="outline">Available</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {pick.player ? (
-                            <span>
-                              {pick.player.name}
-                              <span className="text-muted-foreground text-xs ml-1">
-                                ({pick.player.positions.join("/")})
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">

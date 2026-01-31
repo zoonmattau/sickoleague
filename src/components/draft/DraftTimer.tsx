@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface DraftTimerProps {
@@ -34,8 +33,8 @@ export function DraftTimer({ deadline, totalSeconds, isPaused }: DraftTimerProps
 
   if (timeRemaining === null) {
     return (
-      <div className="flex items-center gap-3 px-4 py-2 bg-muted rounded-lg">
-        <div className="text-2xl font-mono font-bold text-muted-foreground">
+      <div className="flex items-center gap-2">
+        <div className="text-2xl font-mono font-bold text-zinc-500 tabular-nums">
           {isPaused ? "PAUSED" : "--:--"}
         </div>
       </div>
@@ -49,24 +48,29 @@ export function DraftTimer({ deadline, totalSeconds, isPaused }: DraftTimerProps
   const isCritical = timeRemaining <= 10;
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3">
+      {/* Timer display */}
       <div
         className={cn(
           "text-3xl font-mono font-bold tabular-nums transition-colors",
           isCritical && "text-red-500 animate-pulse",
-          isLow && !isCritical && "text-orange-500"
+          isLow && !isCritical && "text-orange-400",
+          !isLow && "text-white"
         )}
       >
         {minutes}:{seconds.toString().padStart(2, "0")}
       </div>
-      <div className="flex-1 max-w-[200px]">
-        <Progress
-          value={percentage}
+
+      {/* Progress bar */}
+      <div className="w-24 h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div
           className={cn(
-            "h-3",
-            isCritical && "[&>div]:bg-red-500",
-            isLow && !isCritical && "[&>div]:bg-orange-500"
+            "h-full transition-all duration-1000",
+            isCritical && "bg-red-500",
+            isLow && !isCritical && "bg-orange-400",
+            !isLow && "bg-green-500"
           )}
+          style={{ width: `${percentage}%` }}
         />
       </div>
     </div>

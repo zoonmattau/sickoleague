@@ -26,7 +26,8 @@ export function DraftQueue({ queue, currentPickNumber }: DraftQueueProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto py-2">
+    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      <span className="text-xs text-zinc-500 shrink-0">Up next:</span>
       {queue.map((pick, index) => {
         const isOnClock = pick.pickNumber === currentPickNumber;
 
@@ -34,24 +35,23 @@ export function DraftQueue({ queue, currentPickNumber }: DraftQueueProps) {
           <div
             key={pick.pickNumber}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all shrink-0",
+              "flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold shrink-0 transition-all",
               isOnClock
-                ? "ring-2 ring-primary shadow-lg scale-105"
-                : "opacity-80"
+                ? "ring-2 ring-yellow-500 shadow-lg scale-105"
+                : "opacity-70"
             )}
             style={{
-              backgroundColor: pick.club.primaryColor || undefined,
-              color: pick.club.secondaryColor || undefined,
-              borderColor: pick.club.secondaryColor || undefined,
+              backgroundColor: pick.club.primaryColor || '#3f3f46',
+              color: pick.club.secondaryColor || '#ffffff',
             }}
           >
             {isOnClock && (
-              <span className="text-xs font-bold uppercase tracking-wider animate-pulse">
-                ON CLOCK
+              <span className="text-[10px] font-bold uppercase tracking-wider animate-pulse text-yellow-300">
+                NOW
               </span>
             )}
-            <span className="font-bold">{pick.club.abbreviation}</span>
-            <span className="text-xs opacity-75">R{pick.round}</span>
+            <span>{pick.club.abbreviation}</span>
+            <span className="text-[10px] opacity-75">#{pick.pickNumber}</span>
           </div>
         );
       })}
