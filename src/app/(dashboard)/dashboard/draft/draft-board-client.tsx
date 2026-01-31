@@ -4,7 +4,6 @@ import { useState, useEffect, useTransition, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DraftBoard, DraftTimer, DraftQueue, PlayerSelector, DraftShortlist } from "@/components/draft";
 import {
   getDraftState,
@@ -566,102 +565,107 @@ export function DraftBoardClient({
         </div>
 
         {/* My Picks & Shortlist Sidebar - 2 columns */}
-        <div className="xl:col-span-2">
-          <Card className="bg-zinc-900 border-zinc-800 h-[660px] flex flex-col">
-            <Tabs defaultValue="picks" className="flex-1 flex flex-col">
-              <CardHeader className="pb-0 border-b border-zinc-800 shrink-0">
-                <TabsList className="w-full grid grid-cols-2 h-8 bg-zinc-800">
-                  <TabsTrigger value="picks" className="text-xs data-[state=active]:bg-zinc-700">
-                    Picks {myClubAbbreviation && `(${myClubAbbreviation})`}
-                  </TabsTrigger>
-                  <TabsTrigger value="shortlist" className="text-xs data-[state=active]:bg-zinc-700">
-                    Shortlist ({shortlist.length})
-                  </TabsTrigger>
-                </TabsList>
-              </CardHeader>
+        <div className="xl:col-span-2 space-y-4">
+          {/* My Picks */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader className="pb-2 border-b border-zinc-800">
+              <CardTitle className="text-white text-sm">
+                My Picks
+                {myClubAbbreviation && (
+                  <span className="text-zinc-500 font-normal ml-2">({myClubAbbreviation})</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 max-h-[280px] overflow-y-auto">
+              {!myClubId ? (
+                <div className="p-4 text-center text-zinc-500 text-sm">
+                  No club assigned
+                </div>
+              ) : myPicks.length === 0 ? (
+                <div className="p-4 text-center text-zinc-500 text-sm">
+                  No picks yet
+                </div>
+              ) : (
+                <div className="divide-y divide-zinc-800">
+                  {myPicks.map((pick) => {
+                    const isCurrent = pick.pickNumber === state.currentPickNumber;
+                    const isPast = pick.used || pick.passed;
 
-              <TabsContent value="picks" className="flex-1 overflow-y-auto m-0 p-0">
-                {!myClubId ? (
-                  <div className="p-4 text-center text-zinc-500 text-sm">
-                    No club assigned
-                  </div>
-                ) : myPicks.length === 0 ? (
-                  <div className="p-4 text-center text-zinc-500 text-sm">
-                    No picks yet
-                  </div>
-                ) : (
-                  <div className="divide-y divide-zinc-800">
-                    {myPicks.map((pick) => {
-                      const isCurrent = pick.pickNumber === state.currentPickNumber;
-                      const isPast = pick.used || pick.passed;
-
-                      return (
-                        <div
-                          key={pick.id}
-                          className={cn(
-                            "px-3 py-2",
-                            isCurrent && "bg-yellow-500/10",
-                            isPast && "opacity-50"
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={cn(
-                              "text-xs font-bold",
-                              isCurrent ? "text-yellow-400" : "text-zinc-500"
-                            )}>
-                              #{pick.pickNumber}
-                            </span>
-                            <span className="text-[10px] text-zinc-600">
-                              R{pick.round}
-                            </span>
-                          </div>
-
-                          {pick.used && pick.player ? (
-                            <div>
-                              <div className="text-xs text-white truncate">
-                                {pick.player.name}
-                              </div>
-                              <div className="text-[10px] text-zinc-500">
-                                {pick.player.positions.join("/")}
-                              </div>
-                            </div>
-                          ) : pick.passed ? (
-                            <div className="text-[10px] text-zinc-600 italic">Passed</div>
-                          ) : isCurrent ? (
-                            <div className="text-xs text-yellow-400 font-bold animate-pulse">
-                              YOUR PICK!
-                            </div>
-                          ) : (
-                            <div className="text-[10px] text-zinc-600">
-                              {pick.originalClub.abbreviation !== myClubAbbreviation && (
-                                <span>via {pick.originalClub.abbreviation}</span>
-                              )}
-                            </div>
-                          )}
+                    return (
+                      <div
+                        key={pick.id}
+                        className={cn(
+                          "px-3 py-2",
+                          isCurrent && "bg-yellow-500/10",
+                          isPast && "opacity-50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn(
+                            "text-xs font-bold",
+                            isCurrent ? "text-yellow-400" : "text-zinc-500"
+                          )}>
+                            #{pick.pickNumber}
+                          </span>
+                          <span className="text-[10px] text-zinc-600">
+                            R{pick.round}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </TabsContent>
 
-              <TabsContent value="shortlist" className="flex-1 overflow-y-auto m-0 p-0">
-                {!myClubId ? (
-                  <div className="p-4 text-center text-zinc-500 text-sm">
-                    No club assigned
-                  </div>
-                ) : (
-                  <DraftShortlist
-                    shortlist={shortlist}
-                    onDraft={handleMakePick}
-                    onRemove={handleRemoveFromShortlist}
-                    onRefresh={refreshData}
-                    disabled={!isMyTurn || isPending}
-                    isLoading={isPending}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
+                        {pick.used && pick.player ? (
+                          <div>
+                            <div className="text-xs text-white truncate">
+                              {pick.player.name}
+                            </div>
+                            <div className="text-[10px] text-zinc-500">
+                              {pick.player.positions.join("/")}
+                            </div>
+                          </div>
+                        ) : pick.passed ? (
+                          <div className="text-[10px] text-zinc-600 italic">Passed</div>
+                        ) : isCurrent ? (
+                          <div className="text-xs text-yellow-400 font-bold animate-pulse">
+                            YOUR PICK!
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-zinc-600">
+                            {pick.originalClub.abbreviation !== myClubAbbreviation && (
+                              <span>via {pick.originalClub.abbreviation}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Shortlist */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader className="pb-2 border-b border-zinc-800">
+              <CardTitle className="text-white text-sm flex items-center justify-between">
+                <span>Shortlist</span>
+                <Badge variant="secondary" className="text-[10px]">{shortlist.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 max-h-[320px] overflow-y-auto">
+              {!myClubId ? (
+                <div className="p-4 text-center text-zinc-500 text-sm">
+                  No club assigned
+                </div>
+              ) : (
+                <DraftShortlist
+                  shortlist={shortlist}
+                  onDraft={handleMakePick}
+                  onRemove={handleRemoveFromShortlist}
+                  onRefresh={refreshData}
+                  disabled={!isMyTurn || isPending}
+                  isLoading={isPending}
+                />
+              )}
+            </CardContent>
           </Card>
         </div>
 
