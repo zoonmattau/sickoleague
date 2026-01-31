@@ -148,6 +148,16 @@ export function PlayerSelector({
         </select>
       </div>
 
+      {/* Column Headers */}
+      <div className="flex items-center gap-2 px-2 py-1 bg-zinc-800 border-b border-zinc-700 text-[9px] font-bold text-zinc-500 uppercase">
+        <div className="w-10 text-right">Avg</div>
+        <div className="w-8 text-right">GP</div>
+        <div className="flex-1">Player</div>
+        <div className="w-16 text-center">Pos</div>
+        {onShortlist && <div className="w-6"></div>}
+        <div className="w-14"></div>
+      </div>
+
       {/* Player list */}
       <div className="flex-1 overflow-y-auto">
         {filteredPlayers.length === 0 ? (
@@ -161,9 +171,14 @@ export function PlayerSelector({
                 key={player.id}
                 className="flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-800 transition-colors"
               >
-                {/* Avg points */}
+                {/* Avg points - 1 decimal */}
                 <div className="w-10 text-right font-mono text-xs font-bold text-zinc-300">
-                  {player.avgPoints?.toFixed(0) || "-"}
+                  {player.avgPoints?.toFixed(1) || "-"}
+                </div>
+
+                {/* Games played */}
+                <div className="w-8 text-right font-mono text-[10px] text-zinc-500">
+                  {player.gamesPlayed ?? "-"}
                 </div>
 
                 {/* Player info */}
@@ -171,16 +186,13 @@ export function PlayerSelector({
                   <div className="text-xs font-medium text-white truncate">
                     {player.firstName.charAt(0)}. {player.lastName}
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] text-zinc-500">
-                    <span>{player.aflTeam || "N/A"}</span>
-                    {player.gamesPlayed !== null && player.gamesPlayed > 0 && (
-                      <span>· {player.gamesPlayed}g</span>
-                    )}
+                  <div className="text-[10px] text-zinc-500 truncate">
+                    {player.aflTeam || "N/A"}
                   </div>
                 </div>
 
                 {/* Positions */}
-                <div className="flex gap-0.5">
+                <div className="w-16 flex justify-center gap-0.5">
                   {player.positions.map((pos) => (
                     <span
                       key={pos}
@@ -200,7 +212,7 @@ export function PlayerSelector({
                     disabled={isLoading}
                     onClick={() => onShortlist(player.id)}
                     className={cn(
-                      "h-6 w-6 flex items-center justify-center text-sm transition-colors",
+                      "w-6 h-6 flex items-center justify-center text-sm transition-colors",
                       shortlistedPlayerIds.has(player.id)
                         ? "text-yellow-400"
                         : "text-zinc-600 hover:text-yellow-400"
@@ -216,7 +228,7 @@ export function PlayerSelector({
                   size="sm"
                   disabled={disabled || isLoading}
                   onClick={() => onSelect(player.id)}
-                  className="h-6 px-2 text-[10px] font-bold bg-green-600 hover:bg-green-500 text-white"
+                  className="w-14 h-6 px-2 text-[10px] font-bold bg-green-600 hover:bg-green-500 text-white"
                 >
                   DRAFT
                 </Button>

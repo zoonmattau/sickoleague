@@ -250,11 +250,39 @@ export function DraftBoardClient({
   const handleAddToShortlist = async (playerId: string) => {
     if (!myClubId) return;
 
-    startTransition(async () => {
-      const result = await addToShortlist(seasonId, playerId);
-      if (!result.error) {
-        await refreshData();
+    // Find the player in the players list for optimistic update
+    const player = players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    // Check if already in shortlist
+    if (shortlistedPlayerIds.has(playerId)) return;
+
+    // Optimistic update - add immediately to UI
+    const optimisticItem: ShortlistItem = {
+      id: `temp-${playerId}`, // Temporary ID
+      rank: shortlist.length + 1,
+      notes: null,
+      player: {
+        id: player.id,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        name: player.name,
+        positions: player.positions,
+        avgPoints: player.avgPoints,
+        gamesPlayed: player.gamesPlayed,
+        aflTeam: player.aflTeam,
+        aflTeamName: player.aflTeamName,
+      },
+    };
+    setShortlist((prev) => [...prev, optimisticItem]);
+
+    // Make server call in background (no await, no transition blocking)
+    addToShortlist(seasonId, playerId).then((result) => {
+      if (result.error) {
+        // Revert on error
+        setShortlist((prev) => prev.filter((s) => s.id !== `temp-${playerId}`));
       }
+      // Don't need to refresh - optimistic update is already showing
     });
   };
 
