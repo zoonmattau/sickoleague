@@ -751,6 +751,7 @@ model DraftEligibility {
 model ContractOffer {
   id             String            @id @default(uuid())
   offerType      ContractOfferType @map("offer_type")
+  squad          Squad             @default(SENIORS)
   totalValue     Decimal           @map("total_value") @db.Decimal(10, 2)
   years          Int
   yearBreakdown  Json              @map("year_breakdown")

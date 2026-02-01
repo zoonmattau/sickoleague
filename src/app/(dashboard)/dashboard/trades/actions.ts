@@ -165,30 +165,26 @@ export type MyBid = {
  */
 export async function getGamesRemaining(): Promise<number> {
   const season = await prisma.season.findFirst({
-    where: { status: "ACTIVE" },
+    where: { status: { in: ["ACTIVE", "UPCOMING"] } },
+    orderBy: { year: "desc" },
     include: {
       rounds: {
         where: {
-          roundType: { not: "BYE" },
+          roundType: { notIn: ["BYE", "FINALS_WK1", "FINALS_WK2", "FINALS_WK3"] },
+        },
+        include: {
+          matches: { select: { status: true } },
         },
       },
     },
   });
 
-  if (!season) return 0;
+  if (!season) return 22; // Default to full season
 
-  // Count rounds that haven't been completed yet
-  const completedRounds = await prisma.round.count({
-    where: {
-      seasonId: season.id,
-      roundType: { not: "BYE" },
-      matches: {
-        every: {
-          status: "COMPLETED",
-        },
-      },
-    },
-  });
+  // Count rounds where all matches are completed
+  const completedRounds = season.rounds.filter(
+    (r) => r.matches.length > 0 && r.matches.every((m) => m.status === "COMPLETED")
+  ).length;
 
   const totalRounds = season.rounds.length;
   return Math.max(0, totalRounds - completedRounds);
@@ -326,7 +322,8 @@ export async function getFreeAgentStaff(): Promise<FreeAgentStaff[]> {
 export async function placeBid(
   playerId: string,
   years: number,
-  yearBreakdown: { season: number; value: number }[]
+  yearBreakdown: { season: number; value: number }[],
+  squad: "SENIORS" | "RESERVES" = "SENIORS"
 ) {
   const club = await getMyClub();
   if (!club) return { error: "No club found" };
@@ -371,6 +368,7 @@ export async function placeBid(
       aflPlayerId: playerId,
       offeringClubId: club.id,
       offerType: "FREE_AGENT",
+      squad,
       totalValue: discountedTotal,
       years,
       yearBreakdown: discountedBreakdown,

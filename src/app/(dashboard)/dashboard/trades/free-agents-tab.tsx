@@ -241,7 +241,7 @@ export function FreeAgentsTab({ players, gamesRemaining }: FreeAgentsTabProps) {
                     {player.averagePoints?.toFixed(1) ?? "-"}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    ${player.expectedPrice}
+                    ${player.expectedPrice}k
                   </TableCell>
                   <TableCell className="text-center">
                     {player.activeBids > 0 ? (
@@ -251,7 +251,7 @@ export function FreeAgentsTab({ players, gamesRemaining }: FreeAgentsTabProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-center">
-                    {player.topBid ? `$${player.topBid}` : "-"}
+                    {player.topBid ? `$${player.topBid}k` : "-"}
                   </TableCell>
                   <TableCell className="text-center">
                     <span

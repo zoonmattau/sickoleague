@@ -47,6 +47,7 @@ export function PlayerBidDialog({
   gamesRemaining,
 }: PlayerBidDialogProps) {
   const [isPending, startTransition] = useTransition();
+  const [contractType, setContractType] = useState<"SENIORS" | "RESERVES">("SENIORS");
   const [years, setYears] = useState<number>(2);
   const [yearValues, setYearValues] = useState<Record<number, number>>({
     [currentYear]: player.expectedPrice,
@@ -56,8 +57,8 @@ export function PlayerBidDialog({
   });
 
   // Calculate minimum contract: $2,000 signing fee + $1,000 per game remaining
-  // Values are in thousands (e.g., 24 = $24,000)
-  const minimumContract = 2 + gamesRemaining; // 2k signing + 1k per game
+  // Reserves contracts can be $0
+  const minimumContract = contractType === "RESERVES" ? 0 : 2 + gamesRemaining;
 
   const totalValue = Array.from({ length: years }, (_, i) => currentYear + i)
     .map((year) => yearValues[year] || player.expectedPrice)
@@ -84,7 +85,7 @@ export function PlayerBidDialog({
     }));
 
     startTransition(async () => {
-      const result = await placeBid(player.id, years, yearBreakdown);
+      const result = await placeBid(player.id, years, yearBreakdown, contractType);
 
       if (result.error) {
         toast.error(result.error);
@@ -152,16 +153,36 @@ export function PlayerBidDialog({
             </div>
           </div>
 
+          {/* Contract type selector */}
+          <div className="space-y-2">
+            <Label>Contract Type</Label>
+            <Select
+              value={contractType}
+              onValueChange={(v) => setContractType(v as "SENIORS" | "RESERVES")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SENIORS">Seniors</SelectItem>
+                <SelectItem value="RESERVES">Reserves</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Minimum contract info */}
           <div className="flex items-center justify-between p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <div>
               <p className="font-medium text-sm">Minimum Contract</p>
-              <p className="text-xs text-muted-foreground">
-                $2k signing + $1k × {gamesRemaining} games
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                $0 contracts allowed for reserves only
-              </p>
+              {contractType === "RESERVES" ? (
+                <p className="text-xs text-muted-foreground">
+                  Reserves contracts can be $0
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  $2k signing + $1k × {gamesRemaining} games
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg font-bold">${minimumContract}k</span>
