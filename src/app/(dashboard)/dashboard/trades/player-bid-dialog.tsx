@@ -56,6 +56,12 @@ export function PlayerBidDialog({
     [currentYear + 3]: player.expectedPrice,
   });
 
+  // Store seniors values when switching to reserves
+  const [savedSeniorsState, setSavedSeniorsState] = useState<{
+    years: number;
+    yearValues: Record<number, number>;
+  } | null>(null);
+
   // Calculate minimum contract: $2,000 signing fee + $1,000 per game remaining
   // Reserves contracts can be $0
   const minimumContract = contractType === "RESERVES" ? 0 : 2 + gamesRemaining;
@@ -63,6 +69,29 @@ export function PlayerBidDialog({
   const totalValue = Array.from({ length: years }, (_, i) => currentYear + i)
     .map((year) => yearValues[year] || player.expectedPrice)
     .reduce((sum, v) => sum + v, 0);
+
+  const handleContractTypeChange = (type: "SENIORS" | "RESERVES") => {
+    if (type === contractType) return;
+
+    if (type === "RESERVES") {
+      // Save current seniors state and switch to 1yr $0
+      setSavedSeniorsState({ years, yearValues });
+      setYears(1);
+      setYearValues({
+        [currentYear]: 0,
+        [currentYear + 1]: 0,
+        [currentYear + 2]: 0,
+        [currentYear + 3]: 0,
+      });
+    } else {
+      // Restore seniors state
+      if (savedSeniorsState) {
+        setYears(savedSeniorsState.years);
+        setYearValues(savedSeniorsState.yearValues);
+      }
+    }
+    setContractType(type);
+  };
 
   const applyMinimumContract = () => {
     // Set 1-year contract with minimum value in first year
@@ -153,21 +182,33 @@ export function PlayerBidDialog({
             </div>
           </div>
 
-          {/* Contract type selector */}
+          {/* Contract type toggle */}
           <div className="space-y-2">
             <Label>Contract Type</Label>
-            <Select
-              value={contractType}
-              onValueChange={(v) => setContractType(v as "SENIORS" | "RESERVES")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SENIORS">Seniors</SelectItem>
-                <SelectItem value="RESERVES">Reserves</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => handleContractTypeChange("SENIORS")}
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                  contractType === "SENIORS"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-muted"
+                }`}
+              >
+                Seniors
+              </button>
+              <button
+                type="button"
+                onClick={() => handleContractTypeChange("RESERVES")}
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                  contractType === "RESERVES"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-muted"
+                }`}
+              >
+                Reserves
+              </button>
+            </div>
           </div>
 
           {/* Minimum contract info */}
