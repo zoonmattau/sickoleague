@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Flame } from "lucide-react";
 
 type MatchResult = {
   id: string;
@@ -10,6 +11,7 @@ type MatchResult = {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  isRivalMatch: boolean;
   homeClub: {
     id: string;
     name: string;
@@ -62,7 +64,12 @@ function ResultCard({ match, isReserves }: { match: MatchResult; isReserves: boo
     : match.awayClub.name;
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+    <div className={`flex items-center justify-between p-3 rounded-lg border bg-card ${match.isRivalMatch ? "border-orange-500/50 bg-orange-500/5" : ""}`}>
+      {match.isRivalMatch && (
+        <span title="Rivalry Match" className="flex-shrink-0">
+          <Flame className="h-4 w-4 text-orange-500 mr-2" />
+        </span>
+      )}
       <div className={`flex items-center gap-2 flex-1 ${homeWon ? "font-bold" : ""}`}>
         <span
           className="px-2 py-0.5 rounded text-xs font-semibold min-w-[40px] text-center"

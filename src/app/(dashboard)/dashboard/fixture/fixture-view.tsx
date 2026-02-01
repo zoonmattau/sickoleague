@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Flame } from "lucide-react";
 
 type FixtureMatch = {
   id: string;
@@ -18,6 +19,7 @@ type FixtureMatch = {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  isRivalMatch: boolean;
   homeClub: {
     id: string;
     name: string;
@@ -84,7 +86,7 @@ function MatchCard({ match, isReserves }: { match: FixtureMatch; isReserves: boo
     : match.awayClub.name;
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+    <div className={`flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors ${match.isRivalMatch ? "border-orange-500/50 bg-orange-500/5" : ""}`}>
       <div className="flex items-center gap-3 flex-1">
         <div className={`flex items-center gap-2 flex-1 ${homeWon ? "font-bold" : ""}`}>
           <span
@@ -129,6 +131,11 @@ function MatchCard({ match, isReserves }: { match: FixtureMatch; isReserves: boo
         </div>
       </div>
 
+      {match.isRivalMatch && (
+        <span title="Rivalry Match">
+          <Flame className="ml-2 h-4 w-4 text-orange-500" />
+        </span>
+      )}
       {match.status === "IN_PROGRESS" && (
         <Badge className="ml-2 bg-green-600 animate-pulse">LIVE</Badge>
       )}

@@ -8,6 +8,7 @@ export type FixtureMatch = {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  isRivalMatch: boolean;
   homeClub: {
     id: string;
     name: string;
@@ -98,6 +99,7 @@ export async function getFullFixture(seasonYear?: number) {
         status: m.status,
         homeScore: m.homeScore ? Number(m.homeScore) : null,
         awayScore: m.awayScore ? Number(m.awayScore) : null,
+        isRivalMatch: m.isRivalMatch,
         homeClub: m.homeClub,
         awayClub: m.awayClub,
       })),
@@ -177,6 +179,7 @@ export async function getCurrentRoundMatches() {
       status: m.status,
       homeScore: m.homeScore ? Number(m.homeScore) : null,
       awayScore: m.awayScore ? Number(m.awayScore) : null,
+      isRivalMatch: m.isRivalMatch,
       homeClub: {
         ...m.homeClub,
         ladderPosition: getLadderPos(m.homeClubId, m.matchType),
@@ -237,6 +240,7 @@ export async function getRecentResults(limit = 3) {
       status: m.status,
       homeScore: m.homeScore ? Number(m.homeScore) : null,
       awayScore: m.awayScore ? Number(m.awayScore) : null,
+      isRivalMatch: m.isRivalMatch,
       homeClub: m.homeClub,
       awayClub: m.awayClub,
     })),

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Flame } from "lucide-react";
 import { getLiveMatchScores } from "../fixture/actions";
 
 type MatchData = {
@@ -14,6 +14,7 @@ type MatchData = {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  isRivalMatch: boolean;
   homeClub: {
     id: string;
     name: string;
@@ -93,7 +94,13 @@ function MatchRow({
     : match.awayClub.name;
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+    <div className={`flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors ${match.isRivalMatch ? "border-orange-500/50 bg-orange-500/5" : ""}`}>
+      {/* Rivalry indicator */}
+      {match.isRivalMatch && (
+        <div className="flex items-center gap-1 mr-3" title="Rivalry Match">
+          <Flame className="h-5 w-5 text-orange-500" />
+        </div>
+      )}
       {/* Home Team */}
       <div className={`flex items-center gap-3 flex-1 ${homeWon ? "font-bold" : ""}`}>
         <div className="flex flex-col items-start gap-1">

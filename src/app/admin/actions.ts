@@ -966,6 +966,93 @@ export async function updateWeek2FinalsMatchup(seasonYear: number) {
  * Update Grand Final matchup after Preliminary Final results
  * Call this after Week 2 matches are completed
  */
+// ============================================================================
+// RIVALRY SYNC
+// ============================================================================
+
+/**
+ * Sync rivalry status on matches based on club tension scores
+ * Marks matches as rivalries if tension score >= threshold (default 10)
+ */
+export async function syncRivalryMatches(seasonYear?: number, threshold = 10) {
+  try {
+    const year = seasonYear ?? new Date().getFullYear();
+
+    const season = await prisma.season.findUnique({
+      where: { year },
+      include: { rounds: { select: { id: true } } },
+    });
+
+    if (!season) {
+      return { success: false, error: "Season not found" };
+    }
+
+    // Get all club tensions for this season
+    let tensions: { clubAId: string; clubBId: string; score: number }[] = [];
+
+    try {
+      const dbTensions = await prisma.clubTension.findMany({
+        where: { seasonId: season.id },
+        select: { clubAId: true, clubBId: true, score: true },
+      });
+      tensions = dbTensions;
+    } catch {
+      // clubTension table might not exist, use fake tensions
+      const { getAllClubTensions } = await import("@/app/(dashboard)/dashboard/clubs/rivalry-actions");
+      const fakeTensions = await getAllClubTensions();
+      tensions = fakeTensions.map((t) => ({
+        clubAId: t.clubAId,
+        clubBId: t.clubBId,
+        score: t.score,
+      }));
+    }
+
+    // Build a set of rival pairs (where tension >= threshold)
+    const rivalPairs = new Set<string>();
+    for (const tension of tensions) {
+      if (tension.score >= threshold) {
+        // Store both orderings for easy lookup
+        rivalPairs.add(`${tension.clubAId}-${tension.clubBId}`);
+        rivalPairs.add(`${tension.clubBId}-${tension.clubAId}`);
+      }
+    }
+
+    // Get all matches for this season
+    const roundIds = season.rounds.map((r) => r.id);
+    const matches = await prisma.match.findMany({
+      where: { roundId: { in: roundIds } },
+      select: { id: true, homeClubId: true, awayClubId: true, isRivalMatch: true },
+    });
+
+    // Update rivalry status on each match
+    let updated = 0;
+    for (const match of matches) {
+      const pairKey = `${match.homeClubId}-${match.awayClubId}`;
+      const shouldBeRival = rivalPairs.has(pairKey);
+
+      if (match.isRivalMatch !== shouldBeRival) {
+        await prisma.match.update({
+          where: { id: match.id },
+          data: { isRivalMatch: shouldBeRival },
+        });
+        updated++;
+      }
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/dashboard/fixture");
+    revalidatePath("/dashboard/matches");
+
+    return {
+      success: true,
+      message: `Synced rivalry status. ${updated} matches updated, ${rivalPairs.size / 2} rivalry pairs found (threshold: ${threshold}).`,
+    };
+  } catch (error) {
+    console.error("Failed to sync rivalry matches:", error);
+    return { success: false, error: "Failed to sync rivalry matches" };
+  }
+}
+
 export async function updateGrandFinalMatchup(seasonYear: number) {
   try {
     const season = await prisma.season.findUnique({
