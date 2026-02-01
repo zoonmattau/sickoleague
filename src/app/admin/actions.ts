@@ -737,3 +737,328 @@ export async function getAllClubSalaries() {
     isOverCap: s.isOverCap,
   }));
 }
+
+// ============================================================================
+// FINALS GENERATION
+// ============================================================================
+
+/**
+ * Generate finals matches based on ladder positions
+ *
+ * Finals format:
+ * - Week 1: 1v2 (1st hosts), 3v4 (3rd hosts)
+ * - Week 2 (Preliminary Final): Loser 1v2 vs Winner 3v4 (Loser 1v2 hosts)
+ * - Week 3 (Grand Final): Winner 1v2 vs Winner Prelim (Winner 1v2 hosts)
+ */
+export async function generateFinalsMatches(seasonYear: number) {
+  try {
+    const season = await prisma.season.findUnique({
+      where: { year: seasonYear },
+    });
+
+    if (!season) {
+      return { success: false, error: "Season not found" };
+    }
+
+    // Get standings sorted by ladder position
+    const getTop4 = async (competition: "SENIORS" | "RESERVES") => {
+      const standings = await prisma.standing.findMany({
+        where: {
+          seasonId: season.id,
+          competition,
+        },
+        orderBy: [
+          { wins: "desc" },
+          { percentage: "desc" },
+        ],
+        take: 4,
+        include: {
+          club: { select: { id: true, name: true, abbreviation: true } },
+        },
+      });
+      return standings.map((s) => s.club);
+    };
+
+    const seniorsTop4 = await getTop4("SENIORS");
+    const reservesTop4 = await getTop4("RESERVES");
+
+    if (seniorsTop4.length < 4 || reservesTop4.length < 4) {
+      return { success: false, error: "Need at least 4 teams in standings for each competition" };
+    }
+
+    // Get finals rounds
+    const finalsRounds = await prisma.round.findMany({
+      where: {
+        seasonId: season.id,
+        roundType: { in: ["FINALS_WK1", "FINALS_WK2", "FINALS_WK3"] },
+      },
+      orderBy: { roundNumber: "asc" },
+    });
+
+    if (finalsRounds.length !== 3) {
+      return { success: false, error: "Missing finals rounds - expected 3 finals rounds" };
+    }
+
+    const [week1Round, week2Round, week3Round] = finalsRounds;
+
+    // Delete existing finals matches
+    await prisma.match.deleteMany({
+      where: {
+        roundId: { in: finalsRounds.map((r) => r.id) },
+      },
+    });
+
+    // Create Week 1 matches: 1v2 (1 hosts) and 3v4 (3 hosts)
+    const week1Matches = [
+      // Seniors 1v2
+      { roundId: week1Round.id, homeClubId: seniorsTop4[0].id, awayClubId: seniorsTop4[1].id, matchType: "SENIORS" as const },
+      // Seniors 3v4
+      { roundId: week1Round.id, homeClubId: seniorsTop4[2].id, awayClubId: seniorsTop4[3].id, matchType: "SENIORS" as const },
+      // Reserves 1v2
+      { roundId: week1Round.id, homeClubId: reservesTop4[0].id, awayClubId: reservesTop4[1].id, matchType: "RESERVES" as const },
+      // Reserves 3v4
+      { roundId: week1Round.id, homeClubId: reservesTop4[2].id, awayClubId: reservesTop4[3].id, matchType: "RESERVES" as const },
+    ];
+
+    await prisma.match.createMany({
+      data: week1Matches.map((m) => ({ ...m, status: "SCHEDULED" })),
+    });
+
+    // Week 2 and Week 3 matches will be created after Week 1 results are in
+    // For now, create placeholder matches that will be updated
+    // Week 2: Loser 1v2 hosts Winner 3v4
+    // Using 2nd place as placeholder home (loser of 1v2) and 3rd as away (winner of 3v4)
+    const week2Matches = [
+      { roundId: week2Round.id, homeClubId: seniorsTop4[1].id, awayClubId: seniorsTop4[2].id, matchType: "SENIORS" as const },
+      { roundId: week2Round.id, homeClubId: reservesTop4[1].id, awayClubId: reservesTop4[2].id, matchType: "RESERVES" as const },
+    ];
+
+    await prisma.match.createMany({
+      data: week2Matches.map((m) => ({ ...m, status: "SCHEDULED" })),
+    });
+
+    // Week 3: Winner 1v2 hosts Winner Prelim
+    // Using 1st place as placeholder home and 2nd as away
+    const week3Matches = [
+      { roundId: week3Round.id, homeClubId: seniorsTop4[0].id, awayClubId: seniorsTop4[1].id, matchType: "SENIORS" as const },
+      { roundId: week3Round.id, homeClubId: reservesTop4[0].id, awayClubId: reservesTop4[1].id, matchType: "RESERVES" as const },
+    ];
+
+    await prisma.match.createMany({
+      data: week3Matches.map((m) => ({ ...m, status: "SCHEDULED" })),
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/dashboard/fixture");
+    revalidatePath("/dashboard/standings");
+
+    return {
+      success: true,
+      message: `Generated finals matches for ${seasonYear}. Week 2 and 3 matchups will update based on Week 1 results.`,
+      seniorsTop4: seniorsTop4.map((c) => c.abbreviation),
+      reservesTop4: reservesTop4.map((c) => c.abbreviation),
+    };
+  } catch (error) {
+    console.error("Failed to generate finals:", error);
+    return { success: false, error: "Failed to generate finals matches" };
+  }
+}
+
+/**
+ * Update Week 2 finals matchup after Week 1 results
+ * Call this after Week 1 matches are completed
+ */
+export async function updateWeek2FinalsMatchup(seasonYear: number) {
+  try {
+    const season = await prisma.season.findUnique({
+      where: { year: seasonYear },
+    });
+
+    if (!season) {
+      return { success: false, error: "Season not found" };
+    }
+
+    // Get Week 1 round and matches
+    const week1Round = await prisma.round.findFirst({
+      where: { seasonId: season.id, roundType: "FINALS_WK1" },
+      include: {
+        matches: {
+          where: { status: "COMPLETED" },
+          include: {
+            homeClub: true,
+            awayClub: true,
+          },
+        },
+      },
+    });
+
+    if (!week1Round || week1Round.matches.length < 4) {
+      return { success: false, error: "Week 1 matches not completed" };
+    }
+
+    // Get Week 2 round
+    const week2Round = await prisma.round.findFirst({
+      where: { seasonId: season.id, roundType: "FINALS_WK2" },
+      include: { matches: true },
+    });
+
+    if (!week2Round) {
+      return { success: false, error: "Week 2 round not found" };
+    }
+
+    // Process each competition
+    for (const matchType of ["SENIORS", "RESERVES"] as const) {
+      const week1Matches = week1Round.matches.filter((m) => m.matchType === matchType);
+
+      // Find 1v2 match (teams ranked 1 and 2)
+      const standings = await prisma.standing.findMany({
+        where: { seasonId: season.id, competition: matchType },
+        orderBy: [{ wins: "desc" }, { percentage: "desc" }],
+        take: 4,
+      });
+
+      const top2Ids = new Set([standings[0]?.clubId, standings[1]?.clubId]);
+      const match1v2 = week1Matches.find(
+        (m) => top2Ids.has(m.homeClubId) && top2Ids.has(m.awayClubId)
+      );
+
+      // 3v4 match
+      const bottom2Ids = new Set([standings[2]?.clubId, standings[3]?.clubId]);
+      const match3v4 = week1Matches.find(
+        (m) => bottom2Ids.has(m.homeClubId) && bottom2Ids.has(m.awayClubId)
+      );
+
+      if (!match1v2 || !match3v4) continue;
+
+      // Determine winners and losers
+      const homeScore1v2 = Number(match1v2.homeScore ?? 0);
+      const awayScore1v2 = Number(match1v2.awayScore ?? 0);
+      const loser1v2 = homeScore1v2 > awayScore1v2 ? match1v2.awayClubId : match1v2.homeClubId;
+
+      const homeScore3v4 = Number(match3v4.homeScore ?? 0);
+      const awayScore3v4 = Number(match3v4.awayScore ?? 0);
+      const winner3v4 = homeScore3v4 > awayScore3v4 ? match3v4.homeClubId : match3v4.awayClubId;
+
+      // Update Week 2 match: Loser 1v2 hosts Winner 3v4
+      await prisma.match.updateMany({
+        where: {
+          roundId: week2Round.id,
+          matchType,
+        },
+        data: {
+          homeClubId: loser1v2,
+          awayClubId: winner3v4,
+        },
+      });
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/dashboard/fixture");
+
+    return { success: true, message: "Week 2 matchups updated based on Week 1 results" };
+  } catch (error) {
+    console.error("Failed to update Week 2 matchups:", error);
+    return { success: false, error: "Failed to update Week 2 matchups" };
+  }
+}
+
+/**
+ * Update Grand Final matchup after Preliminary Final results
+ * Call this after Week 2 matches are completed
+ */
+export async function updateGrandFinalMatchup(seasonYear: number) {
+  try {
+    const season = await prisma.season.findUnique({
+      where: { year: seasonYear },
+    });
+
+    if (!season) {
+      return { success: false, error: "Season not found" };
+    }
+
+    // Get Week 1 matches to find Winner 1v2
+    const week1Round = await prisma.round.findFirst({
+      where: { seasonId: season.id, roundType: "FINALS_WK1" },
+      include: {
+        matches: {
+          where: { status: "COMPLETED" },
+        },
+      },
+    });
+
+    // Get Week 2 matches to find Prelim winner
+    const week2Round = await prisma.round.findFirst({
+      where: { seasonId: season.id, roundType: "FINALS_WK2" },
+      include: {
+        matches: {
+          where: { status: "COMPLETED" },
+        },
+      },
+    });
+
+    if (!week1Round || !week2Round) {
+      return { success: false, error: "Finals rounds not found" };
+    }
+
+    // Get Week 3 round
+    const week3Round = await prisma.round.findFirst({
+      where: { seasonId: season.id, roundType: "FINALS_WK3" },
+      include: { matches: true },
+    });
+
+    if (!week3Round) {
+      return { success: false, error: "Grand Final round not found" };
+    }
+
+    // Process each competition
+    for (const matchType of ["SENIORS", "RESERVES"] as const) {
+      // Get standings to identify 1v2 match
+      const standings = await prisma.standing.findMany({
+        where: { seasonId: season.id, competition: matchType },
+        orderBy: [{ wins: "desc" }, { percentage: "desc" }],
+        take: 2,
+      });
+
+      const top2Ids = new Set([standings[0]?.clubId, standings[1]?.clubId]);
+
+      // Find 1v2 match in Week 1
+      const match1v2 = week1Round.matches.find(
+        (m) => m.matchType === matchType && top2Ids.has(m.homeClubId) && top2Ids.has(m.awayClubId)
+      );
+
+      // Find Prelim match
+      const prelimMatch = week2Round.matches.find((m) => m.matchType === matchType);
+
+      if (!match1v2 || !prelimMatch) continue;
+
+      // Determine winners
+      const homeScore1v2 = Number(match1v2.homeScore ?? 0);
+      const awayScore1v2 = Number(match1v2.awayScore ?? 0);
+      const winner1v2 = homeScore1v2 > awayScore1v2 ? match1v2.homeClubId : match1v2.awayClubId;
+
+      const homePrelim = Number(prelimMatch.homeScore ?? 0);
+      const awayPrelim = Number(prelimMatch.awayScore ?? 0);
+      const prelimWinner = homePrelim > awayPrelim ? prelimMatch.homeClubId : prelimMatch.awayClubId;
+
+      // Update Grand Final: Winner 1v2 hosts Prelim winner
+      await prisma.match.updateMany({
+        where: {
+          roundId: week3Round.id,
+          matchType,
+        },
+        data: {
+          homeClubId: winner1v2,
+          awayClubId: prelimWinner,
+        },
+      });
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/dashboard/fixture");
+
+    return { success: true, message: "Grand Final matchups updated based on Preliminary Final results" };
+  } catch (error) {
+    console.error("Failed to update Grand Final matchups:", error);
+    return { success: false, error: "Failed to update Grand Final matchups" };
+  }
+}

@@ -37,6 +37,7 @@ const navSections: NavSection[] = [
     label: "League",
     items: [
       { href: "/dashboard/standings", label: "Standings" },
+      { href: "/dashboard/fixture", label: "Fixture" },
       { href: "/dashboard/stats", label: "Stats" },
       { href: "/dashboard/clubs", label: "Clubs" },
       { href: "/dashboard/players", label: "Players" },
@@ -62,9 +63,10 @@ const navSections: NavSection[] = [
 
 interface DashboardNavProps {
   user: User;
+  isAdmin?: boolean;
 }
 
-export function DashboardNav({ user }: DashboardNavProps) {
+export function DashboardNav({ user, isAdmin = false }: DashboardNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -119,6 +121,13 @@ export function DashboardNav({ user }: DashboardNavProps) {
                   </DropdownMenu>
                 );
               })}
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm" className="text-amber-600 dark:text-amber-400">
+                    Admin
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
 

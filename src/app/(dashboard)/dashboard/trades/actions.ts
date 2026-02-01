@@ -797,3 +797,134 @@ export async function getStaffDetail(staffId: string): Promise<StaffDetail | nul
     listManagerDiscount,
   };
 }
+
+/**
+ * Get all clubs for trade proposal selection
+ */
+export async function getClubsForTrade() {
+  const myClub = await getMyClub();
+  if (!myClub) return { myClub: null, clubs: [] };
+
+  const clubs = await prisma.club.findMany({
+    where: { id: { not: myClub.id } },
+    select: {
+      id: true,
+      name: true,
+      abbreviation: true,
+      primaryColor: true,
+      secondaryColor: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return { myClub: { id: myClub.id, name: myClub.name }, clubs };
+}
+
+/**
+ * Get tradeable players for a club
+ */
+export async function getTradeablePlayers(clubId: string) {
+  const contracts = await prisma.contract.findMany({
+    where: {
+      clubId,
+      status: "ACTIVE",
+    },
+    include: {
+      aflPlayer: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          positions: true,
+          photoUrl: true,
+          aflTeam: { select: { abbreviation: true } },
+        },
+      },
+    },
+    orderBy: { aflPlayer: { lastName: "asc" } },
+  });
+
+  return contracts.map((c) => ({
+    contractId: c.id,
+    playerId: c.aflPlayer.id,
+    firstName: c.aflPlayer.firstName,
+    lastName: c.aflPlayer.lastName,
+    positions: c.aflPlayer.positions,
+    photoUrl: c.aflPlayer.photoUrl,
+    aflTeam: c.aflPlayer.aflTeam?.abbreviation ?? null,
+    salary: Number(c.totalValue),
+    endSeason: c.endSeason,
+  }));
+}
+
+/**
+ * Propose a trade to another club
+ */
+export async function proposeTrade(
+  targetClubId: string,
+  myPlayersToSend: string[], // contract IDs
+  theirPlayersToReceive: string[] // contract IDs
+) {
+  const myClub = await getMyClub();
+  if (!myClub) return { error: "No club found" };
+
+  if (myPlayersToSend.length === 0 && theirPlayersToReceive.length === 0) {
+    return { error: "Must include at least one player in the trade" };
+  }
+
+  // Validate my players belong to me
+  const myContracts = await prisma.contract.findMany({
+    where: {
+      id: { in: myPlayersToSend },
+      clubId: myClub.id,
+      status: "ACTIVE",
+    },
+  });
+
+  if (myContracts.length !== myPlayersToSend.length) {
+    return { error: "Invalid players selected from your roster" };
+  }
+
+  // Validate their players belong to them
+  const theirContracts = await prisma.contract.findMany({
+    where: {
+      id: { in: theirPlayersToReceive },
+      clubId: targetClubId,
+      status: "ACTIVE",
+    },
+  });
+
+  if (theirContracts.length !== theirPlayersToReceive.length) {
+    return { error: "Invalid players selected from their roster" };
+  }
+
+  // Create the trade
+  const trade = await prisma.trade.create({
+    data: {
+      proposedById: myClub.id,
+      proposedToId: targetClubId,
+      status: "PROPOSED",
+      assets: {
+        create: [
+          // Players I'm sending
+          ...myPlayersToSend.map((contractId) => ({
+            assetType: "PLAYER" as const,
+            fromClubId: myClub.id,
+            toClubId: targetClubId,
+            contractId,
+          })),
+          // Players I'm receiving
+          ...theirPlayersToReceive.map((contractId) => ({
+            assetType: "PLAYER" as const,
+            fromClubId: targetClubId,
+            toClubId: myClub.id,
+            contractId,
+          })),
+        ],
+      },
+    },
+  });
+
+  revalidatePath("/dashboard/trades");
+  return { success: true, tradeId: trade.id };
+}

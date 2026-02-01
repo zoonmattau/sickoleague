@@ -1,7 +1,16 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getCurrentRoundMatches, getRecentResults, getFullFixture } from "../fixture/actions";
+import { CurrentRoundView } from "./current-round-view";
+import { ResultsView } from "./results-view";
+import { FixtureView } from "../fixture/fixture-view";
 
-export default function MatchesPage() {
+export default async function MatchesPage() {
+  const [currentRound, recentResults, { rounds, clubs }] = await Promise.all([
+    getCurrentRoundMatches(),
+    getRecentResults(5),
+    getFullFixture(),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -13,51 +22,21 @@ export default function MatchesPage() {
 
       <Tabs defaultValue="upcoming" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          <TabsTrigger value="upcoming">Current Round</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
           <TabsTrigger value="fixture">Full Fixture</TabsTrigger>
         </TabsList>
 
         <TabsContent value="upcoming" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Next Round</CardTitle>
-              <CardDescription>No upcoming matches scheduled</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Matches will appear here once the season begins.
-              </p>
-            </CardContent>
-          </Card>
+          <CurrentRoundView data={currentRound} />
         </TabsContent>
 
         <TabsContent value="results" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Results</CardTitle>
-              <CardDescription>No completed matches yet</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Match results will appear here after rounds are completed.
-              </p>
-            </CardContent>
-          </Card>
+          <ResultsView rounds={recentResults} />
         </TabsContent>
 
         <TabsContent value="fixture" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Season Fixture</CardTitle>
-              <CardDescription>Full season schedule</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                The fixture will be generated before the season starts.
-              </p>
-            </CardContent>
-          </Card>
+          <FixtureView rounds={rounds} clubs={clubs} />
         </TabsContent>
       </Tabs>
     </div>

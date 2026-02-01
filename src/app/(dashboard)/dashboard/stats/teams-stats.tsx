@@ -9,57 +9,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { TeamInfoDialog } from "../standings/team-info-dialog";
 
 type TeamStat = {
   id: string;
   clubId: string;
   clubName: string;
   clubAbbr: string;
-  reservesName: string | null;
   primaryColor: string | null;
   secondaryColor: string | null;
-  competition: string;
-  seasonYear: number;
-  played: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  points: number;
-  pointsFor: number;
-  pointsAgainst: number;
-  percentage: number;
-  hfa: number | null;
+  rosterSize: number;
+  totalSalary: number;
+  salaryCap: number;
+  capRoom: number;
+  isOverCap: boolean;
+  avgPlayerScore: number | null;
+  totalGamesPlayed: number;
+  expiringContracts: number;
 };
 
 type Props = {
   stats: TeamStat[];
 };
 
-type SortKey = "clubName" | "wins" | "losses" | "points" | "pointsFor" | "pointsAgainst" | "percentage" | "hfa";
+type SortKey = "clubName" | "rosterSize" | "totalSalary" | "capRoom" | "avgPlayerScore" | "expiringContracts";
 
 export function TeamsStats({ stats }: Props) {
-  const [competition, setCompetition] = useState<"SENIORS" | "RESERVES" | "all">("SENIORS");
-  const [sortKey, setSortKey] = useState<SortKey>("points");
+  const [sortKey, setSortKey] = useState<SortKey>("avgPlayerScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [selectedTeam, setSelectedTeam] = useState<TeamStat | null>(null);
 
-  const filteredStats = useMemo(() => {
-    let filtered = stats;
-    if (competition !== "all") {
-      filtered = stats.filter(s => s.competition === competition);
-    }
-
-    return [...filtered].sort((a, b) => {
+  const sortedStats = useMemo(() => {
+    return [...stats].sort((a, b) => {
       let aVal: number | string = a[sortKey] ?? 0;
       let bVal: number | string = b[sortKey] ?? 0;
 
@@ -73,7 +53,7 @@ export function TeamsStats({ stats }: Props) {
 
       return sortDir === "asc" ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
     });
-  }, [stats, competition, sortKey, sortDir]);
+  }, [stats, sortKey, sortDir]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -91,119 +71,49 @@ export function TeamsStats({ stats }: Props) {
       : <ArrowDown className="ml-1 h-3 w-3 inline" />;
   };
 
-  // Convert team stat to standing format for dialog
-  const standingForDialog = selectedTeam ? {
-    id: selectedTeam.id,
-    played: selectedTeam.played,
-    wins: selectedTeam.wins,
-    losses: selectedTeam.losses,
-    draws: selectedTeam.draws,
-    pointsFor: selectedTeam.pointsFor,
-    pointsAgainst: selectedTeam.pointsAgainst,
-    percentage: selectedTeam.percentage,
-    club: {
-      id: selectedTeam.clubId,
-      name: selectedTeam.clubName,
-      abbreviation: selectedTeam.clubAbbr,
-      reservesName: selectedTeam.reservesName,
-      primaryColor: selectedTeam.primaryColor,
-      secondaryColor: selectedTeam.secondaryColor,
-    },
-  } : null;
-
-  const standingsForDialog = filteredStats.map(s => ({
-    id: s.id,
-    played: s.played,
-    wins: s.wins,
-    losses: s.losses,
-    draws: s.draws,
-    pointsFor: s.pointsFor,
-    pointsAgainst: s.pointsAgainst,
-    percentage: s.percentage,
-    club: {
-      id: s.clubId,
-      name: s.clubName,
-      abbreviation: s.clubAbbr,
-      reservesName: s.reservesName,
-      primaryColor: s.primaryColor,
-      secondaryColor: s.secondaryColor,
-    },
-  }));
-
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex gap-4">
-        <Select value={competition} onValueChange={(v) => setCompetition(v as typeof competition)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Competition" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="SENIORS">Seniors</SelectItem>
-            <SelectItem value="RESERVES">Reserves</SelectItem>
-            <SelectItem value="all">All</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Table */}
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">#</TableHead>
               <TableHead>
                 <button onClick={() => handleSort("clubName")} className="flex items-center hover:text-foreground">
                   Club <SortIcon column="clubName" />
                 </button>
               </TableHead>
-              {competition === "all" && <TableHead>Comp</TableHead>}
               <TableHead className="text-center">
-                <button onClick={() => handleSort("wins")} className="flex items-center justify-center hover:text-foreground">
-                  W <SortIcon column="wins" />
+                <button onClick={() => handleSort("rosterSize")} className="flex items-center justify-center hover:text-foreground">
+                  Roster <SortIcon column="rosterSize" />
+                </button>
+              </TableHead>
+              <TableHead className="text-right">
+                <button onClick={() => handleSort("totalSalary")} className="flex items-center justify-end hover:text-foreground">
+                  Salary <SortIcon column="totalSalary" />
+                </button>
+              </TableHead>
+              <TableHead className="text-right">
+                <button onClick={() => handleSort("capRoom")} className="flex items-center justify-end hover:text-foreground">
+                  Cap Room <SortIcon column="capRoom" />
+                </button>
+              </TableHead>
+              <TableHead className="text-right">
+                <button onClick={() => handleSort("avgPlayerScore")} className="flex items-center justify-end hover:text-foreground">
+                  Avg Score <SortIcon column="avgPlayerScore" />
                 </button>
               </TableHead>
               <TableHead className="text-center">
-                <button onClick={() => handleSort("losses")} className="flex items-center justify-center hover:text-foreground">
-                  L <SortIcon column="losses" />
-                </button>
-              </TableHead>
-              <TableHead className="text-center">
-                <button onClick={() => handleSort("points")} className="flex items-center justify-center hover:text-foreground">
-                  Pts <SortIcon column="points" />
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => handleSort("pointsFor")} className="flex items-center justify-end hover:text-foreground">
-                  PF <SortIcon column="pointsFor" />
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => handleSort("pointsAgainst")} className="flex items-center justify-end hover:text-foreground">
-                  PA <SortIcon column="pointsAgainst" />
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => handleSort("percentage")} className="flex items-center justify-end hover:text-foreground">
-                  % <SortIcon column="percentage" />
-                </button>
-              </TableHead>
-              <TableHead className="text-right">
-                <button onClick={() => handleSort("hfa")} className="flex items-center justify-end hover:text-foreground">
-                  HFA <SortIcon column="hfa" />
+                <button onClick={() => handleSort("expiringContracts")} className="flex items-center justify-center hover:text-foreground">
+                  Expiring <SortIcon column="expiringContracts" />
                 </button>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStats.length > 0 ? (
-              filteredStats.map((team, idx) => (
-                <TableRow
-                  key={team.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedTeam(team)}
-                >
-                  <TableCell className="font-medium">{idx + 1}</TableCell>
+            {sortedStats.length > 0 ? (
+              sortedStats.map((team) => (
+                <TableRow key={team.id}>
                   <TableCell>
                     <span
                       className="px-2 py-0.5 rounded text-xs font-semibold"
@@ -212,32 +122,27 @@ export function TeamsStats({ stats }: Props) {
                         color: team.secondaryColor || "#ffffff",
                       }}
                     >
-                      {team.competition === "RESERVES"
-                        ? (team.reservesName ?? team.clubName)
-                        : team.clubName}
+                      {team.clubName}
                     </span>
                   </TableCell>
-                  {competition === "all" && (
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {team.competition === "SENIORS" ? "S" : "R"}
-                      </Badge>
-                    </TableCell>
-                  )}
-                  <TableCell className="text-center">{team.wins}</TableCell>
-                  <TableCell className="text-center">{team.losses}</TableCell>
-                  <TableCell className="text-center font-bold">{team.points}</TableCell>
-                  <TableCell className="text-right">{team.pointsFor.toFixed(0)}</TableCell>
-                  <TableCell className="text-right">{team.pointsAgainst.toFixed(0)}</TableCell>
-                  <TableCell className="text-right">{team.percentage.toFixed(1)}</TableCell>
-                  <TableCell className={`text-right ${team.hfa !== null ? (team.hfa >= 0 ? "text-green-600" : "text-red-600") : ""}`}>
-                    {team.hfa !== null ? (team.hfa >= 0 ? "+" : "") + team.hfa : "-"}
+                  <TableCell className="text-center">{team.rosterSize}</TableCell>
+                  <TableCell className="text-right">
+                    ${Math.round(team.totalSalary)}k
+                  </TableCell>
+                  <TableCell className={`text-right ${team.isOverCap ? "text-red-500 font-semibold" : team.capRoom < 100 ? "text-yellow-600" : "text-green-600"}`}>
+                    {team.isOverCap ? "-" : ""}${Math.abs(Math.round(team.capRoom))}k
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {team.avgPlayerScore !== null ? team.avgPlayerScore.toFixed(1) : "-"}
+                  </TableCell>
+                  <TableCell className="text-center text-muted-foreground">
+                    {team.expiringContracts}
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No team data available
                 </TableCell>
               </TableRow>
@@ -245,15 +150,6 @@ export function TeamsStats({ stats }: Props) {
           </TableBody>
         </Table>
       </div>
-
-      {/* Team Info Dialog */}
-      <TeamInfoDialog
-        standing={standingForDialog}
-        standings={standingsForDialog}
-        isReserves={selectedTeam?.competition === "RESERVES"}
-        open={!!selectedTeam}
-        onOpenChange={(open) => !open && setSelectedTeam(null)}
-      />
     </div>
   );
 }

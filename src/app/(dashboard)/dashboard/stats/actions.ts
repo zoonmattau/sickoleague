@@ -5,73 +5,119 @@ import { unstable_cache } from "next/cache";
 
 const getCachedTeamStats = unstable_cache(
   async () => {
-    const standings = await prisma.standing.findMany({
-      include: {
-        club: {
-          select: {
-            id: true,
-            name: true,
-            abbreviation: true,
-            reservesName: true,
-            primaryColor: true,
-            secondaryColor: true,
-          },
-        },
-        season: {
-          select: { year: true },
-        },
-      },
-      orderBy: [
-        { season: { year: "desc" } },
-        { competition: "asc" },
-        { wins: "desc" },
-      ],
-    });
+    const currentYear = new Date().getFullYear();
 
-    // Get HFA for each club
-    const hfaResults = await prisma.homeGameResult.findMany({
+    // Get all clubs
+    const clubs = await prisma.club.findMany({
       select: {
+        id: true,
+        name: true,
+        abbreviation: true,
+        primaryColor: true,
+        secondaryColor: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    // Get contracts for all clubs
+    const contracts = await prisma.contract.findMany({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true,
         clubId: true,
-        matchType: true,
-        margin: true,
+        totalValue: true,
+        yearBreakdown: true,
+        endSeason: true,
       },
     });
 
-    // Calculate HFA per club per match type
-    const hfaMap = new Map<string, number>();
-    const calcHfaValue = (margin: number) => margin < 0 ? margin / 2 : margin;
-
-    for (const club of standings.map(s => s.clubId)) {
-      for (const matchType of ["SENIORS", "RESERVES"]) {
-        const results = hfaResults.filter(r => r.clubId === club && r.matchType === matchType);
-        if (results.length > 0) {
-          const last10 = results.slice(-10);
-          const hfa = last10.reduce((sum, r) => sum + calcHfaValue(r.margin), 0) / last10.length;
-          hfaMap.set(`${club}-${matchType}`, Math.round(hfa * 10) / 10);
-        }
-      }
+    // Group contracts by club
+    const contractsByClub = new Map<string, typeof contracts>();
+    for (const contract of contracts) {
+      const existing = contractsByClub.get(contract.clubId) ?? [];
+      existing.push(contract);
+      contractsByClub.set(contract.clubId, existing);
     }
 
-    return standings.map(s => ({
-      id: s.id,
-      clubId: s.club.id,
-      clubName: s.club.name,
-      clubAbbr: s.club.abbreviation,
-      reservesName: s.club.reservesName,
-      primaryColor: s.club.primaryColor,
-      secondaryColor: s.club.secondaryColor,
-      competition: s.competition,
-      seasonYear: s.season.year,
-      played: s.played,
-      wins: s.wins,
-      losses: s.losses,
-      draws: s.draws,
-      points: s.wins * 4 + s.draws * 2,
-      pointsFor: Number(s.pointsFor),
-      pointsAgainst: Number(s.pointsAgainst),
-      percentage: Number(s.percentage),
-      hfa: hfaMap.get(`${s.club.id}-${s.competition}`) ?? null,
-    }));
+    // Get salary data for all clubs
+    const salaryData = await prisma.clubSalary.findMany({
+      where: { season: currentYear },
+    });
+    const salaryByClub = new Map(salaryData.map(s => [s.clubId, s]));
+
+    // Get player scores aggregated by club
+    const playerScores = await prisma.matchPlayerScore.groupBy({
+      by: ["rosterPlayerId"],
+      _avg: { aflFantasyScore: true },
+      _count: { aflFantasyScore: true },
+      where: {
+        played: true,
+        aflFantasyScore: { not: null },
+      },
+    });
+
+    // Get roster player to club mapping
+    const rosterPlayers = await prisma.rosterPlayer.findMany({
+      where: {
+        id: { in: playerScores.map(s => s.rosterPlayerId) },
+      },
+      select: {
+        id: true,
+        clubId: true,
+      },
+    });
+
+    const rosterToClub = new Map(rosterPlayers.map(rp => [rp.id, rp.clubId]));
+
+    // Aggregate scores by club
+    const clubScores = new Map<string, { totalAvg: number; playerCount: number; totalGames: number }>();
+    for (const score of playerScores) {
+      const clubId = rosterToClub.get(score.rosterPlayerId);
+      if (!clubId) continue;
+
+      const existing = clubScores.get(clubId) ?? { totalAvg: 0, playerCount: 0, totalGames: 0 };
+      existing.totalAvg += score._avg.aflFantasyScore ?? 0;
+      existing.playerCount += 1;
+      existing.totalGames += score._count.aflFantasyScore;
+      clubScores.set(clubId, existing);
+    }
+
+    return clubs.map(club => {
+      const clubSalary = salaryByClub.get(club.id);
+      const clubContracts = contractsByClub.get(club.id) ?? [];
+      const scores = clubScores.get(club.id);
+
+      // Calculate current year salary from contract breakdowns
+      let currentYearSalary = 0;
+      let expiringContracts = 0;
+
+      for (const contract of clubContracts) {
+        const breakdown = contract.yearBreakdown as { season: number; value: number }[];
+        const thisYearValue = breakdown.find(b => b.season === currentYear)?.value ?? 0;
+        currentYearSalary += thisYearValue;
+
+        if (contract.endSeason === currentYear) {
+          expiringContracts++;
+        }
+      }
+
+      return {
+        id: club.id,
+        clubId: club.id,
+        clubName: club.name,
+        clubAbbr: club.abbreviation,
+        primaryColor: club.primaryColor,
+        secondaryColor: club.secondaryColor,
+        rosterSize: clubContracts.length,
+        totalSalary: clubSalary?.totalSalary ? Number(clubSalary.totalSalary) : currentYearSalary,
+        salaryCap: clubSalary?.salaryCap ? Number(clubSalary.salaryCap) : 2200,
+        capRoom: clubSalary?.capRoom ? Number(clubSalary.capRoom) : (2200 - currentYearSalary),
+        isOverCap: clubSalary?.isOverCap ?? (currentYearSalary > 2200),
+        avgPlayerScore: scores ? Math.round((scores.totalAvg / scores.playerCount) * 10) / 10 : null,
+        totalGamesPlayed: scores?.totalGames ?? 0,
+        expiringContracts,
+      };
+    });
   },
   ["all-team-stats"],
   { revalidate: 60 }

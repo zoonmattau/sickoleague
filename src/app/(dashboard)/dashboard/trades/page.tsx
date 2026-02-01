@@ -2,28 +2,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { getPendingTrades, getTradeHistory } from "./actions";
+import { getPendingTrades, getTradeHistory, getClubsForTrade, getTradeablePlayers } from "./actions";
 import { formatDistanceToNow } from "date-fns";
+import { TradesHeader } from "./trades-header";
 
 export default async function TradesPage() {
-  const [pendingTrades, tradeHistory] = await Promise.all([
+  const [pendingTrades, tradeHistory, { myClub, clubs }] = await Promise.all([
     getPendingTrades(),
     getTradeHistory(),
+    getClubsForTrade(),
   ]);
+
+  // Get my players if logged in
+  const myPlayers = myClub ? await getTradeablePlayers(myClub.id) : [];
 
   const incomingTradesCount = pendingTrades.filter((t) => t.isIncoming).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Trades</h1>
-          <p className="text-muted-foreground">
-            Manage trade offers with other clubs
-          </p>
-        </div>
-        <Button>Propose Trade</Button>
-      </div>
+      <TradesHeader clubs={clubs} myClub={myClub} myPlayers={myPlayers} />
 
       <Tabs defaultValue="pending" className="space-y-4">
         <TabsList>

@@ -110,56 +110,64 @@ export function StandingsTable({ standings, isReserves = false }: Props) {
 export function FinalsProjection({ standings, isReserves = false }: Props) {
   if (standings.length < 4) return null;
 
+  const TeamBadge = ({ position, club }: { position: number; club: Standing["club"] }) => (
+    <span
+      className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+      style={{
+        backgroundColor: club.primaryColor || "#6b7280",
+        color: club.secondaryColor || "#fff",
+      }}
+    >
+      {position}. {club.abbreviation}
+    </span>
+  );
+
   return (
     <div className="mt-4 pt-4 border-t">
-      <h4 className="text-xs font-semibold text-muted-foreground mb-2">Projected Finals</h4>
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="space-y-1">
-          <div className="text-muted-foreground">Qualifying Final 1</div>
-          <div className="flex items-center gap-1">
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-              style={{
-                backgroundColor: standings[0]?.club.primaryColor || "#6b7280",
-                color: standings[0]?.club.secondaryColor || "#fff",
-              }}
-            >
-              1. {standings[0]?.club.abbreviation}
-            </span>
-            <span className="text-muted-foreground">v</span>
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-              style={{
-                backgroundColor: standings[3]?.club.primaryColor || "#6b7280",
-                color: standings[3]?.club.secondaryColor || "#fff",
-              }}
-            >
-              4. {standings[3]?.club.abbreviation}
-            </span>
+      <h4 className="text-xs font-semibold text-muted-foreground mb-3">Finals Structure</h4>
+      <div className="space-y-3 text-xs">
+        {/* Week 1 */}
+        <div>
+          <div className="text-muted-foreground mb-1.5 font-medium">Week 1</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <div className="text-[10px] text-muted-foreground">1st hosts 2nd</div>
+              <div className="flex items-center gap-1">
+                <TeamBadge position={1} club={standings[0].club} />
+                <span className="text-muted-foreground">v</span>
+                <TeamBadge position={2} club={standings[1].club} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[10px] text-muted-foreground">3rd hosts 4th</div>
+              <div className="flex items-center gap-1">
+                <TeamBadge position={3} club={standings[2].club} />
+                <span className="text-muted-foreground">v</span>
+                <TeamBadge position={4} club={standings[3].club} />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="space-y-1">
-          <div className="text-muted-foreground">Qualifying Final 2</div>
-          <div className="flex items-center gap-1">
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-              style={{
-                backgroundColor: standings[1]?.club.primaryColor || "#6b7280",
-                color: standings[1]?.club.secondaryColor || "#fff",
-              }}
-            >
-              2. {standings[1]?.club.abbreviation}
-            </span>
-            <span className="text-muted-foreground">v</span>
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-              style={{
-                backgroundColor: standings[2]?.club.primaryColor || "#6b7280",
-                color: standings[2]?.club.secondaryColor || "#fff",
-              }}
-            >
-              3. {standings[2]?.club.abbreviation}
-            </span>
+
+        {/* Week 2 */}
+        <div>
+          <div className="text-muted-foreground mb-1.5 font-medium">Week 2 - Preliminary Final</div>
+          <div className="text-[10px] text-muted-foreground mb-1">Loser 1v2 hosts Winner 3v4</div>
+          <div className="flex items-center gap-1 text-muted-foreground italic">
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">L(1v2)</span>
+            <span>v</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">W(3v4)</span>
+          </div>
+        </div>
+
+        {/* Week 3 */}
+        <div>
+          <div className="text-muted-foreground mb-1.5 font-medium">Week 3 - Grand Final</div>
+          <div className="text-[10px] text-muted-foreground mb-1">Winner 1v2 hosts Prelim winner</div>
+          <div className="flex items-center gap-1 text-muted-foreground italic">
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">W(1v2)</span>
+            <span>v</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted">W(Prelim)</span>
           </div>
         </div>
       </div>
