@@ -38,14 +38,22 @@ export function UpcomingMatchPanel({
   const [matchData, setMatchData] = useState<UpcomingMatchData>(null);
   const [opponentLineup, setOpponentLineup] = useState<OpponentLineupData>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeMatch, setActiveMatch] = useState<"SENIORS" | "RESERVES">("SENIORS");
 
   useEffect(() => {
     setLoading(true);
-    getUpcomingMatch(clubId).then((data) => {
-      setMatchData(data);
-      setLoading(false);
-    });
+    setError(null);
+    getUpcomingMatch(clubId)
+      .then((data) => {
+        setMatchData(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch upcoming match:", err);
+        setError("Failed to load match data");
+        setLoading(false);
+      });
   }, [clubId]);
 
   // Fetch opponent lineup when match data is available
@@ -53,7 +61,12 @@ export function UpcomingMatchPanel({
     if (matchData?.round && matchData.matches.length > 0) {
       const match = matchData.matches.find(m => m.matchType === activeMatch);
       if (match) {
-        getOpponentLineup(match.opponent.id, matchData.round.id).then(setOpponentLineup);
+        getOpponentLineup(match.opponent.id, matchData.round.id)
+          .then(setOpponentLineup)
+          .catch((err) => {
+            console.error("Failed to fetch opponent lineup:", err);
+            setOpponentLineup(null);
+          });
       }
     }
   }, [matchData, activeMatch]);
@@ -63,6 +76,16 @@ export function UpcomingMatchPanel({
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
           Loading upcoming match...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-red-500">
+          {error}
         </CardContent>
       </Card>
     );

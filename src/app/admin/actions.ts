@@ -7,6 +7,7 @@ import {
   fetchAflLadder,
   mapSquiggleTeamName,
 } from "@/lib/afl-api";
+import { isAdmin } from "@/lib/admin";
 
 export async function updateMatchResult(
   matchId: string,
@@ -340,6 +341,13 @@ export async function updateContract(
 }
 
 export async function transferContract(contractId: string, newClubId: string) {
+  // Verify admin access
+  const supabase = await import("@/lib/supabase/server").then(m => m.createClient());
+  const { data: { user } } = await (await supabase).auth.getUser();
+  if (!user || !isAdmin(user)) {
+    return { success: false, error: "Unauthorized: Admin access required" };
+  }
+
   try {
     // Remove from roster
     await prisma.rosterPlayer.deleteMany({
@@ -361,6 +369,13 @@ export async function transferContract(contractId: string, newClubId: string) {
 }
 
 export async function terminateContract(contractId: string) {
+  // Verify admin access
+  const supabase = await import("@/lib/supabase/server").then(m => m.createClient());
+  const { data: { user } } = await (await supabase).auth.getUser();
+  if (!user || !isAdmin(user)) {
+    return { success: false, error: "Unauthorized: Admin access required" };
+  }
+
   try {
     // Remove from roster
     await prisma.rosterPlayer.deleteMany({

@@ -930,6 +930,34 @@ export async function proposeTrade(
     return { error: "Invalid players selected from their roster" };
   }
 
+  // Check if any players are already involved in pending trades
+  const allContractIds = [...myPlayersToSend, ...theirPlayersToReceive];
+  if (allContractIds.length > 0) {
+    const existingTradeAssets = await prisma.tradeAsset.findMany({
+      where: {
+        contractId: { in: allContractIds },
+        trade: {
+          status: { in: ["PROPOSED", "ACCEPTED"] },
+        },
+      },
+      include: {
+        contract: {
+          include: {
+            aflPlayer: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+
+    if (existingTradeAssets.length > 0) {
+      const playerNames = existingTradeAssets
+        .map((a) => `${a.contract?.aflPlayer.firstName} ${a.contract?.aflPlayer.lastName}`)
+        .filter(Boolean)
+        .join(", ");
+      return { error: `Players already in pending trades: ${playerNames}` };
+    }
+  }
+
   // Create the trade
   const trade = await prisma.trade.create({
     data: {

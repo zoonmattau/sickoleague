@@ -319,7 +319,7 @@ model Contract {
 
   // Relations
   clubId      String    @map("club_id")
-  club        Club      @relation(fields: [clubId], references: [id])
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
   aflPlayerId String    @map("afl_player_id")
   aflPlayer   AflPlayer @relation(fields: [aflPlayerId], references: [id])
 
@@ -356,9 +356,9 @@ model RosterPlayer {
 
   // Relations
   clubId     String   @map("club_id")
-  club       Club     @relation(fields: [clubId], references: [id])
+  club       Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
   contractId String   @map("contract_id")
-  contract   Contract @relation(fields: [contractId], references: [id])
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   roundId    String?  @map("round_id")
   round      Round?   @relation(fields: [roundId], references: [id])
 
@@ -469,7 +469,7 @@ model StaffContract {
 
   // Relations
   clubId  String @map("club_id")
-  club    Club   @relation(fields: [clubId], references: [id])
+  club    Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
   staffId String @map("staff_id")
   staff   Staff  @relation(fields: [staffId], references: [id])
 
@@ -540,7 +540,7 @@ model ClubSalary {
 
   // Relations
   clubId          String   @map("club_id")
-  club            Club     @relation(fields: [clubId], references: [id])
+  club            Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, season])
   @@map("club_salaries")
@@ -846,7 +846,7 @@ model TradeAsset {
 
   // Relations
   tradeId         String         @map("trade_id")
-  trade           Trade          @relation(fields: [tradeId], references: [id])
+  trade           Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
   fromClubId      String         @map("from_club_id")
   fromClub        Club           @relation("AssetFrom", fields: [fromClubId], references: [id])
   toClubId        String         @map("to_club_id")
@@ -887,9 +887,9 @@ model Standing {
 
   // Relations
   seasonId String @map("season_id")
-  season   Season @relation(fields: [seasonId], references: [id])
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   clubId   String @map("club_id")
-  club     Club   @relation(fields: [clubId], references: [id])
+  club     Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@unique([seasonId, clubId, competition])
   @@map("standings")
@@ -960,11 +960,14 @@ model NegotiationSession {
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  club            Club              @relation(fields: [clubId], references: [id])
+  club            Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
   aflPlayer       AflPlayer?        @relation(fields: [aflPlayerId], references: [id])
   staff           Staff?            @relation(fields: [staffId], references: [id])
   messages        NegotiationMessage[]
 
+  // Prevent duplicate active sessions for the same club/player or club/staff
+  @@unique([clubId, aflPlayerId, status])
+  @@unique([clubId, staffId, status])
   @@map("negotiation_sessions")
 }
 

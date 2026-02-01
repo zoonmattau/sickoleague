@@ -509,8 +509,19 @@ export async function acceptNegotiation(
     yearBreakdown: { season: number; value: number }[];
   };
 
-  const startSeason = currentOffer.yearBreakdown[0]?.season ?? new Date().getFullYear();
-  const endSeason = currentOffer.yearBreakdown[currentOffer.yearBreakdown.length - 1]?.season ?? startSeason;
+  // Validate yearBreakdown is not empty
+  if (!currentOffer.yearBreakdown || currentOffer.yearBreakdown.length === 0) {
+    return { error: "Invalid contract: no year breakdown specified" };
+  }
+
+  // Validate all year values are positive
+  const invalidYear = currentOffer.yearBreakdown.find(y => y.value <= 0);
+  if (invalidYear) {
+    return { error: `Invalid contract: year ${invalidYear.season} has invalid value` };
+  }
+
+  const startSeason = currentOffer.yearBreakdown[0].season;
+  const endSeason = currentOffer.yearBreakdown[currentOffer.yearBreakdown.length - 1].season;
 
   // Get list manager discount for player contracts
   const { discount } = await getListManagerDiscount(club.id);
@@ -530,54 +541,57 @@ export async function acceptNegotiation(
     return { error: formatSalaryCapError(salaryCapResult) };
   }
 
-  if (session.aflPlayerId) {
-    // Apply list manager discount to player contract
-    const discountedTotal = currentOffer.totalValue * discountMultiplier;
-    const discountedBreakdown = finalBreakdown;
+  // Use transaction to ensure contract creation and salary update are atomic
+  await prisma.$transaction(async (tx) => {
+    if (session.aflPlayerId) {
+      // Apply list manager discount to player contract
+      const discountedTotal = currentOffer.totalValue * discountMultiplier;
+      const discountedBreakdown = finalBreakdown;
 
-    // Create player contract with discount
-    await prisma.contract.create({
-      data: {
-        clubId: club.id,
-        aflPlayerId: session.aflPlayerId,
-        startSeason,
-        endSeason,
-        totalValue: discountedTotal,
-        yearBreakdown: discountedBreakdown,
-        contractType: "FREE_AGENT",
-        status: "ACTIVE",
-      },
-    });
-  } else if (session.staffId) {
-    // Determine staff role
-    const staff = await prisma.staff.findUnique({ where: { id: session.staffId } });
+      // Create player contract with discount
+      await tx.contract.create({
+        data: {
+          clubId: club.id,
+          aflPlayerId: session.aflPlayerId,
+          startSeason,
+          endSeason,
+          totalValue: discountedTotal,
+          yearBreakdown: discountedBreakdown,
+          contractType: "FREE_AGENT",
+          status: "ACTIVE",
+        },
+      });
+    } else if (session.staffId) {
+      // Determine staff role
+      const staff = await tx.staff.findUnique({ where: { id: session.staffId } });
 
-    // For coaches, use the selected role (SENIOR_ASSISTANT or RESERVES_ASSISTANT)
-    // For list managers, always use LIST_MANAGER
-    let staffRole: "SENIOR_ASSISTANT" | "RESERVES_ASSISTANT" | "LIST_MANAGER";
-    if (staff?.role === "LIST_MANAGER") {
-      staffRole = "LIST_MANAGER";
-    } else {
-      // Coach - use provided role or default to SENIOR_ASSISTANT
-      staffRole = coachRole ?? "SENIOR_ASSISTANT";
+      // For coaches, use the selected role (SENIOR_ASSISTANT or RESERVES_ASSISTANT)
+      // For list managers, always use LIST_MANAGER
+      let staffRole: "SENIOR_ASSISTANT" | "RESERVES_ASSISTANT" | "LIST_MANAGER";
+      if (staff?.role === "LIST_MANAGER") {
+        staffRole = "LIST_MANAGER";
+      } else {
+        // Coach - use provided role or default to SENIOR_ASSISTANT
+        staffRole = coachRole ?? "SENIOR_ASSISTANT";
+      }
+
+      // Staff contracts don't get discounts
+      await tx.staffContract.create({
+        data: {
+          clubId: club.id,
+          staffId: session.staffId,
+          staffRole,
+          startSeason,
+          endSeason,
+          totalValue: currentOffer.totalValue,
+          yearBreakdown: currentOffer.yearBreakdown,
+          status: "ACTIVE",
+        },
+      });
     }
+  });
 
-    // Staff contracts don't get discounts
-    await prisma.staffContract.create({
-      data: {
-        clubId: club.id,
-        staffId: session.staffId,
-        staffRole,
-        startSeason,
-        endSeason,
-        totalValue: currentOffer.totalValue,
-        yearBreakdown: currentOffer.yearBreakdown,
-        status: "ACTIVE",
-      },
-    });
-  }
-
-  // Update the club's salary records
+  // Update the club's salary records (after transaction commits successfully)
   await updateClubSalaryRecords(club.id);
 
   revalidatePath("/dashboard/roster");

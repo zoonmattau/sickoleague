@@ -47,12 +47,14 @@ export function LeagueGraphs({ myClubId }: Props) {
   const [hfaClubs, setHfaClubs] = useState<Club[]>([]);
   const [hfaData, setHfaData] = useState<HfaData[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedClubs, setSelectedClubs] = useState<Set<string>>(new Set());
   const [competition, setCompetition] = useState<"SENIORS" | "RESERVES">("SENIORS");
 
   useEffect(() => {
-    Promise.all([getAllClubsLadderHistory(), getAllClubsHfaHistory()]).then(
-      ([ladder, hfa]) => {
+    setError(null);
+    Promise.all([getAllClubsLadderHistory(), getAllClubsHfaHistory()])
+      .then(([ladder, hfa]) => {
         setClubs(ladder.clubs);
         setLadderData(ladder.data);
         setHfaClubs(hfa.clubs);
@@ -61,8 +63,12 @@ export function LeagueGraphs({ myClubId }: Props) {
         const allClubIds = new Set(ladder.clubs.map((c) => c.id));
         setSelectedClubs(allClubIds);
         setLoaded(true);
-      }
-    );
+      })
+      .catch((err) => {
+        console.error("Failed to load league graphs:", err);
+        setError("Failed to load graph data");
+        setLoaded(true);
+      });
   }, []);
 
   const toggleClub = (clubId: string) => {
@@ -85,6 +91,16 @@ export function LeagueGraphs({ myClubId }: Props) {
 
   const currentLadder = ladderData.filter((d) => d.matchType === competition);
   const currentHfa = hfaData.filter((d) => d.matchType === competition);
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-red-500">
+          {error}
+        </CardContent>
+      </Card>
+    );
+  }
 
   function renderLadderGraph(data: LadderData[]) {
     if (!loaded) {

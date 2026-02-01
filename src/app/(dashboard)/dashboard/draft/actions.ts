@@ -345,26 +345,29 @@ export async function makePick(pickId: string, playerId: string) {
     return { error: "Player is not available" };
   }
 
-  // Check if player has already been drafted
-  const alreadyDrafted = await prisma.draftPick.findFirst({
-    where: {
-      seasonId: pick.seasonId,
-      playerSelectedId: playerId,
-    },
-  });
+  // Make the pick - check for already drafted INSIDE transaction to prevent race conditions
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Check if player has already been drafted (inside transaction for atomicity)
+      const alreadyDrafted = await tx.draftPick.findFirst({
+        where: {
+          seasonId: pick.seasonId,
+          playerSelectedId: playerId,
+        },
+      });
 
-  if (alreadyDrafted) return { error: "Player has already been drafted" };
+      if (alreadyDrafted) {
+        throw new Error("Player has already been drafted");
+      }
 
-  // Make the pick
-  await prisma.$transaction(async (tx) => {
-    // Update the pick
-    await tx.draftPick.update({
-      where: { id: pickId },
-      data: {
-        playerSelectedId: playerId,
-        used: true,
-      },
-    });
+      // Update the pick
+      await tx.draftPick.update({
+        where: { id: pickId },
+        data: {
+          playerSelectedId: playerId,
+          used: true,
+        },
+      });
 
     // Advance to next pick
     const nextPickNumber = pick.pickNumber + 1;
@@ -394,7 +397,13 @@ export async function makePick(pickId: string, playerId: string) {
         },
       });
     }
-  });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Player has already been drafted") {
+      return { error: "Player has already been drafted" };
+    }
+    throw error;
+  }
 
   revalidatePath("/dashboard/draft");
   revalidatePath("/admin/draft");
@@ -701,27 +710,31 @@ export async function adminMakePick(pickId: string, playerId: string) {
 
   if (!player) return { error: "Player not found" };
 
-  // Check if player has already been drafted
-  const alreadyDrafted = await prisma.draftPick.findFirst({
-    where: {
-      seasonId: pick.seasonId,
-      playerSelectedId: playerId,
-    },
-  });
+  // Check and update inside transaction to prevent race conditions
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Check if player has already been drafted (inside transaction for atomicity)
+      const alreadyDrafted = await tx.draftPick.findFirst({
+        where: {
+          seasonId: pick.seasonId,
+          playerSelectedId: playerId,
+        },
+      });
 
-  if (alreadyDrafted) return { error: "Player has already been drafted" };
+      if (alreadyDrafted) {
+        throw new Error("Player has already been drafted");
+      }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.draftPick.update({
-      where: { id: pickId },
-      data: {
-        playerSelectedId: playerId,
-        used: true,
-      },
-    });
+      await tx.draftPick.update({
+        where: { id: pickId },
+        data: {
+          playerSelectedId: playerId,
+          used: true,
+        },
+      });
 
-    // If this was the current pick, advance
-    if (pick.season.currentPickNumber === pick.pickNumber) {
+      // If this was the current pick, advance
+      if (pick.season.currentPickNumber === pick.pickNumber) {
       const nextPickNumber = pick.pickNumber + 1;
       const totalPicks = await tx.draftPick.count({
         where: { seasonId: pick.seasonId },
@@ -748,7 +761,13 @@ export async function adminMakePick(pickId: string, playerId: string) {
         });
       }
     }
-  });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Player has already been drafted") {
+      return { error: "Player has already been drafted" };
+    }
+    throw error;
+  }
 
   revalidatePath("/dashboard/draft");
   revalidatePath("/admin/draft");

@@ -73,20 +73,28 @@ export function TeamGraphs({ clubId, clubName, reservesName, primaryColor, secon
   const [hfa, setHfa] = useState<HfaEntry[]>([]);
   const [ladder, setLadder] = useState<LadderEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [seniorsScreen, setSeniorsScreen] = useState<Screen>("scores");
   const [reservesScreen, setReservesScreen] = useState<Screen>("scores");
 
   useEffect(() => {
+    setError(null);
     Promise.all([
       getClubMatchHistory(clubId),
       getClubHfaHistory(clubId),
       getClubLadderPositionHistory(clubId),
-    ]).then(([m, h, l]) => {
-      setMatches(m);
-      setHfa(h);
-      setLadder(l);
-      setLoaded(true);
-    });
+    ])
+      .then(([m, h, l]) => {
+        setMatches(m);
+        setHfa(h);
+        setLadder(l);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error("Failed to load team graphs:", err);
+        setError("Failed to load graph data");
+        setLoaded(true);
+      });
   }, [clubId]);
 
   const seniorsMatches = matches.filter((m) => m.matchType === "SENIORS");
@@ -111,6 +119,10 @@ export function TeamGraphs({ clubId, clubName, reservesName, primaryColor, secon
   ) {
     if (!loaded) {
       return <p className="text-xs text-muted-foreground py-6 text-center">Loading...</p>;
+    }
+
+    if (error) {
+      return <p className="text-xs text-red-500 py-6 text-center">{error}</p>;
     }
 
     if (screen === "position") {

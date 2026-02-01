@@ -130,7 +130,29 @@ export async function assignPlayerToRoster(
   squad: Squad,
   rosterSpot: RosterSpot
 ) {
-  // Get the player's positions
+  // Verify the user owns this club
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const coach = await prisma.coach.findFirst({
+    where: {
+      OR: [
+        { discordId: user.id },
+        { email: user.email ?? "" },
+      ],
+    },
+    include: { club: true },
+  });
+
+  if (!coach?.club || coach.club.id !== clubId) {
+    return { success: false, error: "You do not own this club" };
+  }
+
+  // Get the player's positions and verify contract belongs to this club
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: { aflPlayer: { select: { positions: true } } },
@@ -138,6 +160,11 @@ export async function assignPlayerToRoster(
 
   if (!contract) {
     return { success: false, error: "Contract not found" };
+  }
+
+  // Verify the contract belongs to the specified club
+  if (contract.clubId !== clubId) {
+    return { success: false, error: "Contract does not belong to your club" };
   }
 
   // Validate the player can play this position
