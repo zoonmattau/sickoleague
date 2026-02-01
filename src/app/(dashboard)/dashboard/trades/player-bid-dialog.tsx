@@ -55,10 +55,9 @@ export function PlayerBidDialog({
     [currentYear + 3]: player.expectedPrice,
   });
 
-  // Calculate minimum contract: (Games Remaining × $1) + $2 signing bonus
-  // Reserves can have $0 contracts, but seniors need at least $1
-  const minimumContract = gamesRemaining + 2;
-  const isReservesOnly = player.positions.length === 0; // Adjust based on your reserves logic
+  // Calculate minimum contract: $2,000 signing fee + $1,000 per game remaining
+  // Values are in thousands (e.g., 24 = $24,000)
+  const minimumContract = 2 + gamesRemaining; // 2k signing + 1k per game
 
   const totalValue = Array.from({ length: years }, (_, i) => currentYear + i)
     .map((year) => yearValues[year] || player.expectedPrice)
@@ -142,12 +141,12 @@ export function PlayerBidDialog({
               <p className="text-xs text-muted-foreground">Avg Points</p>
             </div>
             <div>
-              <p className="text-2xl font-bold">${player.expectedPrice}</p>
+              <p className="text-2xl font-bold">${player.expectedPrice.toLocaleString()}k</p>
               <p className="text-xs text-muted-foreground">Est. Price</p>
             </div>
             <div>
               <p className="text-2xl font-bold">
-                {player.topBid ? `$${player.topBid}` : "-"}
+                {player.topBid ? `$${player.topBid.toLocaleString()}k` : "-"}
               </p>
               <p className="text-xs text-muted-foreground">Top Bid</p>
             </div>
@@ -158,14 +157,14 @@ export function PlayerBidDialog({
             <div>
               <p className="font-medium text-sm">Minimum Contract</p>
               <p className="text-xs text-muted-foreground">
-                {gamesRemaining} games × $1 + $2 signing bonus
+                $2k signing + $1k × {gamesRemaining} games
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 $0 contracts allowed for reserves only
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">${minimumContract}</span>
+              <span className="text-lg font-bold">${minimumContract}k</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -198,7 +197,7 @@ export function PlayerBidDialog({
 
           {/* Year breakdown */}
           <div className="space-y-2">
-            <Label>Salary Breakdown</Label>
+            <Label>Salary Breakdown (in thousands)</Label>
             <div className="space-y-2">
               {Array.from({ length: years }, (_, i) => currentYear + i).map(
                 (year) => (
@@ -219,9 +218,12 @@ export function PlayerBidDialog({
                         onChange={(e) =>
                           handleYearValueChange(year, e.target.value)
                         }
-                        className="pl-7"
+                        className="pl-7 pr-8"
                         min={0}
                       />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        k
+                      </span>
                     </div>
                   </div>
                 )
@@ -232,13 +234,13 @@ export function PlayerBidDialog({
           {/* Total */}
           <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg">
             <span className="font-medium">Total Contract Value</span>
-            <span className="text-xl font-bold">${totalValue}</span>
+            <span className="text-xl font-bold">${totalValue.toLocaleString()}k</span>
           </div>
 
           {/* Warning if outbid */}
           {player.topBid && totalValue <= player.topBid && (
             <p className="text-sm text-orange-600">
-              Your bid is at or below the current top bid of ${player.topBid}.
+              Your bid is at or below the current top bid of ${player.topBid.toLocaleString()}k.
               Consider increasing your offer.
             </p>
           )}
