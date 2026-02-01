@@ -1,14 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getFreeAgentPlayers, getMyBids } from "../trades/actions";
+import { getFreeAgentPlayers, getMyBids, getGamesRemaining } from "../trades/actions";
 import { FreeAgentsTab } from "../trades/free-agents-tab";
 import { formatDistanceToNow } from "date-fns";
 
 export default async function FreeAgentsPage() {
-  const [freeAgentPlayers, myBids] = await Promise.all([
+  const [freeAgentPlayers, myBids, gamesRemaining] = await Promise.all([
     getFreeAgentPlayers(),
     getMyBids(),
+    getGamesRemaining(),
   ]);
 
   const activeBidsCount = myBids.filter((b) => b.status === "PENDING").length;
@@ -51,7 +52,7 @@ export default async function FreeAgentsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <FreeAgentsTab players={freeAgentPlayers} />
+              <FreeAgentsTab players={freeAgentPlayers} gamesRemaining={gamesRemaining} />
             </CardContent>
           </Card>
         </TabsContent>

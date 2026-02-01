@@ -967,6 +967,58 @@ export async function updateWeek2FinalsMatchup(seasonYear: number) {
  * Call this after Week 2 matches are completed
  */
 // ============================================================================
+// SEASON SETTINGS
+// ============================================================================
+
+/**
+ * Get current season settings
+ */
+export async function getSeasonSettings() {
+  const season = await prisma.season.findFirst({
+    where: { status: { in: ["ACTIVE", "UPCOMING"] } },
+    orderBy: { year: "desc" },
+    select: {
+      id: true,
+      year: true,
+      coachSigningEnabled: true,
+      draftStatus: true,
+      status: true,
+    },
+  });
+
+  return season;
+}
+
+/**
+ * Toggle coach signing enabled/disabled
+ */
+export async function toggleCoachSigning(enabled: boolean) {
+  try {
+    const season = await prisma.season.findFirst({
+      where: { status: { in: ["ACTIVE", "UPCOMING"] } },
+      orderBy: { year: "desc" },
+    });
+
+    if (!season) {
+      return { success: false, error: "No active season found" };
+    }
+
+    await prisma.season.update({
+      where: { id: season.id },
+      data: { coachSigningEnabled: enabled },
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/dashboard");
+
+    return { success: true, enabled };
+  } catch (error) {
+    console.error("Failed to toggle coach signing:", error);
+    return { success: false, error: "Failed to toggle coach signing" };
+  }
+}
+
+// ============================================================================
 // RIVALRY SYNC
 // ============================================================================
 

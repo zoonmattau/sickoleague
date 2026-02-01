@@ -161,6 +161,40 @@ export type MyBid = {
 };
 
 /**
+ * Get the number of games remaining in the current season
+ */
+export async function getGamesRemaining(): Promise<number> {
+  const season = await prisma.season.findFirst({
+    where: { status: "ACTIVE" },
+    include: {
+      rounds: {
+        where: {
+          roundType: { not: "BYE" },
+        },
+      },
+    },
+  });
+
+  if (!season) return 0;
+
+  // Count rounds that haven't been completed yet
+  const completedRounds = await prisma.round.count({
+    where: {
+      seasonId: season.id,
+      roundType: { not: "BYE" },
+      matches: {
+        every: {
+          status: "COMPLETED",
+        },
+      },
+    },
+  });
+
+  const totalRounds = season.rounds.length;
+  return Math.max(0, totalRounds - completedRounds);
+}
+
+/**
  * Get all unsigned players as free agents
  */
 export async function getFreeAgentPlayers(): Promise<FreeAgentPlayer[]> {

@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { AdminDashboard } from "@/components/admin-dashboard";
-import { getAllClubsWithCoaches, getAllCoaches, getAllContracts, getAllAflPlayers } from "./actions";
+import { getAllClubsWithCoaches, getAllCoaches, getAllContracts, getAllAflPlayers, getSeasonSettings } from "./actions";
+import { isAdmin } from "@/lib/admin";
 
 async function getUser() {
   const supabase = await createClient();
@@ -70,7 +71,11 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  const [rounds, clubs, standings, clubsWithCoaches, coaches, contracts, aflPlayers] = await Promise.all([
+  if (!isAdmin(user)) {
+    redirect("/dashboard");
+  }
+
+  const [rounds, clubs, standings, clubsWithCoaches, coaches, contracts, aflPlayers, seasonSettings] = await Promise.all([
     getRounds(),
     getClubs(),
     getStandings(),
@@ -78,10 +83,26 @@ export default async function AdminPage() {
     getAllCoaches(),
     getAllContracts(),
     getAllAflPlayers(),
+    getSeasonSettings(),
   ]);
 
   return (
     <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4">
+          <div className="flex h-14 items-center justify-between">
+            <a href="/dashboard" className="font-bold text-xl">
+              Sicko League
+            </a>
+            <nav className="flex items-center gap-4">
+              <a href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+                Dashboard
+              </a>
+              <span className="text-sm font-medium">Admin Panel</span>
+            </nav>
+          </div>
+        </div>
+      </header>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Admin Panel</h1>
@@ -96,6 +117,7 @@ export default async function AdminPage() {
           coaches={coaches}
           contracts={contracts}
           aflPlayers={aflPlayers}
+          seasonSettings={seasonSettings}
         />
       </div>
     </div>

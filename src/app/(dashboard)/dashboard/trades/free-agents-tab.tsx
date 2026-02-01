@@ -26,6 +26,7 @@ import { PlayerDetailDialog } from "./player-detail-dialog";
 
 interface FreeAgentsTabProps {
   players: FreeAgentPlayer[];
+  gamesRemaining: number;
 }
 
 const positionColors: Record<string, string> = {
@@ -51,7 +52,7 @@ function formatTimeRemaining(date: Date | null): string {
   return `${hours}h ${minutes}m`;
 }
 
-export function FreeAgentsTab({ players }: FreeAgentsTabProps) {
+export function FreeAgentsTab({ players, gamesRemaining }: FreeAgentsTabProps) {
   const [search, setSearch] = useState("");
   const [positionFilter, setPositionFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -281,6 +282,7 @@ export function FreeAgentsTab({ players }: FreeAgentsTabProps) {
           player={selectedPlayer}
           open={bidDialogOpen}
           onOpenChange={setBidDialogOpen}
+          gamesRemaining={gamesRemaining}
         />
       )}
 

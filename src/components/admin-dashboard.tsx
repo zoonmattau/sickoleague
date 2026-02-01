@@ -51,7 +51,10 @@ import {
   transferContract,
   terminateContract,
   updateAflPlayer,
+  toggleCoachSigning,
 } from "@/app/admin/actions";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { getPositionColorClasses } from "@/lib/position-colors";
 
 interface Club {
@@ -148,6 +151,14 @@ interface AflPlayer {
   currentClubAbbr: string | null;
 }
 
+interface SeasonSettings {
+  id: string;
+  year: number;
+  coachSigningEnabled: boolean;
+  draftStatus: string;
+  status: string;
+}
+
 interface AdminDashboardProps {
   rounds: Round[];
   clubs: Club[];
@@ -156,6 +167,7 @@ interface AdminDashboardProps {
   coaches: Coach[];
   contracts: Contract[];
   aflPlayers: AflPlayer[];
+  seasonSettings: SeasonSettings | null;
 }
 
 export function AdminDashboard({
@@ -166,6 +178,7 @@ export function AdminDashboard({
   coaches,
   contracts,
   aflPlayers,
+  seasonSettings,
 }: AdminDashboardProps) {
   const [selectedRound, setSelectedRound] = useState<string>(rounds[0]?.id || "");
   const [matchScores, setMatchScores] = useState<Record<string, { home: string; away: string }>>({});
@@ -417,8 +430,52 @@ export function AdminDashboard({
     );
   };
 
+  const [coachSigningToggling, setCoachSigningToggling] = useState(false);
+
+  const handleToggleCoachSigning = async (enabled: boolean) => {
+    setCoachSigningToggling(true);
+    const result = await toggleCoachSigning(enabled);
+    if (result.success) {
+      setMessage({ type: "success", text: `Coach signing ${enabled ? "enabled" : "disabled"}` });
+      window.location.reload();
+    } else {
+      setMessage({ type: "error", text: result.error || "Failed to update setting" });
+    }
+    setCoachSigningToggling(false);
+  };
+
   return (
-    <Tabs defaultValue="clubs" className="space-y-6">
+    <>
+      {/* Season Settings Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Season Settings</CardTitle>
+          <CardDescription>Configure season-wide toggles and options</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="coach-signing">Coach Signing</Label>
+              <p className="text-sm text-muted-foreground">
+                Allow coaches to sign with clubs. Disable until all clubs are filled.
+              </p>
+            </div>
+            <Switch
+              id="coach-signing"
+              checked={seasonSettings?.coachSigningEnabled ?? false}
+              onCheckedChange={handleToggleCoachSigning}
+              disabled={coachSigningToggling || !seasonSettings}
+            />
+          </div>
+          {seasonSettings && (
+            <div className="text-xs text-muted-foreground">
+              Season {seasonSettings.year} • Draft: {seasonSettings.draftStatus} • Status: {seasonSettings.status}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="clubs" className="space-y-6">
       <TabsList className="flex-wrap">
         <TabsTrigger value="clubs" className="gap-2">
           <Users className="h-4 w-4" />
@@ -1180,5 +1237,6 @@ export function AdminDashboard({
         </DialogContent>
       </Dialog>
     </Tabs>
+    </>
   );
 }

@@ -28,6 +28,7 @@ interface PlayerBidDialogProps {
   player: FreeAgentPlayer;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  gamesRemaining: number;
 }
 
 const positionColors: Record<string, string> = {
@@ -43,6 +44,7 @@ export function PlayerBidDialog({
   player,
   open,
   onOpenChange,
+  gamesRemaining,
 }: PlayerBidDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [years, setYears] = useState<number>(2);
@@ -53,9 +55,23 @@ export function PlayerBidDialog({
     [currentYear + 3]: player.expectedPrice,
   });
 
+  // Calculate minimum contract: (Games Remaining × $1) + $2 signing bonus
+  // Reserves can have $0 contracts, but seniors need at least $1
+  const minimumContract = gamesRemaining + 2;
+  const isReservesOnly = player.positions.length === 0; // Adjust based on your reserves logic
+
   const totalValue = Array.from({ length: years }, (_, i) => currentYear + i)
     .map((year) => yearValues[year] || player.expectedPrice)
     .reduce((sum, v) => sum + v, 0);
+
+  const applyMinimumContract = () => {
+    // Set 1-year contract with minimum value in first year
+    setYears(1);
+    setYearValues((prev) => ({
+      ...prev,
+      [currentYear]: minimumContract,
+    }));
+  };
 
   const handleYearValueChange = (year: number, value: string) => {
     const numValue = parseInt(value) || 0;
@@ -137,6 +153,30 @@ export function PlayerBidDialog({
             </div>
           </div>
 
+          {/* Minimum contract info */}
+          <div className="flex items-center justify-between p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <div>
+              <p className="font-medium text-sm">Minimum Contract</p>
+              <p className="text-xs text-muted-foreground">
+                {gamesRemaining} games × $1 + $2 signing bonus
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                $0 contracts allowed for reserves only
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">${minimumContract}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={applyMinimumContract}
+                type="button"
+              >
+                Offer Min
+              </Button>
+            </div>
+          </div>
+
           {/* Contract length */}
           <div className="space-y-2">
             <Label>Contract Length</Label>
@@ -180,7 +220,7 @@ export function PlayerBidDialog({
                           handleYearValueChange(year, e.target.value)
                         }
                         className="pl-7"
-                        min={1}
+                        min={0}
                       />
                     </div>
                   </div>

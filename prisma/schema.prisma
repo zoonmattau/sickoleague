@@ -507,6 +507,9 @@ model Season {
   pickTimerSeconds  Int            @default(60) @map("pick_timer_seconds")
   pickDeadline      DateTime?      @map("pick_deadline")
 
+  // Admin toggles
+  coachSigningEnabled Boolean @default(false) @map("coach_signing_enabled")
+
   // Relations
   rounds        Round[]
   standings     Standing[]
