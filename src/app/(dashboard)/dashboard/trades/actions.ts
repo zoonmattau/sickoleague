@@ -571,6 +571,16 @@ export type PlayerDetail = {
   highScore: number | null;
   lowScore: number | null;
   last5Avg: number | null;
+  // 2025 Fantasy Stats from Excel
+  maxScore: number | null;
+  games100Plus: number | null;
+  games120Plus: number | null;
+  cbaPercent: number | null;
+  ppm: number | null;
+  regAvg: number | null;
+  finalsAvg: number | null;
+  avg2024: number | null;
+  avg2023: number | null;
   currentContract: {
     clubName: string;
     clubAbbreviation: string;
@@ -682,11 +692,21 @@ export async function getPlayerDetail(playerId: string): Promise<PlayerDetail | 
     aflTeam: player.aflTeam
       ? { name: player.aflTeam.name, abbreviation: player.aflTeam.abbreviation }
       : null,
-    gamesPlayed: scores.length,
-    averagePoints,
-    highScore,
+    gamesPlayed: player.gamesPlayed ?? scores.length,
+    averagePoints: player.avgPoints ? Number(player.avgPoints) : averagePoints,
+    highScore: player.maxScore ?? highScore,
     lowScore,
-    last5Avg,
+    last5Avg: player.last5Avg ? Number(player.last5Avg) : last5Avg,
+    // 2025 Fantasy Stats from Excel
+    maxScore: player.maxScore,
+    games100Plus: player.games100Plus,
+    games120Plus: player.games120Plus,
+    cbaPercent: player.cbaPercent ? Number(player.cbaPercent) : null,
+    ppm: player.ppm ? Number(player.ppm) : null,
+    regAvg: player.regAvg ? Number(player.regAvg) : null,
+    finalsAvg: player.finalsAvg ? Number(player.finalsAvg) : null,
+    avg2024: player.avg2024 ? Number(player.avg2024) : null,
+    avg2023: player.avg2023 ? Number(player.avg2023) : null,
     currentContract: activeContract
       ? {
           clubName: activeContract.club.name,

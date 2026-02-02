@@ -1,12 +1,95 @@
 import { PrismaClient, Position, PlayerStatus, SeasonStatus, RoundType, RoundStatus, DraftType, MarketSize, VenueClass } from '@prisma/client'
 import 'dotenv/config'
+import * as XLSX from 'xlsx'
+import * as path from 'path'
 
 const prisma = new PrismaClient()
 
-// All 18 AFL Teams
+// Map Excel team abbreviations to our AFL team names
+const teamAbbrevToName: Record<string, string> = {
+  'ADE': 'Adelaide Crows',
+  'BRL': 'Brisbane Lions',
+  'CAR': 'Carlton',
+  'COL': 'Collingwood',
+  'ESS': 'Essendon',
+  'FRE': 'Fremantle',
+  'GEE': 'Geelong Cats',
+  'GCS': 'Gold Coast Suns',
+  'GWS': 'GWS Giants',
+  'HAW': 'Hawthorn',
+  'MEL': 'Melbourne',
+  'NTH': 'North Melbourne',
+  'PTA': 'Port Adelaide',
+  'RIC': 'Richmond',
+  'STK': 'St Kilda',
+  'SYD': 'Sydney Swans',
+  'WCE': 'West Coast Eagles',
+  'WBD': 'Western Bulldogs',
+}
+
+// Parse position string from Excel (e.g., "MID/FWD" -> ["MID", "FWD"])
+function parsePositions(posStr: string): Position[] {
+  if (!posStr) return []
+  return posStr.split('/').map(p => p.trim()).filter(p => ['DEF', 'MID', 'RUC', 'FWD'].includes(p)) as Position[]
+}
+
+// Parse percentage string (e.g., "70.1%" -> 70.1)
+function parsePercent(val: string | number | undefined): number | null {
+  if (val === undefined || val === null || val === '') return null
+  if (typeof val === 'number') return val
+  const match = val.toString().replace('%', '').trim()
+  const num = parseFloat(match)
+  return isNaN(num) ? null : num
+}
+
+// Parse decimal value
+function parseDecimal(val: string | number | undefined): number | null {
+  if (val === undefined || val === null || val === '') return null
+  const num = typeof val === 'number' ? val : parseFloat(val.toString())
+  return isNaN(num) ? null : num
+}
+
+// Parse integer value
+function parseInt2(val: string | number | undefined): number | null {
+  if (val === undefined || val === null || val === '') return null
+  const num = typeof val === 'number' ? Math.round(val) : parseInt(val.toString())
+  return isNaN(num) ? null : num
+}
+
+// Parse player name into first and last name
+function parseName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(' ')
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' }
+  }
+  const firstName = parts[0]
+  const lastName = parts.slice(1).join(' ')
+  return { firstName, lastName }
+}
+
+interface ExcelPlayerRow {
+  Player: string
+  'Champion Data ID': string
+  Team: string
+  Position: string
+  GMS: number | string
+  FP: number | string
+  MAX: number | string
+  '100+': number | string
+  '120+': number | string
+  'CBA%': string | number
+  PPM: number | string
+  REG: number | string
+  L5: number | string
+  FIN: number | string
+  '2024': number | string
+  '2023': number | string
+}
+
+// All 18 AFL Teams (abbreviations match AFL Fantasy CSV exports)
 const aflTeams = [
   { name: 'Adelaide Crows', abbreviation: 'ADE' },
-  { name: 'Brisbane Lions', abbreviation: 'BRI' },
+  { name: 'Brisbane Lions', abbreviation: 'BRL' },
   { name: 'Carlton', abbreviation: 'CAR' },
   { name: 'Collingwood', abbreviation: 'COL' },
   { name: 'Essendon', abbreviation: 'ESS' },
@@ -16,288 +99,14 @@ const aflTeams = [
   { name: 'GWS Giants', abbreviation: 'GWS' },
   { name: 'Hawthorn', abbreviation: 'HAW' },
   { name: 'Melbourne', abbreviation: 'MEL' },
-  { name: 'North Melbourne', abbreviation: 'NM' },
-  { name: 'Port Adelaide', abbreviation: 'PA' },
+  { name: 'North Melbourne', abbreviation: 'NTH' },
+  { name: 'Port Adelaide', abbreviation: 'PTA' },
   { name: 'Richmond', abbreviation: 'RIC' },
   { name: 'St Kilda', abbreviation: 'STK' },
   { name: 'Sydney Swans', abbreviation: 'SYD' },
   { name: 'West Coast Eagles', abbreviation: 'WCE' },
-  { name: 'Western Bulldogs', abbreviation: 'WB' },
+  { name: 'Western Bulldogs', abbreviation: 'WBD' },
 ]
-
-// AFL Players by team (sample rosters with real player names)
-const aflPlayersByTeam: Record<string, Array<{ firstName: string; lastName: string; positions: Position[] }>> = {
-  'Adelaide Crows': [
-    { firstName: 'Jordan', lastName: 'Dawson', positions: ['DEF', 'MID'] },
-    { firstName: 'Rory', lastName: 'Laird', positions: ['MID'] },
-    { firstName: 'Ben', lastName: 'Keays', positions: ['MID'] },
-    { firstName: 'Izak', lastName: 'Rankine', positions: ['FWD'] },
-    { firstName: 'Taylor', lastName: 'Walker', positions: ['FWD'] },
-    { firstName: 'Darcy', lastName: 'Fogarty', positions: ['FWD'] },
-    { firstName: 'Riley', lastName: 'Thilthorpe', positions: ['FWD', 'RUC'] },
-    { firstName: 'Sam', lastName: 'Berry', positions: ['MID'] },
-    { firstName: 'Jake', lastName: 'Soligo', positions: ['MID'] },
-    { firstName: 'Brodie', lastName: 'Smith', positions: ['DEF'] },
-    { firstName: 'Nick', lastName: 'Murray', positions: ['DEF'] },
-    { firstName: 'Mark', lastName: 'Keane', positions: ['DEF'] },
-    { firstName: 'Reilly', lastName: 'OBrien', positions: ['RUC'] },
-  ],
-  'Brisbane Lions': [
-    { firstName: 'Lachie', lastName: 'Neale', positions: ['MID'] },
-    { firstName: 'Hugh', lastName: 'McCluggage', positions: ['MID'] },
-    { firstName: 'Josh', lastName: 'Dunkley', positions: ['MID'] },
-    { firstName: 'Dayne', lastName: 'Zorko', positions: ['MID', 'FWD'] },
-    { firstName: 'Harris', lastName: 'Andrews', positions: ['DEF'] },
-    { firstName: 'Joe', lastName: 'Daniher', positions: ['FWD'] },
-    { firstName: 'Eric', lastName: 'Hipwood', positions: ['FWD'] },
-    { firstName: 'Charlie', lastName: 'Cameron', positions: ['FWD'] },
-    { firstName: 'Cam', lastName: 'Rayner', positions: ['FWD', 'MID'] },
-    { firstName: 'Oscar', lastName: 'McInerney', positions: ['RUC'] },
-    { firstName: 'Brandon', lastName: 'Starcevich', positions: ['DEF'] },
-    { firstName: 'Keidean', lastName: 'Coleman', positions: ['DEF'] },
-    { firstName: 'Jarrod', lastName: 'Berry', positions: ['MID'] },
-  ],
-  'Carlton': [
-    { firstName: 'Patrick', lastName: 'Cripps', positions: ['MID'] },
-    { firstName: 'Sam', lastName: 'Walsh', positions: ['MID'] },
-    { firstName: 'Charlie', lastName: 'Curnow', positions: ['FWD'] },
-    { firstName: 'Harry', lastName: 'McKay', positions: ['FWD'] },
-    { firstName: 'George', lastName: 'Hewett', positions: ['MID'] },
-    { firstName: 'Adam', lastName: 'Cerra', positions: ['MID'] },
-    { firstName: 'Jacob', lastName: 'Weitering', positions: ['DEF'] },
-    { firstName: 'Nic', lastName: 'Newman', positions: ['DEF'] },
-    { firstName: 'Blake', lastName: 'Acres', positions: ['MID', 'DEF'] },
-    { firstName: 'Marc', lastName: 'Pittonet', positions: ['RUC'] },
-    { firstName: 'Tom', lastName: 'De Koning', positions: ['RUC', 'FWD'] },
-    { firstName: 'Matt', lastName: 'Kennedy', positions: ['MID'] },
-    { firstName: 'Zac', lastName: 'Williams', positions: ['DEF'] },
-  ],
-  'Collingwood': [
-    { firstName: 'Nick', lastName: 'Daicos', positions: ['MID'] },
-    { firstName: 'Scott', lastName: 'Pendlebury', positions: ['MID'] },
-    { firstName: 'Jordan', lastName: 'De Goey', positions: ['MID', 'FWD'] },
-    { firstName: 'Darcy', lastName: 'Moore', positions: ['DEF'] },
-    { firstName: 'Brayden', lastName: 'Maynard', positions: ['DEF'] },
-    { firstName: 'Jamie', lastName: 'Elliott', positions: ['FWD'] },
-    { firstName: 'Brody', lastName: 'Mihocek', positions: ['FWD'] },
-    { firstName: 'Dan', lastName: 'McStay', positions: ['FWD'] },
-    { firstName: 'Josh', lastName: 'Daicos', positions: ['MID', 'DEF'] },
-    { firstName: 'Steele', lastName: 'Sidebottom', positions: ['MID'] },
-    { firstName: 'Darcy', lastName: 'Cameron', positions: ['RUC', 'FWD'] },
-    { firstName: 'Mason', lastName: 'Cox', positions: ['RUC', 'FWD'] },
-    { firstName: 'Jack', lastName: 'Crisp', positions: ['MID', 'DEF'] },
-  ],
-  'Essendon': [
-    { firstName: 'Zach', lastName: 'Merrett', positions: ['MID'] },
-    { firstName: 'Darcy', lastName: 'Parish', positions: ['MID'] },
-    { firstName: 'Jordan', lastName: 'Ridley', positions: ['DEF'] },
-    { firstName: 'Andrew', lastName: 'McGrath', positions: ['MID', 'DEF'] },
-    { firstName: 'Jye', lastName: 'Caldwell', positions: ['MID'] },
-    { firstName: 'Peter', lastName: 'Wright', positions: ['FWD'] },
-    { firstName: 'Kyle', lastName: 'Langford', positions: ['FWD', 'MID'] },
-    { firstName: 'Jake', lastName: 'Stringer', positions: ['FWD'] },
-    { firstName: 'Sam', lastName: 'Draper', positions: ['RUC'] },
-    { firstName: 'Matt', lastName: 'Guelfi', positions: ['MID'] },
-    { firstName: 'Dyson', lastName: 'Heppell', positions: ['MID'] },
-    { firstName: 'Todd', lastName: 'Goldstein', positions: ['RUC'] },
-    { firstName: 'Harrison', lastName: 'Jones', positions: ['FWD'] },
-  ],
-  'Fremantle': [
-    { firstName: 'Andrew', lastName: 'Brayshaw', positions: ['MID'] },
-    { firstName: 'Caleb', lastName: 'Serong', positions: ['MID'] },
-    { firstName: 'Hayden', lastName: 'Young', positions: ['DEF'] },
-    { firstName: 'Jordan', lastName: 'Clark', positions: ['DEF'] },
-    { firstName: 'Luke', lastName: 'Ryan', positions: ['DEF'] },
-    { firstName: 'Sean', lastName: 'Darcy', positions: ['RUC'] },
-    { firstName: 'Luke', lastName: 'Jackson', positions: ['RUC', 'FWD'] },
-    { firstName: 'Jye', lastName: 'Amiss', positions: ['FWD'] },
-    { firstName: 'Michael', lastName: 'Walters', positions: ['FWD', 'MID'] },
-    { firstName: 'Alex', lastName: 'Pearce', positions: ['DEF'] },
-    { firstName: 'Nat', lastName: 'Fyfe', positions: ['MID', 'FWD'] },
-    { firstName: 'Will', lastName: 'Brodie', positions: ['MID'] },
-    { firstName: 'Josh', lastName: 'Treacy', positions: ['FWD'] },
-  ],
-  'Geelong Cats': [
-    { firstName: 'Patrick', lastName: 'Dangerfield', positions: ['MID', 'FWD'] },
-    { firstName: 'Jeremy', lastName: 'Cameron', positions: ['FWD'] },
-    { firstName: 'Tom', lastName: 'Hawkins', positions: ['FWD'] },
-    { firstName: 'Tom', lastName: 'Stewart', positions: ['DEF'] },
-    { firstName: 'Cam', lastName: 'Guthrie', positions: ['MID'] },
-    { firstName: 'Mitch', lastName: 'Duncan', positions: ['MID'] },
-    { firstName: 'Tyson', lastName: 'Stengle', positions: ['FWD'] },
-    { firstName: 'Gryan', lastName: 'Miers', positions: ['FWD'] },
-    { firstName: 'Rhys', lastName: 'Stanley', positions: ['RUC'] },
-    { firstName: 'Mark', lastName: 'Blicavs', positions: ['RUC', 'DEF'] },
-    { firstName: 'Sam', lastName: 'De Koning', positions: ['DEF'] },
-    { firstName: 'Jake', lastName: 'Kolodjashnij', positions: ['DEF'] },
-    { firstName: 'Max', lastName: 'Holmes', positions: ['MID'] },
-  ],
-  'Gold Coast Suns': [
-    { firstName: 'Touk', lastName: 'Miller', positions: ['MID'] },
-    { firstName: 'Noah', lastName: 'Anderson', positions: ['MID'] },
-    { firstName: 'Matt', lastName: 'Rowell', positions: ['MID'] },
-    { firstName: 'Ben', lastName: 'King', positions: ['FWD'] },
-    { firstName: 'Sam', lastName: 'Collins', positions: ['DEF'] },
-    { firstName: 'Charlie', lastName: 'Ballard', positions: ['DEF'] },
-    { firstName: 'Jarrod', lastName: 'Witts', positions: ['RUC'] },
-    { firstName: 'David', lastName: 'Swallow', positions: ['MID'] },
-    { firstName: 'Jack', lastName: 'Lukosius', positions: ['FWD', 'DEF'] },
-    { firstName: 'Wil', lastName: 'Powell', positions: ['DEF'] },
-    { firstName: 'Mabior', lastName: 'Chol', positions: ['FWD'] },
-    { firstName: 'Brandon', lastName: 'Ellis', positions: ['MID', 'DEF'] },
-    { firstName: 'Lachie', lastName: 'Weller', positions: ['MID'] },
-  ],
-  'GWS Giants': [
-    { firstName: 'Josh', lastName: 'Kelly', positions: ['MID'] },
-    { firstName: 'Toby', lastName: 'Greene', positions: ['FWD'] },
-    { firstName: 'Tim', lastName: 'Taranto', positions: ['MID'] },
-    { firstName: 'Lachie', lastName: 'Whitfield', positions: ['MID', 'DEF'] },
-    { firstName: 'Stephen', lastName: 'Coniglio', positions: ['MID'] },
-    { firstName: 'Jesse', lastName: 'Hogan', positions: ['FWD'] },
-    { firstName: 'Harry', lastName: 'Himmelberg', positions: ['FWD', 'DEF'] },
-    { firstName: 'Sam', lastName: 'Taylor', positions: ['DEF'] },
-    { firstName: 'Nick', lastName: 'Haynes', positions: ['DEF'] },
-    { firstName: 'Brent', lastName: 'Daniels', positions: ['FWD'] },
-    { firstName: 'Kieren', lastName: 'Briggs', positions: ['RUC'] },
-    { firstName: 'Isaac', lastName: 'Cumming', positions: ['DEF'] },
-    { firstName: 'Callum', lastName: 'Brown', positions: ['FWD'] },
-  ],
-  'Hawthorn': [
-    { firstName: 'James', lastName: 'Sicily', positions: ['DEF'] },
-    { firstName: 'Jai', lastName: 'Newcombe', positions: ['MID'] },
-    { firstName: 'Dylan', lastName: 'Moore', positions: ['FWD', 'MID'] },
-    { firstName: 'Will', lastName: 'Day', positions: ['MID', 'DEF'] },
-    { firstName: 'Changkuoth', lastName: 'Jiath', positions: ['DEF'] },
-    { firstName: 'Jack', lastName: 'Gunston', positions: ['FWD'] },
-    { firstName: 'Luke', lastName: 'Breust', positions: ['FWD'] },
-    { firstName: 'Conor', lastName: 'Nash', positions: ['MID'] },
-    { firstName: 'Jack', lastName: 'Scrimshaw', positions: ['DEF'] },
-    { firstName: 'Lloyd', lastName: 'Meek', positions: ['RUC'] },
-    { firstName: 'Mitch', lastName: 'Lewis', positions: ['FWD'] },
-    { firstName: 'Jarman', lastName: 'Impey', positions: ['DEF'] },
-    { firstName: 'Karl', lastName: 'Amon', positions: ['MID'] },
-  ],
-  'Melbourne': [
-    { firstName: 'Clayton', lastName: 'Oliver', positions: ['MID'] },
-    { firstName: 'Christian', lastName: 'Petracca', positions: ['MID'] },
-    { firstName: 'Max', lastName: 'Gawn', positions: ['RUC'] },
-    { firstName: 'Steven', lastName: 'May', positions: ['DEF'] },
-    { firstName: 'Jake', lastName: 'Lever', positions: ['DEF'] },
-    { firstName: 'Angus', lastName: 'Brayshaw', positions: ['MID', 'DEF'] },
-    { firstName: 'Ed', lastName: 'Langdon', positions: ['MID'] },
-    { firstName: 'Jack', lastName: 'Viney', positions: ['MID'] },
-    { firstName: 'Ben', lastName: 'Brown', positions: ['FWD'] },
-    { firstName: 'Bayley', lastName: 'Fritsch', positions: ['FWD'] },
-    { firstName: 'Kysaiah', lastName: 'Pickett', positions: ['FWD'] },
-    { firstName: 'Tom', lastName: 'McDonald', positions: ['FWD', 'DEF'] },
-    { firstName: 'Christian', lastName: 'Salem', positions: ['DEF'] },
-  ],
-  'North Melbourne': [
-    { firstName: 'Luke', lastName: 'Davies-Uniacke', positions: ['MID'] },
-    { firstName: 'Jy', lastName: 'Simpkin', positions: ['MID'] },
-    { firstName: 'Harry', lastName: 'Sheezel', positions: ['DEF', 'MID'] },
-    { firstName: 'Jason', lastName: 'Horne-Francis', positions: ['MID'] },
-    { firstName: 'Tristan', lastName: 'Xerri', positions: ['RUC'] },
-    { firstName: 'Nick', lastName: 'Larkey', positions: ['FWD'] },
-    { firstName: 'Cameron', lastName: 'Zurhaar', positions: ['FWD'] },
-    { firstName: 'Aidan', lastName: 'Corr', positions: ['DEF'] },
-    { firstName: 'Ben', lastName: 'McKay', positions: ['DEF'] },
-    { firstName: 'Bailey', lastName: 'Scott', positions: ['MID', 'DEF'] },
-    { firstName: 'Jaidyn', lastName: 'Stephenson', positions: ['FWD'] },
-    { firstName: 'George', lastName: 'Wardlaw', positions: ['MID'] },
-    { firstName: 'Colby', lastName: 'McKercher', positions: ['MID'] },
-  ],
-  'Port Adelaide': [
-    { firstName: 'Connor', lastName: 'Rozee', positions: ['MID', 'FWD'] },
-    { firstName: 'Zak', lastName: 'Butters', positions: ['MID'] },
-    { firstName: 'Travis', lastName: 'Boak', positions: ['MID'] },
-    { firstName: 'Ollie', lastName: 'Wines', positions: ['MID'] },
-    { firstName: 'Dan', lastName: 'Houston', positions: ['DEF', 'MID'] },
-    { firstName: 'Aliir', lastName: 'Aliir', positions: ['DEF'] },
-    { firstName: 'Charlie', lastName: 'Dixon', positions: ['FWD'] },
-    { firstName: 'Todd', lastName: 'Marshall', positions: ['FWD'] },
-    { firstName: 'Jeremy', lastName: 'Finlayson', positions: ['FWD'] },
-    { firstName: 'Darcy', lastName: 'Byrne-Jones', positions: ['DEF'] },
-    { firstName: 'Scott', lastName: 'Lycett', positions: ['RUC'] },
-    { firstName: 'Ryan', lastName: 'Burton', positions: ['DEF'] },
-    { firstName: 'Willem', lastName: 'Drew', positions: ['MID'] },
-  ],
-  'Richmond': [
-    { firstName: 'Dustin', lastName: 'Martin', positions: ['MID', 'FWD'] },
-    { firstName: 'Shai', lastName: 'Bolton', positions: ['MID', 'FWD'] },
-    { firstName: 'Tim', lastName: 'Taranto', positions: ['MID'] },
-    { firstName: 'Dion', lastName: 'Prestia', positions: ['MID'] },
-    { firstName: 'Dylan', lastName: 'Grimes', positions: ['DEF'] },
-    { firstName: 'Nick', lastName: 'Vlastuin', positions: ['DEF'] },
-    { firstName: 'Daniel', lastName: 'Rioli', positions: ['DEF', 'FWD'] },
-    { firstName: 'Tom', lastName: 'Lynch', positions: ['FWD'] },
-    { firstName: 'Toby', lastName: 'Nankervis', positions: ['RUC'] },
-    { firstName: 'Noah', lastName: 'Balta', positions: ['DEF', 'FWD'] },
-    { firstName: 'Liam', lastName: 'Baker', positions: ['DEF', 'MID'] },
-    { firstName: 'Jack', lastName: 'Graham', positions: ['MID'] },
-    { firstName: 'Jack', lastName: 'Riewoldt', positions: ['FWD'] },
-  ],
-  'St Kilda': [
-    { firstName: 'Jack', lastName: 'Steele', positions: ['MID'] },
-    { firstName: 'Brad', lastName: 'Crouch', positions: ['MID'] },
-    { firstName: 'Jade', lastName: 'Gresham', positions: ['MID', 'FWD'] },
-    { firstName: 'Jack', lastName: 'Sinclair', positions: ['MID', 'DEF'] },
-    { firstName: 'Nasiah', lastName: 'Wanganeen-Milera', positions: ['DEF', 'MID'] },
-    { firstName: 'Max', lastName: 'King', positions: ['FWD'] },
-    { firstName: 'Tim', lastName: 'Membrey', positions: ['FWD'] },
-    { firstName: 'Rowan', lastName: 'Marshall', positions: ['RUC'] },
-    { firstName: 'Callum', lastName: 'Wilkie', positions: ['DEF'] },
-    { firstName: 'Dougal', lastName: 'Howard', positions: ['DEF'] },
-    { firstName: 'Zak', lastName: 'Jones', positions: ['MID'] },
-    { firstName: 'Marcus', lastName: 'Windhager', positions: ['MID'] },
-    { firstName: 'Josh', lastName: 'Battle', positions: ['DEF', 'FWD'] },
-  ],
-  'Sydney Swans': [
-    { firstName: 'Isaac', lastName: 'Heeney', positions: ['MID', 'FWD'] },
-    { firstName: 'Chad', lastName: 'Warner', positions: ['MID'] },
-    { firstName: 'Errol', lastName: 'Gulden', positions: ['MID'] },
-    { firstName: 'Callum', lastName: 'Mills', positions: ['MID', 'DEF'] },
-    { firstName: 'Jake', lastName: 'Lloyd', positions: ['DEF'] },
-    { firstName: 'Dane', lastName: 'Rampe', positions: ['DEF'] },
-    { firstName: 'Lance', lastName: 'Franklin', positions: ['FWD'] },
-    { firstName: 'Logan', lastName: 'McDonald', positions: ['FWD'] },
-    { firstName: 'Tom', lastName: 'Papley', positions: ['FWD'] },
-    { firstName: 'Will', lastName: 'Hayward', positions: ['FWD'] },
-    { firstName: 'Brodie', lastName: 'Grundy', positions: ['RUC'] },
-    { firstName: 'Tom', lastName: 'McCartin', positions: ['DEF'] },
-    { firstName: 'Nick', lastName: 'Blakey', positions: ['FWD', 'DEF'] },
-  ],
-  'West Coast Eagles': [
-    { firstName: 'Tim', lastName: 'Kelly', positions: ['MID'] },
-    { firstName: 'Elliot', lastName: 'Yeo', positions: ['MID'] },
-    { firstName: 'Andrew', lastName: 'Gaff', positions: ['MID'] },
-    { firstName: 'Dom', lastName: 'Sheed', positions: ['MID'] },
-    { firstName: 'Liam', lastName: 'Duggan', positions: ['MID', 'DEF'] },
-    { firstName: 'Oscar', lastName: 'Allen', positions: ['FWD'] },
-    { firstName: 'Jake', lastName: 'Waterman', positions: ['FWD'] },
-    { firstName: 'Josh', lastName: 'Kennedy', positions: ['FWD'] },
-    { firstName: 'Nic', lastName: 'Naitanui', positions: ['RUC'] },
-    { firstName: 'Jeremy', lastName: 'McGovern', positions: ['DEF'] },
-    { firstName: 'Tom', lastName: 'Barrass', positions: ['DEF'] },
-    { firstName: 'Shannon', lastName: 'Hurn', positions: ['DEF'] },
-    { firstName: 'Jack', lastName: 'Darling', positions: ['FWD'] },
-  ],
-  'Western Bulldogs': [
-    { firstName: 'Marcus', lastName: 'Bontempelli', positions: ['MID'] },
-    { firstName: 'Adam', lastName: 'Treloar', positions: ['MID'] },
-    { firstName: 'Tom', lastName: 'Liberatore', positions: ['MID'] },
-    { firstName: 'Bailey', lastName: 'Smith', positions: ['MID'] },
-    { firstName: 'Jack', lastName: 'Macrae', positions: ['MID'] },
-    { firstName: 'Aaron', lastName: 'Naughton', positions: ['FWD'] },
-    { firstName: 'Jamarra', lastName: 'Ugle-Hagan', positions: ['FWD'] },
-    { firstName: 'Tim', lastName: 'English', positions: ['RUC'] },
-    { firstName: 'Caleb', lastName: 'Daniel', positions: ['DEF', 'MID'] },
-    { firstName: 'Bailey', lastName: 'Dale', positions: ['DEF'] },
-    { firstName: 'Alex', lastName: 'Keath', positions: ['DEF'] },
-    { firstName: 'Lachie', lastName: 'Hunter', positions: ['MID'] },
-    { firstName: 'Cody', lastName: 'Weightman', positions: ['FWD'] },
-  ],
-}
 
 // Sicko League fantasy clubs with seniors and reserves branding
 // Fantasy clubs named after their cities (City + Mascot style, like AFL teams)
@@ -991,9 +800,8 @@ async function main() {
   }
   console.log(`   ✓ Created ${aflTeams.length} AFL teams`)
 
-  // NOTE: AFL Players are NOT seeded here
-  // Import players from CSV using a separate script
-  console.log('👤 Skipping AFL players (import from CSV separately)')
+  // AFL Players are imported manually via CSV - not seeded automatically
+  console.log('👤 Skipping AFL player import (manual CSV import)')
   const playerCount = 0
 
   // Seed Staff - Real AFL coaches, list managers, and state league coaches
@@ -1333,10 +1141,11 @@ async function main() {
   }
   console.log(`   ✓ Created 27 rounds (incl. 3 bye rounds + finals)`)
 
-  // Seed Draft Picks (3 rounds of picks for each club)
+  // Seed Draft Picks (21 rounds of picks for each club)
+  // pickNumber is globally unique per draft type (1-252 for 21 rounds x 12 clubs)
   console.log('🎯 Creating draft picks...')
   let pickNumber = 1
-  for (let round = 1; round <= 3; round++) {
+  for (let round = 1; round <= 21; round++) {
     for (let i = 0; i < createdClubs.length; i++) {
       await prisma.draftPick.create({
         data: {

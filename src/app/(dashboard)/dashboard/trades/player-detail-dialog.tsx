@@ -84,8 +84,8 @@ export function PlayerDetailDialog({
               </TabsList>
 
               <TabsContent value="stats" className="space-y-4 mt-4">
-                {/* Key stats */}
-                <div className="grid grid-cols-4 gap-4">
+                {/* Key stats - Row 1 */}
+                <div className="grid grid-cols-4 gap-3">
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <p className="text-2xl font-bold">
                       {player.averagePoints?.toFixed(1) ?? "-"}
@@ -93,32 +93,80 @@ export function PlayerDetailDialog({
                     <p className="text-xs text-muted-foreground">Avg Points</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{player.highScore ?? "-"}</p>
-                    <p className="text-xs text-muted-foreground">High</p>
-                  </div>
-                  <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{player.lowScore ?? "-"}</p>
-                    <p className="text-xs text-muted-foreground">Low</p>
+                    <p className="text-2xl font-bold">{player.maxScore ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground">Max</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <p className="text-2xl font-bold">{player.gamesPlayed}</p>
                     <p className="text-xs text-muted-foreground">Games</p>
                   </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">
+                      {player.last5Avg?.toFixed(1) ?? "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">L5 Avg</p>
+                  </div>
                 </div>
 
-                {player.last5Avg && (
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">Last 5 Average:</span>{" "}
-                      <span className="font-semibold">{player.last5Avg.toFixed(1)}</span>
-                    </p>
+                {/* Key stats - Row 2 */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">{player.games100Plus ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground">100+ Games</p>
                   </div>
-                )}
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">{player.games120Plus ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground">120+ Games</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">
+                      {player.cbaPercent != null ? `${player.cbaPercent.toFixed(1)}%` : "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">CBA%</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">
+                      {player.ppm?.toFixed(2) ?? "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">PPM</p>
+                  </div>
+                </div>
 
-                {/* Season breakdown */}
+                {/* Averages breakdown */}
+                <div>
+                  <h4 className="font-semibold mb-2">Season Averages</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex justify-between items-center p-3 border rounded">
+                      <span className="text-muted-foreground">2025 Regular</span>
+                      <span className="font-bold text-lg">
+                        {player.regAvg?.toFixed(1) ?? "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 border rounded">
+                      <span className="text-muted-foreground">2025 Finals</span>
+                      <span className="font-bold text-lg">
+                        {player.finalsAvg?.toFixed(1) ?? "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 border rounded">
+                      <span className="text-muted-foreground">2024 Season</span>
+                      <span className="font-bold text-lg">
+                        {player.avg2024?.toFixed(1) ?? "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 border rounded">
+                      <span className="text-muted-foreground">2023 Season</span>
+                      <span className="font-bold text-lg">
+                        {player.avg2023?.toFixed(1) ?? "-"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sicko League season breakdown */}
                 {player.seasonStats.length > 0 && (
                   <div>
-                    <h4 className="font-semibold mb-2">Season Breakdown</h4>
+                    <h4 className="font-semibold mb-2">Sicko League History</h4>
                     <div className="space-y-2">
                       {player.seasonStats.map((season) => (
                         <div

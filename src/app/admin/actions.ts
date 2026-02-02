@@ -116,7 +116,7 @@ export async function recalculateStandings() {
       }
     }
 
-    // Update all standings in database
+    // Update all standings in database with percentages
     for (const key of Object.keys(standingsData)) {
       const data = standingsData[key];
       const percentage = data.pointsAgainst === 0
@@ -140,8 +140,40 @@ export async function recalculateStandings() {
       });
     }
 
+    // Calculate and update ladder positions for each competition
+    const currentSeason = await prisma.season.findFirst({
+      where: { status: { in: ["ACTIVE", "UPCOMING"] } },
+      orderBy: { year: "desc" },
+    });
+
+    if (currentSeason) {
+      for (const competition of ["SENIORS", "RESERVES"] as const) {
+        // Get all standings sorted by ladder order
+        const standings = await prisma.standing.findMany({
+          where: {
+            seasonId: currentSeason.id,
+            competition,
+          },
+          orderBy: [
+            { wins: "desc" },
+            { percentage: "desc" },
+            { pointsFor: "desc" },
+          ],
+        });
+
+        // Update ladder positions
+        for (let i = 0; i < standings.length; i++) {
+          await prisma.standing.update({
+            where: { id: standings[i].id },
+            data: { ladderPosition: i + 1 },
+          });
+        }
+      }
+    }
+
     revalidatePath("/admin");
     revalidatePath("/");
+    revalidatePath("/dashboard/standings");
 
     return { success: true };
   } catch (error) {
@@ -573,8 +605,8 @@ export async function syncAflLadder(year: number) {
 
 /**
  * Calculate staff bonus for a club's match score
- * AFL coaches: margin / 10
- * State league coaches: margin / 20
+ * AFL coaches: 50% of their AFL team's match margin
+ * State league coaches: 25% of their AFL team's match margin
  */
 export async function calculateStaffBonus(
   clubId: string,
@@ -610,11 +642,11 @@ export async function calculateStaffBonus(
 
   if (!aflResult) return 0;
 
-  // Calculate bonus (half for state league coaches)
+  // Calculate bonus: 50% for AFL coaches, 25% for state league
   const isStateLeague = staffContract.staff.league !== "AFL";
-  const divisor = isStateLeague ? 20 : 10;
+  const multiplier = isStateLeague ? 0.25 : 0.5;
 
-  return aflResult.margin / divisor;
+  return aflResult.margin * multiplier;
 }
 
 /**

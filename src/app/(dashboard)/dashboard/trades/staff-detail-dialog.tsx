@@ -114,12 +114,12 @@ export function StaffDetailDialog({
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                       <p className="text-sm text-muted-foreground">Scoring Bonus</p>
                       <p className="font-semibold">
-                        {staff.league === "AFL" ? "0.5x" : "0.25x"} AFL Team Margin
+                        {staff.league === "AFL" ? "Half" : "Quarter"} of AFL Team Margin
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {staff.league === "AFL"
-                          ? "Full bonus from AFL results"
-                          : "Half bonus (state league)"}
+                          ? "Earns 50% of their AFL club's match margin"
+                          : "Earns 25% of their AFL club's match margin"}
                       </p>
                     </div>
                   )}

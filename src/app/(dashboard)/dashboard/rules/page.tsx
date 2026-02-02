@@ -103,19 +103,19 @@ export default function RulesPage() {
           </Clause>
           <div className="pl-8 my-3 grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
-              <Badge className="bg-blue-600 text-white font-mono">DEF</Badge>
+              <Badge className="bg-red-600 text-white font-mono">DEF</Badge>
               <span>Defender &mdash; 3 seniors, 2 reserves</span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-green-600 text-white font-mono">MID</Badge>
+              <Badge className="bg-blue-600 text-white font-mono">MID</Badge>
               <span>Midfielder &mdash; 4 seniors, 3 reserves</span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-purple-600 text-white font-mono">RUC</Badge>
+              <Badge className="bg-yellow-500 text-black font-mono">RUC</Badge>
               <span>Ruck &mdash; 1 senior, 1 reserve</span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-red-600 text-white font-mono">FWD</Badge>
+              <Badge className="bg-green-600 text-white font-mono">FWD</Badge>
               <span>Forward &mdash; 3 seniors, 2 reserves</span>
             </div>
           </div>
@@ -214,17 +214,23 @@ export default function RulesPage() {
 
         <SubSection number="3.1" title="Assistant Coaches">
           <Clause number="a">
-            Clubs may contract Assistant Coaches from AFL clubs or State League competitions (VFL, SANFL, WAFL, NTFL).
+            Each Club shall appoint real-life AFL or State League (VFL, SANFL, WAFL, NTFL) coaches to serve as their Assistant Coaches.
           </Clause>
           <Clause number="b">
-            Assistant Coaches provide a scoring bonus calculated as follows:
+            Clubs must appoint a separate Assistant Coach for their Seniors squad and their Reserves squad. The same coach cannot serve both squads.
+          </Clause>
+          <Clause number="c">
+            Once appointed, Assistant Coaches cannot be changed during the season. Coaches may only be replaced at the conclusion of each season.
+          </Clause>
+          <Clause number="d">
+            Assistant Coaches provide a scoring bonus based on their real-life AFL team&apos;s performance:
           </Clause>
           <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-sm space-y-1">
-            <p>AFL Coach Bonus = Coach&apos;s AFL Team Margin &times; 0.5</p>
-            <p>State League Coach Bonus = Coach&apos;s AFL Team Margin &times; 0.25</p>
+            <p>AFL Coach Bonus = AFL Team Match Margin &times; 0.5</p>
+            <p>State League Coach Bonus = AFL Team Match Margin &times; 0.25</p>
           </div>
-          <Clause number="c">
-            Example: If an AFL coach&apos;s team wins by 40 points, the bonus is +20 points. If they lose by 40 points, the bonus is -20 points.
+          <Clause number="e">
+            Example: If an AFL coach&apos;s team wins by 40 points, the bonus is +20 points (40 &times; 0.5). If they lose by 40 points, the penalty is -20 points. State League coaches earn half this rate.
           </Clause>
         </SubSection>
 
@@ -354,17 +360,75 @@ export default function RulesPage() {
             Home Field Advantage (&quot;HFA&quot;) is a bonus added to the home team&apos;s score in each match.
           </Clause>
           <Clause number="b">
-            HFA reflects a Club&apos;s historical performance advantage when playing at home.
+            HFA reflects a Club&apos;s historical performance advantage when playing at home, influenced by venue quality and market size.
           </Clause>
         </SubSection>
 
-        <SubSection number="5.2" title="Calculation">
+        <SubSection number="5.2" title="Calculation Components">
           <Clause number="a">
-            HFA is calculated based on the Club&apos;s performance in recent home matches, considering win margins and consistency.
+            HFA is calculated using the following formula:
           </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-xs space-y-1">
+            <p>HFA = (Base Performance + Venue Bonus + Market Bonus) &times; Competition Multiplier</p>
+          </div>
+
           <Clause number="b">
-            The HFA value increases when a Club performs well at home and decreases with poor home performance.
+            <strong>Base Performance:</strong> Calculated from the Club&apos;s last ten (10) home matches:
           </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded text-sm space-y-1">
+            <p>(i) Home wins: Full margin added (e.g., win by 30 = +30)</p>
+            <p>(ii) Home losses: Half margin subtracted (e.g., loss by 40 = -20)</p>
+            <p>(iii) Base Performance = Average of all ten results</p>
+          </div>
+
+          <Clause number="c">
+            <strong>Venue Bonus:</strong> Based on stadium capacity classification:
+          </Clause>
+          <div className="pl-8 my-2 text-sm">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-1">Venue Class</th>
+                  <th className="text-left py-1">Capacity</th>
+                  <th className="text-right py-1">Bonus</th>
+                </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
+                <tr><td>Elite</td><td>80,000+</td><td className="text-right">+3</td></tr>
+                <tr><td>Major</td><td>40,000-79,999</td><td className="text-right">+2</td></tr>
+                <tr><td>Standard</td><td>20,000-39,999</td><td className="text-right">+1</td></tr>
+                <tr><td>Boutique</td><td>Under 20,000</td><td className="text-right">+0</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <Clause number="d">
+            <strong>Market Size Bonus:</strong> Based on the Club&apos;s home city population:
+          </Clause>
+          <div className="pl-8 my-2 text-sm">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-1">Market Size</th>
+                  <th className="text-right py-1">Appeal Bonus</th>
+                </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
+                <tr><td>Major (dual-team cities)</td><td className="text-right">+15%</td></tr>
+                <tr><td>Large</td><td className="text-right">+10%</td></tr>
+                <tr><td>Medium</td><td className="text-right">+5%</td></tr>
+                <tr><td>Small</td><td className="text-right">+0%</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <Clause number="e">
+            <strong>Competition Multiplier:</strong>
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded text-sm space-y-1">
+            <p>(i) Seniors: 1.0 (full value)</p>
+            <p>(ii) Reserves: 0.6 (60% of calculated value)</p>
+          </div>
         </SubSection>
 
         <SubSection number="5.3" title="Maximum Values">
@@ -380,17 +444,12 @@ export default function RulesPage() {
           </Clause>
         </SubSection>
 
-        <SubSection number="5.4" title="Game Dynamics">
+        <SubSection number="5.4" title="Transparency">
           <Clause number="a">
-            The HFA calculation formula operates as follows:
+            All HFA calculations are publicly visible to ensure fairness.
           </Clause>
-          <div className="pl-8 my-2 p-3 bg-muted/50 rounded font-mono text-xs space-y-1">
-            <p>Base HFA = Average Home Margin &times; Performance Factor</p>
-            <p>Seniors HFA = MIN(Base HFA, 50)</p>
-            <p>Reserves HFA = MIN(Base HFA &times; 0.6, 30)</p>
-          </div>
           <Clause number="b">
-            The Performance Factor adjusts based on recent form, with more recent matches weighted more heavily.
+            Each Club&apos;s current HFA value and calculation breakdown can be viewed on their Club page.
           </Clause>
         </SubSection>
       </Section>
@@ -399,7 +458,19 @@ export default function RulesPage() {
       <Section number="6" title="SEASON STRUCTURE">
         <div id="season" className="scroll-mt-20" />
 
-        <SubSection number="6.1" title="Regular Season">
+        <SubSection number="6.1" title="Competition Structure">
+          <Clause number="a">
+            The Sicko League operates two (2) parallel competitions: Seniors and Reserves.
+          </Clause>
+          <Clause number="b">
+            Both competitions follow identical structures, schedules, and rules as outlined in this section.
+          </Clause>
+          <Clause number="c">
+            Each competition maintains separate ladders, finals series, and premierships.
+          </Clause>
+        </SubSection>
+
+        <SubSection number="6.2" title="Regular Season">
           <Clause number="a">
             The regular season shall follow the real AFL season schedule.
           </Clause>
@@ -413,12 +484,12 @@ export default function RulesPage() {
           </div>
         </SubSection>
 
-        <SubSection number="6.2" title="Finals Series">
+        <SubSection number="6.3" title="Finals Series">
           <Clause number="a">
-            The top four (4) teams on the ladder shall qualify for finals.
+            The top four (4) teams on the ladder shall qualify for finals in each competition.
           </Clause>
           <Clause number="b">
-            The finals series shall proceed as follows:
+            The finals series shall proceed as follows for both Seniors and Reserves:
           </Clause>
           <div className="pl-8 space-y-1 text-sm">
             <p>(i) <strong>Week 1:</strong> 1st vs 2nd (Qualifying Final); 3rd vs 4th (Elimination Final)</p>
@@ -427,7 +498,7 @@ export default function RulesPage() {
           </div>
         </SubSection>
 
-        <SubSection number="6.3" title="Lockout">
+        <SubSection number="6.4" title="Lockout">
           <Clause number="a">
             Lineups shall lock at the first bounce of each round.
           </Clause>
@@ -668,19 +739,21 @@ export default function RulesPage() {
       <Section number="12" title="RIVALRIES">
         <div id="rivalries" className="scroll-mt-20" />
 
-        <SubSection number="12.1" title="Establishing Rivalries">
+        <SubSection number="12.1" title="Natural Formation">
           <Clause number="a">
-            Official rivalries between Clubs are established through:
+            Rivalries are not declared or nominated &mdash; they form organically through competitive tension over time.
           </Clause>
-          <div className="pl-8 space-y-1 text-sm">
-            <p>(i) Finals matchups: Meeting in finals creates automatic rivalry;</p>
-            <p>(ii) Coach nomination: Each Coach may nominate one rival per season.</p>
-          </div>
+          <Clause number="b">
+            Clubs sharing the same home city are considered natural rivals from inception.
+          </Clause>
+          <Clause number="c">
+            When the tension score between two Clubs reaches a sufficient threshold, they become official rivals.
+          </Clause>
         </SubSection>
 
         <SubSection number="12.2" title="Tension Score">
           <Clause number="a">
-            Tension between Clubs is calculated based on the following events:
+            Tension between Clubs accumulates based on the following events:
           </Clause>
           <div className="pl-8 my-2 text-sm">
             <table className="w-full border-collapse">
@@ -691,16 +764,34 @@ export default function RulesPage() {
                 </tr>
               </thead>
               <tbody className="text-muted-foreground">
-                <tr><td>Finals meeting</td><td className="text-right">+5</td></tr>
-                <tr><td>Close game (margin under 20)</td><td className="text-right">+4</td></tr>
-                <tr><td>Player movements (star signings)</td><td className="text-right">+2 to +6</td></tr>
-                <tr><td>Direct trades</td><td className="text-right">+2 to +5</td></tr>
+                <tr><td>Finals meeting</td><td className="text-right">+5 to +6</td></tr>
+                <tr><td>Close game (margin under 20)</td><td className="text-right">+3 to +4</td></tr>
+                <tr><td>Star player signings from rival</td><td className="text-right">+2 to +6</td></tr>
+                <tr><td>Direct trades between Clubs</td><td className="text-right">+2 to +5</td></tr>
                 <tr><td>Ladder position battles</td><td className="text-right">+2 to +4</td></tr>
               </tbody>
             </table>
           </div>
           <Clause number="b">
             Tension decays over time, with current season events weighted most heavily.
+          </Clause>
+          <Clause number="c">
+            Historical events carry progressively less weight:
+          </Clause>
+          <div className="pl-8 my-2 p-3 bg-muted/50 rounded text-sm space-y-1">
+            <p>(i) Current season: 100% weight</p>
+            <p>(ii) Last season: 60% weight</p>
+            <p>(iii) Two seasons ago: 30% weight</p>
+            <p>(iv) Older: 10% weight</p>
+          </div>
+        </SubSection>
+
+        <SubSection number="12.3" title="Rivalry Effects">
+          <Clause number="a">
+            Matches against official rivals are marked as &quot;Rivalry Matches&quot; and may carry additional tension bonuses.
+          </Clause>
+          <Clause number="b">
+            Rivalry status is reviewed at the end of each season and may fade if tension drops below the threshold.
           </Clause>
         </SubSection>
       </Section>

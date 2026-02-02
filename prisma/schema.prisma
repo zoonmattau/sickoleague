@@ -269,6 +269,18 @@ model AflPlayer {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
+  // 2025 AFL Fantasy Stats
+  maxScore      Int?         @map("max_score")
+  games100Plus  Int?         @map("games_100_plus")
+  games120Plus  Int?         @map("games_120_plus")
+  cbaPercent    Decimal?     @map("cba_percent") @db.Decimal(5, 2)
+  ppm           Decimal?     @map("ppm") @db.Decimal(4, 2)
+  regAvg        Decimal?     @map("reg_avg") @db.Decimal(5, 1)
+  last5Avg      Decimal?     @map("last5_avg") @db.Decimal(5, 1)
+  finalsAvg     Decimal?     @map("finals_avg") @db.Decimal(5, 1)
+  avg2024       Decimal?     @map("avg_2024") @db.Decimal(5, 1)
+  avg2023       Decimal?     @map("avg_2023") @db.Decimal(5, 1)
+
   // Relations
   aflTeamId        String?           @map("afl_team_id")
   aflTeam          AflTeam?          @relation(fields: [aflTeamId], references: [id])
