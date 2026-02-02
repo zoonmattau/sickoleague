@@ -996,29 +996,202 @@ async function main() {
   console.log('👤 Skipping AFL players (import from CSV separately)')
   const playerCount = 0
 
-  // Seed Staff
+  // Seed Staff - Real AFL coaches, list managers, and state league coaches
   console.log('👔 Creating coaching staff...')
+
+  // AFL Head Coaches (available as ASSISTANT_COACH in fantasy)
+  const aflHeadCoaches: Array<{ name: string; team: string }> = [
+    { name: 'Matthew Nicks', team: 'Adelaide Crows' },
+    { name: 'Chris Fagan', team: 'Brisbane Lions' },
+    { name: 'Michael Voss', team: 'Carlton' },
+    { name: 'Craig McRae', team: 'Collingwood' },
+    { name: 'Brad Scott', team: 'Essendon' },
+    { name: 'Justin Longmuir', team: 'Fremantle' },
+    { name: 'Chris Scott', team: 'Geelong Cats' },
+    { name: 'Damien Hardwick', team: 'Gold Coast Suns' },
+    { name: 'Adam Kingsley', team: 'GWS Giants' },
+    { name: 'Sam Mitchell', team: 'Hawthorn' },
+    { name: 'Steven King', team: 'Melbourne' },
+    { name: 'Alastair Clarkson', team: 'North Melbourne' },
+    { name: 'Josh Carr', team: 'Port Adelaide' },
+    { name: 'Adem Yze', team: 'Richmond' },
+    { name: 'Ross Lyon', team: 'St Kilda' },
+    { name: 'Dean Cox', team: 'Sydney Swans' },
+    { name: 'Andrew McQualter', team: 'West Coast Eagles' },
+    { name: 'Luke Beveridge', team: 'Western Bulldogs' },
+  ]
+
+  // AFL List Managers
+  const aflListManagers: Array<{ name: string; team: string }> = [
+    { name: 'Justin Reid', team: 'Adelaide Crows' },
+    { name: 'Dom Ambrogio', team: 'Brisbane Lions' },
+    { name: 'Nick Austin', team: 'Carlton' },
+    { name: 'Derek Hine', team: 'Collingwood' },
+    { name: 'Adrian Dodoro', team: 'Essendon' },
+    { name: 'David Walls', team: 'Fremantle' },
+    { name: 'Andrew Mackie', team: 'Geelong Cats' },
+    { name: 'Craig Cameron', team: 'Gold Coast Suns' },
+    { name: 'Jason McCartney', team: 'GWS Giants' },
+    { name: 'Mark McKenzie', team: 'Hawthorn' },
+    { name: 'Tim Lamb', team: 'Melbourne' },
+    { name: 'Brady Rawlings', team: 'North Melbourne' },
+    { name: 'Chris Davies', team: 'Port Adelaide' },
+    { name: 'Blair Hartley', team: 'Richmond' },
+    { name: 'James Gallagher', team: 'St Kilda' },
+    { name: 'Kinnear Beatson', team: 'Sydney Swans' },
+    { name: 'Rohan O\'Brien', team: 'West Coast Eagles' },
+    { name: 'Sam Power', team: 'Western Bulldogs' },
+  ]
+
+  // VFL Head Coaches (22 clubs)
+  const vflCoaches: Array<{ name: string }> = [
+    { name: 'Max Bailey' },        // Box Hill Hawks
+    { name: 'Mitch Hahn' },        // Brisbane Lions VFL
+    { name: 'David Teague' },      // Carlton VFL
+    { name: 'Jade Rawlings' },     // Casey Demons
+    { name: 'Stewart Crameri' },   // Coburg Lions
+    { name: 'Jared Rivers' },      // Collingwood VFL
+    { name: 'Daniel Giansiracusa' }, // Essendon VFL
+    { name: 'Ashley Hansen' },     // Footscray Bulldogs
+    { name: 'Danny Ryan' },        // Frankston Dolphins
+    { name: 'Shane O\'Bree' },     // Geelong Cats VFL
+    { name: 'Steven King' },       // Gold Coast Suns VFL
+    { name: 'Lenny Hayes' },       // GWS Giants VFL
+    { name: 'Gavin Brown' },       // North Melbourne VFL
+    { name: 'Gary Ayres' },        // Port Melbourne Borough
+    { name: 'Xavier Clarke' },     // Richmond VFL
+    { name: 'Ryan O\'Keefe' },     // Sandringham Zebras
+    { name: 'Cameron Mooney' },    // Southport Sharks
+    { name: 'Stuart Dew' },        // Sydney Swans VFL
+    { name: 'Michael Barlow' },    // Werribee Tigers
+    { name: 'Andy Collins' },      // Williamstown Seagulls
+    { name: 'Josh Drummond' },     // Aspley Hornets
+    { name: 'Anthony Rock' },      // Northern Bullants
+  ]
+
+  // WAFL Head Coaches (10 clubs)
+  const waflCoaches: Array<{ name: string }> = [
+    { name: 'Ashley Prescott' },   // Claremont Tigers
+    { name: 'Steve Hargrave' },    // East Fremantle Sharks
+    { name: 'Jeremy Barnard' },    // East Perth Royals
+    { name: 'Cam Eardley' },       // Peel Thunder
+    { name: 'Garry Moss' },        // Perth Demons
+    { name: 'Todd Curley' },       // South Fremantle Bulldogs
+    { name: 'Jarrad Schofield' },  // Subiaco Lions
+    { name: 'Greg Harding' },      // Swan Districts
+    { name: 'Matthew Knights' },   // West Coast Eagles WAFL
+    { name: 'Darren Harris' },     // West Perth Falcons
+  ]
+
+  // SANFL Head Coaches (10 clubs)
+  const sanflCoaches: Array<{ name: string }> = [
+    { name: 'Nathan van Berlo' },  // Adelaide Crows SANFL
+    { name: 'Roy Laird' },         // Central District Bulldogs
+    { name: 'Matthew Lokan' },     // Glenelg Tigers
+    { name: 'Rhyce Shaw' },        // North Adelaide Roosters
+    { name: 'Jarrod Cotton' },     // Norwood Redlegs
+    { name: 'Warren Tredrea' },    // Port Adelaide Magpies
+    { name: 'Matthew Broadbent' }, // South Adelaide Panthers
+    { name: 'Marty Mattner' },     // Sturt Double Blues
+    { name: 'Jason Horne' },       // West Adelaide Bloods
+    { name: 'Jade Sheedy' },       // Woodville-West Torrens Eagles
+  ]
+
+  // NTFL Head Coaches (8 clubs)
+  const ntflCoaches: Array<{ name: string }> = [
+    { name: 'Nathan Grima' },      // Darwin Buffaloes
+    { name: 'Cameron Stokes' },    // Nightcliff Tigers
+    { name: 'Jarrad Oakley-Nicholls' }, // Palmerston Magpies
+    { name: 'Shannon Motlop' },    // Southern Districts Crocs
+    { name: 'Daniel Stafford' },   // St Mary\'s Saints
+    { name: 'Adam Kerinaiua' },    // Tiwi Bombers
+    { name: 'Marcus Bontempelli Sr' }, // Wanderers Eagles
+    { name: 'Jared Brennan' },     // Waratah Warriors
+  ]
+
   let staffCount = 0
-  for (const [teamName, teamId] of Object.entries(createdTeams)) {
+
+  // Create AFL Head Coaches (as ASSISTANT_COACH role)
+  for (const coach of aflHeadCoaches) {
     await prisma.staff.create({
       data: {
-        name: `${teamName.split(' ')[0]} Assistant`,
+        name: coach.name,
         role: 'ASSISTANT_COACH',
-        aflTeamId: teamId,
+        league: 'AFL',
+        aflTeamId: createdTeams[coach.team],
         isAvailable: true,
       },
     })
+    staffCount++
+  }
+
+  // Create AFL List Managers
+  for (const manager of aflListManagers) {
     await prisma.staff.create({
       data: {
-        name: `${teamName.split(' ')[0]} List Mgr`,
+        name: manager.name,
         role: 'LIST_MANAGER',
-        aflTeamId: teamId,
+        league: 'AFL',
+        aflTeamId: createdTeams[manager.team],
         isAvailable: true,
       },
     })
-    staffCount += 2
+    staffCount++
   }
-  console.log(`   ✓ Created ${staffCount} staff members`)
+
+  // Create VFL Coaches
+  for (const coach of vflCoaches) {
+    await prisma.staff.create({
+      data: {
+        name: coach.name,
+        role: 'ASSISTANT_COACH',
+        league: 'VFL',
+        isAvailable: true,
+      },
+    })
+    staffCount++
+  }
+
+  // Create WAFL Coaches
+  for (const coach of waflCoaches) {
+    await prisma.staff.create({
+      data: {
+        name: coach.name,
+        role: 'ASSISTANT_COACH',
+        league: 'WAFL',
+        isAvailable: true,
+      },
+    })
+    staffCount++
+  }
+
+  // Create SANFL Coaches
+  for (const coach of sanflCoaches) {
+    await prisma.staff.create({
+      data: {
+        name: coach.name,
+        role: 'ASSISTANT_COACH',
+        league: 'SANFL',
+        isAvailable: true,
+      },
+    })
+    staffCount++
+  }
+
+  // Create NTFL Coaches
+  for (const coach of ntflCoaches) {
+    await prisma.staff.create({
+      data: {
+        name: coach.name,
+        role: 'ASSISTANT_COACH',
+        league: 'NTFL',
+        isAvailable: true,
+      },
+    })
+    staffCount++
+  }
+
+  console.log(`   ✓ Created ${staffCount} staff members (AFL coaches, list managers, VFL/WAFL/SANFL/NTFL coaches)`)
 
   // Seed Cities
   console.log('🏙️  Creating cities...')
