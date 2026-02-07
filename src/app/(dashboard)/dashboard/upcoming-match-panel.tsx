@@ -273,15 +273,13 @@ export function UpcomingMatchPanel({
                     <div className="text-muted-foreground italic">Not set</div>
                   </>
                 )}
-                <div className="text-muted-foreground">HFA</div>
-                {isHome && hfa !== null ? (
-                  <div className={`font-semibold ${hfa >= 0 ? "text-green-600" : "text-red-600"}`}>
+                <div className="text-muted-foreground">{isHome ? "Your HFA" : "Opponent HFA"}</div>
+                {hfa !== null ? (
+                  <div className={`font-semibold ${isHome ? (hfa >= 0 ? "text-green-600" : "text-red-600") : (hfa > 0 ? "text-red-600" : "text-green-600")}`}>
                     {hfa >= 0 ? "+" : ""}{hfa}
                   </div>
-                ) : isHome ? (
-                  <div className="text-muted-foreground italic">Not calculated</div>
                 ) : (
-                  <div className="text-muted-foreground italic">Away</div>
+                  <div className="text-muted-foreground italic">Not calculated</div>
                 )}
                 <div className="text-muted-foreground">Your Staff Bonus</div>
                 {(isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus) !== null ? (
