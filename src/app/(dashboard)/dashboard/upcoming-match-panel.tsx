@@ -244,14 +244,14 @@ export function UpcomingMatchPanel({
             )}
 
             {/* Venue & HFA */}
-            {(currentMatch.venue || currentMatch.hfa !== null) && (
-              <div className="p-3 rounded-lg bg-muted/30 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Building2 className="h-4 w-4" />
-                  Match Details
-                </div>
-                {currentMatch.venue && (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Building2 className="h-4 w-4" />
+                Match Details
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {currentMatch.venue ? (
+                  <>
                     <div className="text-muted-foreground">Venue</div>
                     <div className="font-medium">{currentMatch.venue.name}</div>
                     <div className="text-muted-foreground">Capacity</div>
@@ -266,36 +266,43 @@ export function UpcomingMatchPanel({
                         </div>
                       </>
                     )}
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-muted-foreground">Venue</div>
+                    <div className="text-muted-foreground italic">Not set</div>
+                  </>
                 )}
-                {isHome && hfa !== null && (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                    <div className="text-muted-foreground">Home Field Advantage</div>
-                    <div className={`font-semibold ${hfa >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {hfa >= 0 ? "+" : ""}{hfa}
-                    </div>
+                <div className="text-muted-foreground">HFA</div>
+                {isHome && hfa !== null ? (
+                  <div className={`font-semibold ${hfa >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {hfa >= 0 ? "+" : ""}{hfa}
                   </div>
+                ) : isHome ? (
+                  <div className="text-muted-foreground italic">Not calculated</div>
+                ) : (
+                  <div className="text-muted-foreground italic">Away</div>
                 )}
-                {currentMatch.homeStaffBonus !== null && currentMatch.awayStaffBonus !== null && (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                    <div className="text-muted-foreground">
-                      {isHome ? "Your" : "Home"} Staff Bonus
-                    </div>
-                    <div className={`font-medium ${(isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus) >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {(isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus) >= 0 ? "+" : ""}
-                      {isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {isHome ? "Opponent" : "Away"} Staff Bonus
-                    </div>
-                    <div className={`font-medium ${(isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus) >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {(isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus) >= 0 ? "+" : ""}
-                      {isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus}
-                    </div>
+                <div className="text-muted-foreground">Your Staff Bonus</div>
+                {(isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus) !== null ? (
+                  <div className={`font-medium ${(isHome ? currentMatch.homeStaffBonus! : currentMatch.awayStaffBonus!) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {(isHome ? currentMatch.homeStaffBonus! : currentMatch.awayStaffBonus!) >= 0 ? "+" : ""}
+                    {isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus}
                   </div>
+                ) : (
+                  <div className="text-muted-foreground italic">TBD</div>
+                )}
+                <div className="text-muted-foreground">Opponent Staff Bonus</div>
+                {(isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus) !== null ? (
+                  <div className={`font-medium ${(isHome ? currentMatch.awayStaffBonus! : currentMatch.homeStaffBonus!) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {(isHome ? currentMatch.awayStaffBonus! : currentMatch.homeStaffBonus!) >= 0 ? "+" : ""}
+                    {isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus}
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground italic">TBD</div>
                 )}
               </div>
-            )}
+            </div>
 
             {/* Coaching Staff Comparison */}
             {staffData && (
