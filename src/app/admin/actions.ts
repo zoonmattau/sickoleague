@@ -1152,6 +1152,33 @@ export async function syncRivalryMatches(seasonYear?: number, threshold = 10) {
   }
 }
 
+// ============================================================================
+// LEAGUE NEWS GENERATION
+// ============================================================================
+
+/**
+ * Generate AI narrative articles (round wrap + power rankings) for a completed round.
+ * Admin-only action.
+ */
+export async function adminGenerateRoundNarrative(roundId: string) {
+  const supabase = await import("@/lib/supabase/server").then((m) => m.createClient());
+  const { data: { user } } = await (await supabase).auth.getUser();
+  if (!user || !isAdmin(user)) {
+    return { success: false, error: "Unauthorized: Admin access required" };
+  }
+
+  const { generateRoundNarrative } = await import(
+    "@/app/(dashboard)/dashboard/news/actions"
+  );
+  const result = await generateRoundNarrative(roundId);
+
+  if (result.success) {
+    revalidatePath("/dashboard/news");
+  }
+
+  return result;
+}
+
 export async function updateGrandFinalMatchup(seasonYear: number) {
   try {
     const season = await prisma.season.findUnique({

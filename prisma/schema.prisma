@@ -533,6 +533,7 @@ model Season {
   boardGoals    BoardGoal[]
   boardMeetings BoardMeeting[]
   draftShortlists DraftShortlist[]
+  articles      LeagueArticle[]
 
   @@map("seasons")
 }
@@ -596,6 +597,7 @@ model Round {
   rosterHistory   RosterHistory[]
   draftEligibility DraftEligibility[]
   boardMeetings   BoardMeeting[]
+  articles        LeagueArticle[]
 
   @@unique([seasonId, roundNumber])
   @@map("rounds")
@@ -1142,4 +1144,27 @@ model DraftShortlist {
 
   @@unique([clubId, aflPlayerId, seasonId])
   @@map("draft_shortlist")
+}
+
+// ============================================================================
+// LEAGUE NEWS
+// ============================================================================
+
+enum ArticleType {
+  ROUND_WRAP
+  POWER_RANKINGS
+}
+
+model LeagueArticle {
+  id        String      @id @default(uuid())
+  type      ArticleType
+  headline  String
+  body      String      @db.Text
+  seasonId  String      @map("season_id")
+  season    Season      @relation(fields: [seasonId], references: [id])
+  roundId   String?     @map("round_id")
+  round     Round?      @relation(fields: [roundId], references: [id])
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("league_articles")
 }

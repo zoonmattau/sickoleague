@@ -1,6 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getNegotiationSystemPrompt, buildNegotiationUserPrompt } from "./prompts/negotiation";
 import { getBoardSystemPrompt, buildBoardStatementPrompt, buildBoardVerdictPrompt } from "./prompts/board";
+import {
+  getNarrativeSystemPrompt,
+  buildRoundWrapPrompt,
+  buildPowerRankingsPrompt,
+  type RoundWrapContext,
+  type PowerRankingsContext,
+} from "./prompts/narrative";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -199,6 +206,74 @@ export async function generateBoardStatement(
       tone: "neutral",
       keyPoints: ["Season performance under review"],
       suggestedConfidence: 50,
+    };
+  }
+}
+
+// Generate round wrap article
+export async function generateRoundWrap(
+  context: RoundWrapContext
+): Promise<{ headline: string; body: string }> {
+  const systemPrompt = getNarrativeSystemPrompt();
+  const userPrompt = buildRoundWrapPrompt(context);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== "text") {
+      throw new Error("Unexpected response type");
+    }
+
+    const parsed = JSON.parse(content.text);
+    return {
+      headline: parsed.headline,
+      body: parsed.body,
+    };
+  } catch (error) {
+    console.error("Error generating round wrap:", error);
+    return {
+      headline: `Round ${context.roundNumber} Wrap`,
+      body: "Round wrap unavailable.",
+    };
+  }
+}
+
+// Generate power rankings article
+export async function generatePowerRankings(
+  context: PowerRankingsContext
+): Promise<{ headline: string; body: string }> {
+  const systemPrompt = getNarrativeSystemPrompt();
+  const userPrompt = buildPowerRankingsPrompt(context);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== "text") {
+      throw new Error("Unexpected response type");
+    }
+
+    const parsed = JSON.parse(content.text);
+    return {
+      headline: parsed.headline,
+      body: parsed.body,
+    };
+  } catch (error) {
+    console.error("Error generating power rankings:", error);
+    return {
+      headline: `Round ${context.roundNumber} Power Rankings`,
+      body: "Power rankings unavailable.",
     };
   }
 }
