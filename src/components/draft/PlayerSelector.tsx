@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { POSITION_COLORS } from "@/lib/position-colors";
 import type { Position } from "@prisma/client";
 
 interface Player {
@@ -27,19 +28,6 @@ interface PlayerSelectorProps {
   isLoading?: boolean;
 }
 
-const POSITION_COLORS: Record<Position, string> = {
-  DEF: "text-blue-400",
-  MID: "text-green-400",
-  RUC: "text-purple-400",
-  FWD: "text-red-400",
-};
-
-const POSITION_BG: Record<Position, string> = {
-  DEF: "bg-blue-500/20 border-blue-500/30",
-  MID: "bg-green-500/20 border-green-500/30",
-  RUC: "bg-purple-500/20 border-purple-500/30",
-  FWD: "bg-red-500/20 border-red-500/30",
-};
 
 export function PlayerSelector({
   players,
@@ -123,7 +111,7 @@ export function PlayerSelector({
               className={cn(
                 "px-2 py-1 text-[10px] font-bold rounded border transition-colors",
                 positionFilter === pos
-                  ? cn(POSITION_BG[pos], POSITION_COLORS[pos])
+                  ? cn(POSITION_COLORS[pos]?.bg, POSITION_COLORS[pos]?.border, POSITION_COLORS[pos]?.text)
                   : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
               )}
               onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
@@ -198,7 +186,7 @@ export function PlayerSelector({
                       key={pos}
                       className={cn(
                         "text-[9px] font-bold px-1 rounded",
-                        POSITION_COLORS[pos]
+                        POSITION_COLORS[pos]?.text
                       )}
                     >
                       {pos}

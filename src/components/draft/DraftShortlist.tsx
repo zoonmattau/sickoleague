@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { POSITION_COLORS } from "@/lib/position-colors";
 import type { Position } from "@prisma/client";
 import { removeFromShortlist } from "@/app/(dashboard)/dashboard/draft/actions";
 
@@ -30,12 +31,6 @@ interface DraftShortlistProps {
   isLoading?: boolean;
 }
 
-const POSITION_COLORS: Record<Position, string> = {
-  DEF: "text-blue-400",
-  MID: "text-green-400",
-  RUC: "text-purple-400",
-  FWD: "text-red-400",
-};
 
 export function DraftShortlist({
   shortlist,
@@ -97,7 +92,7 @@ export function DraftShortlist({
             {item.player.positions.map((pos) => (
               <span
                 key={pos}
-                className={cn("text-[9px] font-bold", POSITION_COLORS[pos])}
+                className={cn("text-[9px] font-bold", POSITION_COLORS[pos]?.text)}
               >
                 {pos}
               </span>

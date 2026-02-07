@@ -225,6 +225,65 @@ async function main() {
 
   console.log(`\nGenerated ${fixture.length} rounds of fixtures`);
 
+  // Known same-city derbies (by abbreviation)
+  const DERBY_PAIRS = [
+    ["ASH", "AHG"], // Ashford Sickos vs Ashford Hoggers
+    ["RIV", "RRK"], // Riverside Maulers vs Riverside Ruckus
+  ];
+
+  const abbrToId = new Map(clubs.map(c => [c.abbreviation, c.id]));
+  const rivalryPairs = new Set<string>();
+
+  for (const [a, b] of DERBY_PAIRS) {
+    const idA = abbrToId.get(a);
+    const idB = abbrToId.get(b);
+    if (idA && idB) {
+      rivalryPairs.add(`${idA}-${idB}`);
+      rivalryPairs.add(`${idB}-${idA}`);
+      console.log(`  Derby: ${a} vs ${b}`);
+    }
+  }
+
+  // Also check the Rival table
+  const rivals = await prisma.rival.findMany({
+    where: { seasonId: season.id },
+    select: { clubAId: true, clubBId: true },
+  });
+  for (const r of rivals) {
+    rivalryPairs.add(`${r.clubAId}-${r.clubBId}`);
+    rivalryPairs.add(`${r.clubBId}-${r.clubAId}`);
+  }
+
+  function roundHasRivalry(roundFixture: { home: string; away: string }[]): boolean {
+    return roundFixture.some(m => rivalryPairs.has(`${m.home}-${m.away}`));
+  }
+
+  // Swap rivalry rounds away from the opening rounds into mid-season
+  // First half (indices 0-10): push derbies towards middle (target ~5-6)
+  // Second half (indices 11-21): push derbies towards middle (target ~16-17)
+  function reorderHalf(rounds: typeof fixture, startIdx: number, endIdx: number) {
+    const midTarget = Math.floor((startIdx + endIdx) / 2);
+
+    for (let i = startIdx; i <= startIdx + 1; i++) {
+      if (roundHasRivalry(rounds[i])) {
+        // Find a non-rivalry round near the middle to swap with
+        for (let j = midTarget; j <= endIdx; j++) {
+          if (!roundHasRivalry(rounds[j]) && j !== i) {
+            console.log(`  Swapping fixture round ${i} <-> ${j} (moving derby to mid-season)`);
+            [rounds[i], rounds[j]] = [rounds[j], rounds[i]];
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (rivalryPairs.size > 0) {
+    console.log(`\nAdjusting fixture to avoid early-round derbies...`);
+    reorderHalf(fixture, 0, 10);   // First half of season
+    reorderHalf(fixture, 11, 21);  // Second half of season
+  }
+
   // Create matches for regular season (rounds 0-21 = 22 rounds)
   const regularRounds = rounds.filter(r => r.roundType === "REGULAR");
 
@@ -277,7 +336,8 @@ async function main() {
     for (const match of roundFixture) {
       const homeAbbr = clubMap.get(match.home);
       const awayAbbr = clubMap.get(match.away);
-      console.log(`  ${homeAbbr} vs ${awayAbbr}`);
+      const isDerby = rivalryPairs.has(`${match.home}-${match.away}`) ? " *** DERBY ***" : "";
+      console.log(`  ${homeAbbr} vs ${awayAbbr}${isDerby}`);
     }
     console.log();
   }

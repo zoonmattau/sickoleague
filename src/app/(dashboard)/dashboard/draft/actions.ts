@@ -69,6 +69,7 @@ export async function getDraftState(seasonId: string) {
     where: { id: seasonId },
     include: {
       draftPicks: {
+        where: { draftType: "ANNUAL" },
         orderBy: { pickNumber: "asc" },
         include: {
           currentClub: {

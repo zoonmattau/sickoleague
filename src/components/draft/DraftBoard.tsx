@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { POSITION_COLORS } from "@/lib/position-colors";
 import type { Position } from "@prisma/client";
 
 interface Club {
@@ -41,12 +42,6 @@ interface DraftBoardProps {
   onPickClick?: (pick: Pick) => void;
 }
 
-const POSITION_COLORS: Record<Position, string> = {
-  DEF: "text-blue-400",
-  MID: "text-green-400",
-  RUC: "text-purple-400",
-  FWD: "text-red-400",
-};
 
 export function DraftBoard({
   picks,
@@ -179,7 +174,7 @@ export function DraftBoard({
                                       key={pos}
                                       className={cn(
                                         "text-[9px] font-bold",
-                                        POSITION_COLORS[pos]
+                                        POSITION_COLORS[pos]?.text
                                       )}
                                     >
                                       {pos}

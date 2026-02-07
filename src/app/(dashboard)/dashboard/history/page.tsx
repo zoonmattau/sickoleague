@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, TrendingUp, Calendar, Building2, MapPin, Users } from "lucide-react";
+import { Trophy, Medal, TrendingUp, Calendar } from "lucide-react";
 import { getLeagueHistory, getBackstories } from "./actions";
+import { ClubHistories, CityHistories, TownHistories } from "./backstory-accordions";
 
 export default async function HistoryPage() {
   const [history, backstories] = await Promise.all([
@@ -214,129 +215,13 @@ export default async function HistoryPage() {
       </Card>
 
       {/* Club Histories */}
-      {backstories.clubs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-purple-500" />
-              Club Histories
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {backstories.clubs.map((club) => (
-              <div key={club.id} className="border-b last:border-0 pb-6 last:pb-0">
-                <div className="flex items-start gap-3 mb-3">
-                  <span
-                    className="px-3 py-1 rounded text-sm font-bold shrink-0"
-                    style={{
-                      backgroundColor: club.primaryColor || "#6b7280",
-                      color: club.secondaryColor || "#ffffff",
-                    }}
-                  >
-                    {club.abbreviation}
-                  </span>
-                  <div>
-                    <h3 className="font-semibold text-lg">{club.name}</h3>
-                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                      {club.founded && <span>Est. {club.founded}</span>}
-                      {club.cityName && <span>Based in {club.cityName}</span>}
-                      {club.venueName && <span>Home: {club.venueName}</span>}
-                    </div>
-                    {club.reservesName && (
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Reserves: {club.reservesName}
-                        {club.townName && ` (${club.townName})`}
-                        {club.reservesVenueName && ` at ${club.reservesVenueName}`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {club.history && (
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {club.history}
-                  </p>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <ClubHistories clubs={backstories.clubs} />
 
       {/* City Histories */}
-      {backstories.cities.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-amber-500" />
-              City Histories
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {backstories.cities.map((city) => (
-              <div key={city.id} className="border-b last:border-0 pb-6 last:pb-0">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg">{city.name}, {city.state}</h3>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                      {city.founded && <span>Founded {city.founded}</span>}
-                      <span>Pop. {city.population.toLocaleString()}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {city.marketSize} Market
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                {city.description && (
-                  <p className="text-sm mb-2">{city.description}</p>
-                )}
-                {city.history && (
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {city.history}
-                  </p>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <CityHistories cities={backstories.cities} />
 
       {/* Town Histories */}
-      {backstories.towns.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-green-500" />
-              Town Histories
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {backstories.towns.map((town) => (
-              <div key={town.id} className="border-b last:border-0 pb-6 last:pb-0">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg">{town.name}, {town.state}</h3>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                      {town.founded && <span>Founded {town.founded}</span>}
-                      <span>Pop. {town.population.toLocaleString()}</span>
-                      {town.nearCityName && (
-                        <span>Near {town.nearCityName}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {town.description && (
-                  <p className="text-sm mb-2">{town.description}</p>
-                )}
-                {town.history && (
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {town.history}
-                  </p>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <TownHistories towns={backstories.towns} />
     </div>
   );
 }
