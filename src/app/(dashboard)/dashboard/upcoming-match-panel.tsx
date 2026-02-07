@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Swords, Home, MapPin, Clock, Trophy } from "lucide-react";
-import { getUpcomingMatch, getOpponentLineup } from "./upcoming-match/actions";
+import { Swords, Home, MapPin, Clock, Trophy, Users, Building2 } from "lucide-react";
+import { getUpcomingMatch, getOpponentLineup, getMatchStaffComparison } from "./upcoming-match/actions";
 import { LineupComparison } from "./lineup-comparison";
 import type { SerializedContract, SerializedRosterPlayer, PlayerStats, CaptaincyInfo } from "./types";
 
 type UpcomingMatchData = Awaited<ReturnType<typeof getUpcomingMatch>>;
 type OpponentLineupData = Awaited<ReturnType<typeof getOpponentLineup>>;
+type StaffComparisonData = Awaited<ReturnType<typeof getMatchStaffComparison>>;
 
 type Props = {
   clubId: string;
@@ -37,6 +38,7 @@ export function UpcomingMatchPanel({
 }: Props) {
   const [matchData, setMatchData] = useState<UpcomingMatchData>(null);
   const [opponentLineup, setOpponentLineup] = useState<OpponentLineupData>(null);
+  const [staffData, setStaffData] = useState<StaffComparisonData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeMatch, setActiveMatch] = useState<"SENIORS" | "RESERVES">("SENIORS");
@@ -56,7 +58,7 @@ export function UpcomingMatchPanel({
       });
   }, [clubId]);
 
-  // Fetch opponent lineup when match data is available
+  // Fetch opponent lineup and staff when match data is available
   useEffect(() => {
     if (matchData?.round && matchData.matches.length > 0) {
       const match = matchData.matches.find(m => m.matchType === activeMatch);
@@ -67,9 +69,15 @@ export function UpcomingMatchPanel({
             console.error("Failed to fetch opponent lineup:", err);
             setOpponentLineup(null);
           });
+        getMatchStaffComparison(clubId, match.opponent.id)
+          .then(setStaffData)
+          .catch((err) => {
+            console.error("Failed to fetch staff data:", err);
+            setStaffData(null);
+          });
       }
     }
-  }, [matchData, activeMatch]);
+  }, [matchData, activeMatch, clubId]);
 
   if (loading) {
     return (
@@ -231,6 +239,118 @@ export function UpcomingMatchPanel({
                 <div className="text-muted-foreground">-</div>
                 <div className="text-3xl font-bold">
                   {isHome ? currentMatch.awayScore : currentMatch.homeScore}
+                </div>
+              </div>
+            )}
+
+            {/* Venue & HFA */}
+            {(currentMatch.venue || currentMatch.hfa !== null) && (
+              <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Building2 className="h-4 w-4" />
+                  Match Details
+                </div>
+                {currentMatch.venue && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div className="text-muted-foreground">Venue</div>
+                    <div className="font-medium">{currentMatch.venue.name}</div>
+                    <div className="text-muted-foreground">Capacity</div>
+                    <div>{currentMatch.venue.capacity.toLocaleString()}</div>
+                    <div className="text-muted-foreground">Class</div>
+                    <div>{currentMatch.venue.venueClass.replace(/_/g, " ")}</div>
+                    {currentMatch.venue.atmosphereBonus !== 0 && (
+                      <>
+                        <div className="text-muted-foreground">Atmosphere</div>
+                        <div className={currentMatch.venue.atmosphereBonus > 0 ? "text-green-600" : "text-red-600"}>
+                          {currentMatch.venue.atmosphereBonus > 0 ? "+" : ""}{currentMatch.venue.atmosphereBonus}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                {isHome && hfa !== null && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div className="text-muted-foreground">Home Field Advantage</div>
+                    <div className={`font-semibold ${hfa >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {hfa >= 0 ? "+" : ""}{hfa}
+                    </div>
+                  </div>
+                )}
+                {currentMatch.homeStaffBonus !== null && currentMatch.awayStaffBonus !== null && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div className="text-muted-foreground">
+                      {isHome ? "Your" : "Home"} Staff Bonus
+                    </div>
+                    <div className={`font-medium ${(isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {(isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus) >= 0 ? "+" : ""}
+                      {isHome ? currentMatch.homeStaffBonus : currentMatch.awayStaffBonus}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {isHome ? "Opponent" : "Away"} Staff Bonus
+                    </div>
+                    <div className={`font-medium ${(isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {(isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus) >= 0 ? "+" : ""}
+                      {isHome ? currentMatch.awayStaffBonus : currentMatch.homeStaffBonus}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Coaching Staff Comparison */}
+            {staffData && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Users className="h-4 w-4" />
+                  Coaching Staff
+                </div>
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+                  {/* Headers */}
+                  <div className="text-xs font-medium text-muted-foreground text-center">You</div>
+                  <div className="text-xs font-medium text-muted-foreground text-center">Role</div>
+                  <div className="text-xs font-medium text-muted-foreground text-center">Opponent</div>
+
+                  {/* Staff rows by role */}
+                  {(["SENIOR_ASSISTANT", "RESERVES_ASSISTANT", "LIST_MANAGER"] as const).map(role => {
+                    const mine = staffData.myStaff.find(s => s.staffRole === role);
+                    const theirs = staffData.opponentStaff.find(s => s.staffRole === role);
+                    const roleLabel = role === "SENIOR_ASSISTANT" ? "Sr. Asst."
+                      : role === "RESERVES_ASSISTANT" ? "Res. Asst."
+                      : "List Mgr.";
+                    return (
+                      <div key={role} className="contents">
+                        <div className={`text-xs p-1.5 rounded ${mine ? "bg-muted/50" : "bg-muted/20"}`}>
+                          {mine ? (
+                            <div className="text-center">
+                              <div className="font-medium truncate">{mine.name}</div>
+                              <div className="text-muted-foreground">
+                                {mine.aflTeam ?? mine.league}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center text-muted-foreground italic">Vacant</div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-center">
+                          <Badge variant="outline" className="text-[10px] px-1.5 whitespace-nowrap">
+                            {roleLabel}
+                          </Badge>
+                        </div>
+                        <div className={`text-xs p-1.5 rounded ${theirs ? "bg-muted/50" : "bg-muted/20"}`}>
+                          {theirs ? (
+                            <div className="text-center">
+                              <div className="font-medium truncate">{theirs.name}</div>
+                              <div className="text-muted-foreground">
+                                {theirs.aflTeam ?? theirs.league}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center text-muted-foreground italic">Vacant</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

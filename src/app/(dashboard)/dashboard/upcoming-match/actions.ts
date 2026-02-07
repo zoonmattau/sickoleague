@@ -35,6 +35,8 @@ export async function getUpcomingMatch(clubId: string) {
           reservesName: true,
           primaryColor: true,
           secondaryColor: true,
+          homeVenue: { select: { name: true, capacity: true, venueClass: true, atmosphereBonus: true } },
+          reservesVenue: { select: { name: true, capacity: true, venueClass: true, atmosphereBonus: true } },
         },
       },
       awayClub: {
@@ -88,15 +90,27 @@ export async function getUpcomingMatch(clubId: string) {
       const opponent = isHome ? m.awayClub : m.homeClub;
       const myClub = isHome ? m.homeClub : m.awayClub;
 
+      const venue = m.matchType === "SENIORS"
+        ? m.homeClub.homeVenue
+        : m.homeClub.reservesVenue;
+
       return {
         id: m.id,
         matchType: m.matchType,
         isHome,
         hfa: m.homeHfa ? Number(m.homeHfa) : null,
+        homeStaffBonus: m.homeStaffBonus ? Number(m.homeStaffBonus) : null,
+        awayStaffBonus: m.awayStaffBonus ? Number(m.awayStaffBonus) : null,
         isRivalMatch: m.isRivalMatch,
         homeScore: m.homeScore ? Number(m.homeScore) : null,
         awayScore: m.awayScore ? Number(m.awayScore) : null,
         status: m.status,
+        venue: venue ? {
+          name: venue.name,
+          capacity: venue.capacity,
+          venueClass: venue.venueClass,
+          atmosphereBonus: Number(venue.atmosphereBonus),
+        } : null,
         myClub: {
           id: myClub.id,
           name: myClub.name,
@@ -224,6 +238,42 @@ export async function getOpponentLineup(opponentId: string, roundId: string) {
           : null,
       };
     }),
+  };
+}
+
+// Get coaching staff for both clubs in a matchup
+export async function getMatchStaffComparison(myClubId: string, opponentId: string) {
+  const [myStaff, opponentStaff] = await Promise.all([
+    prisma.staffContract.findMany({
+      where: { clubId: myClubId, status: "ACTIVE" },
+      include: {
+        staff: {
+          include: { aflTeam: { select: { name: true, abbreviation: true } } },
+        },
+      },
+    }),
+    prisma.staffContract.findMany({
+      where: { clubId: opponentId, status: "ACTIVE" },
+      include: {
+        staff: {
+          include: { aflTeam: { select: { name: true, abbreviation: true } } },
+        },
+      },
+    }),
+  ]);
+
+  const serialize = (contracts: typeof myStaff) =>
+    contracts.map(sc => ({
+      staffRole: sc.staffRole,
+      name: sc.staff.name,
+      role: sc.staff.role,
+      league: sc.staff.league,
+      aflTeam: sc.staff.aflTeam?.abbreviation ?? null,
+    }));
+
+  return {
+    myStaff: serialize(myStaff),
+    opponentStaff: serialize(opponentStaff),
   };
 }
 

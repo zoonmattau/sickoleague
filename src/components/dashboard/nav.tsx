@@ -28,6 +28,7 @@ const navSections: NavSection[] = [
     label: "My Team",
     items: [
       { href: "/dashboard", label: "Overview" },
+      { href: "/dashboard/upcoming-match", label: "Upcoming Match" },
       { href: "/dashboard/roster", label: "Roster" },
       { href: "/dashboard/matches", label: "Matches" },
       { href: "/dashboard/board", label: "Board" },

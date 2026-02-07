@@ -2,9 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { getMyClubWithRoster, getClubPlayerStats } from "@/app/(dashboard)/dashboard/roster/actions";
 import { getClubRecord, getClubUpcomingMatch, getTeamFormAnalysis } from "@/app/(dashboard)/dashboard/standings/actions";
+import Link from "next/link";
 import { DraggableLineup } from "./lineup/draggable-lineup";
 import { DashboardOverview } from "./dashboard-overview";
-import { UpcomingMatchPanel } from "./upcoming-match-panel";
 import { WeekendChecklist } from "./weekend-checklist";
 import { TeamGraphs } from "./team-graphs";
 import { LeagueGraphs } from "./league-graphs";
@@ -241,20 +241,43 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Upcoming Match + Weekend Checklist */}
+      {/* Upcoming Match Link + Weekend Checklist */}
       {club && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <UpcomingMatchPanel
-            clubId={club.id}
-            clubName={club.name}
-            reservesName={club.reservesName ?? club.name + " Reserves"}
-            primaryColor={club.primaryColor}
-            secondaryColor={club.secondaryColor}
-            rosterPlayers={serializedRosterPlayers}
-            contracts={serializedContracts}
-            playerStats={playerStats}
-            captaincy={captaincy}
-          />
+          {upcomingMatch ? (
+            <Link href="/dashboard/upcoming-match">
+              <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
+                <CardContent className="py-6 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Next Match - Round {upcomingMatch.roundNumber}</div>
+                    <div className="text-xl font-bold mt-1 flex items-center gap-2">
+                      vs
+                      <span
+                        className="px-2 py-0.5 rounded text-sm"
+                        style={{
+                          backgroundColor: upcomingMatch.opponent.primaryColor || "#6b7280",
+                          color: upcomingMatch.opponent.secondaryColor || "#ffffff",
+                        }}
+                      >
+                        {upcomingMatch.opponent.abbreviation}
+                      </span>
+                      {upcomingMatch.opponent.name}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {upcomingMatch.isHome ? "Home" : "Away"}
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground text-sm">View details &rarr;</div>
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card>
+              <CardContent className="py-6 text-center text-muted-foreground">
+                No upcoming matches
+              </CardContent>
+            </Card>
+          )}
           <WeekendChecklist
             rosterPlayers={serializedRosterPlayers}
             contracts={serializedContracts}
