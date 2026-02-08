@@ -316,7 +316,7 @@ export function UpcomingMatchPanel({
                   <div className="text-xs font-medium text-muted-foreground text-center">Opponent</div>
 
                   {/* Staff rows by role */}
-                  {(["SENIOR_ASSISTANT", "RESERVES_ASSISTANT", "LIST_MANAGER"] as const).map(role => {
+                  {([activeMatch === "SENIORS" ? "SENIOR_ASSISTANT" : "RESERVES_ASSISTANT", "LIST_MANAGER"] as const).map(role => {
                     const mine = staffData.myStaff.find(s => s.staffRole === role);
                     const theirs = staffData.opponentStaff.find(s => s.staffRole === role);
                     const roleLabel = role === "SENIOR_ASSISTANT" ? "Sr. Asst."
